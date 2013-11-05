@@ -1,16 +1,16 @@
-module CommunicateParser.Parser where
+module Domain.Scenarios.Parser where
 
 import Ideas.Text.XML.Interface
 
 
 {-
-The purpose of this source-code document is to supply basic functions to querry an xml-script as specified
-by the communicate-team. Some things to note are:
+The purpose of this source-code document is to supply basic functions to query an XML script as specified
+by the Communicate!-team. Some things to note are:
 
 - this code doesn't do any error checking on the script. IO-exceptions and scripts deviating from the specifications
-will lead to unspecified behaviour (most likely a haskell-exception).
-- Currently only the 6 basic emotions as specified by Paul Ekman are supported as emotionid in the parameters,
-changing the availible emotions requires changing the Emotion data-type and the parseEmotion function. However
+will lead to unspecified behaviour (most likely a Haskell-exception).
+- currently only the 6 basic emotions as specified by Paul Ekman are supported as emotionid in the parameters,
+changing the available emotions requires changing the Emotion data-type and the parseEmotion function. However
 unrecognized emotionids will be ignored, and will not lead to exceptions.
 
 to-do list:
@@ -22,46 +22,43 @@ to-do list:
 --functions to be exposed as an interface
 -----------------------------------------------------
 
---queries the script at the filepath for its name.
-getScriptName :: String -> IO String
+--queries the given script for its name.
+getScriptName :: Monad m => Script -> m String
 getScriptName = getMetaDataString "name"
 
---queries the script at the filepath for its date.
-getScriptDate :: String -> IO String
+--queries the given script for its date.
+getScriptDate :: Monad m => Script -> m String
 getScriptDate = getMetaDataString "date"
 
---queries the script at the filepath for its description.
-getScriptDescription :: String -> IO String
+--queries the given script for its description.
+getScriptDescription :: Monad m => Script -> m String
 getScriptDescription = getMetaDataString "description"
 
---queries the script at the filepath for its difficulty.
-getScriptDifficulty :: String -> IO String
+--queries the given script for its difficulty.
+getScriptDifficulty :: Monad m => Script -> m String
 getScriptDifficulty = getMetaDataString "difficulty"
 
---queries the script at the filepath for its startId
-getScriptStartId :: String -> IO String
-getScriptStartId filepath = do
-        scriptElem <- script filepath
-        metadata   <- findChild "metadata" scriptElem
-        dataElem   <- findChild "start" metadata
+--queries the given script for its startId
+getScriptStartId :: Monad m => Script -> m String
+getScriptStartId (Script scriptElem) = do
+        metadata          <- findChild "metadata" scriptElem
+        dataElem          <- findChild "start" metadata
         return (head (findAttribute "idref" dataElem))
 
---queries the script at the filepath for its parameters
-getScriptParameters :: String -> IO [Parameter]
-getScriptParameters filepath = do
-        scriptElem    <- script filepath
-        metadata      <- findChild "metadata" scriptElem
-        parameterData <- findChild "parameters" metadata
+--queries the given script for its parameters
+getScriptParameters :: Monad m => Script -> m [Parameter]
+getScriptParameters (Script scriptElem) = do
+        metadata          <- findChild "metadata" scriptElem
+        parameterData     <- findChild "parameters" metadata
         return (map parseParameterAttributes (children parameterData))
 
 --Takes a playerstatement or an computerstatement element and returns the preconditions.
---The xml-parser forces the extra Monad in the result. This is unfortunate, but inevitable.
-getPreconditions :: Element -> IO Precondition
+getPreconditions :: Element -> Precondition
 getPreconditions elemVar = do
-        return (parsePreconditions (findAllChildren "preconditions" elemVar))
+        parsePreconditions (findAllChildren "preconditions" elemVar)
 
 --Returns the id of the video tag of the computer- or playerstatement if there is one. Else it returns "Nothing".
-getMaybeVideoId :: Element -> IO (Maybe String)
+getMaybeVideoId :: Monad m => Element -> m (Maybe String)
 getMaybeVideoId elemVar = case findAllChildren "video" elemVar of
         []   -> return Nothing
         b:_ -> do
@@ -69,13 +66,13 @@ getMaybeVideoId elemVar = case findAllChildren "video" elemVar of
            return (Just videoId)
 
 --Returns the effects of a playerstatement
-getEffects :: Element -> IO [Effect]
+getEffects :: Monad m => Element -> m [Effect]
 getEffects elemVar = do
         effects <- findChild "effects" elemVar
         return (map parseEffect (children effects))
 
 --Returns the text of a playerstatement or a computerstatement
-getText :: Element -> IO String
+getText :: Monad m => Element -> m String
 getText elemVar = do
         textElem <- findChild "text" elemVar
         return (getData textElem)
@@ -163,28 +160,27 @@ parseEmotion emotionString = case emotionString of
         "Surprise"  -> Just Surprise
         _           -> Nothing
 
---queries the xml-file at the filepath for basic information. Which information being queried is specified
+--queries the given script for basic information. Which information being queried is specified
 --in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
-getMetaDataString :: String -> String -> IO String
-getMetaDataString metaDataName filepath = do
-        scriptElem  <- script filepath
-        metadata    <- findChild "metadata" scriptElem
-        dataElem    <- findChild metaDataName metadata
+getMetaDataString :: Monad m => String -> Script -> m String
+getMetaDataString metaDataName (Script scriptElem) = do
+        metadata          <- findChild "metadata" scriptElem
+        dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
 
---parses the xml script at "filepath" to a xml-object of type "Element".
---warning: crashes on invalid file or invalid xml.
-script :: String -> IO Element
-script filepath = do
+--parses the XML script at "filepath" to a XML-object of type "Element".
+--warning: crashes on invalid file or invalid XML.
+parseScript :: String -> IO Script
+parseScript filepath = do
     text <- readFile filepath
-    return (forceRight (parseXML text))
+    return (Script (forceRight (parseXML text)))
         
 -- Takes an either object. In the case of "right" data, returns the data. In the case of "left" data, crashes.
 forceRight :: Either a b -> b
 forceRight (Right elem) = elem
 
 
---functions added to the xml-parser
+--functions added to the XML-parser
 ---------------------------------------------------------
 
 findAllChildren :: String -> Element -> [Element]
@@ -193,6 +189,8 @@ findAllChildren s e = filter ((==s) . name) (children e)
 
 --data structures definitions
 ---------------------------------------------------------
+
+newtype Script = Script Element
 
 --datatypes used when parsing preconditions
 data Precondition = And [Precondition] | Or [Precondition] | Condition ComparisonsPrecondition | AlwaysTrue deriving (Show, Eq)
@@ -222,12 +220,12 @@ data ChangeType = Set | Delta deriving (Show, Eq)
 
 -- code used for testing purposes only
 ---------------------------------------------------------
---the relative filepath to the test script xml file on my (wouters) computer
+--the relative filepath to the test script XML file on my (wouters) computer
 testFilepath :: String
 testFilepath = "exampleScript.xml"
 
 getTestPreconditions :: IO Precondition
 getTestPreconditions = do
-        scriptElem       <- script testFilepath
-        pStatement       <- findChild "computerStatement" scriptElem
-        getPreconditions pStatement
+        Script scriptElem <- parseScript testFilepath
+        pStatement        <- findChild "computerStatement" scriptElem
+        return (getPreconditions pStatement)
