@@ -2,6 +2,7 @@ module Domain.Scenarios.Exercises where
 
 import Domain.Scenarios.State
 import Domain.Scenarios.Parser
+import Domain.Scenarios.Strategy
 
 import Ideas.Common.Library
 
@@ -16,6 +17,7 @@ exerciseFromScript script = do
     scriptId <- getScriptId script
     scriptDescription <- getScriptDescription script
     scriptDifficulty <- getScriptDifficulty script
+    scriptStrategy <- makeStrategy script
     return makeExercise
        { exerciseId     = describe scriptDescription $
                              newId ("scenarios." ++ scriptId)
@@ -27,7 +29,7 @@ exerciseFromScript script = do
        , ready          = true
        , suitable       = true
        -- , extraRules     = undefined
-       , strategy       = undefined
+       , strategy       = liftToContext $ label "The One And Only Strategy" scriptStrategy
        -- , navigation     = undefined
        , testGenerator  = Nothing
        -- , randomExercise = undefined

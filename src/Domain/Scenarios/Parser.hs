@@ -2,13 +2,14 @@ module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
     , getScriptDifficulty, getScriptStartId, getScriptParameters
-    , getPreconditions, getMaybeVideoId, getEffects, getText, getStatement
+    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts, getStatement
     , parseScript
     ) where
 
 import Ideas.Common.Library
 import Ideas.Text.XML.Interface
 
+import Data.Char
 
 {-
 The purpose of this source-code document is to supply basic functions to query an XML script as specified
@@ -56,7 +57,7 @@ getScriptStartId :: Monad m => Script -> m String
 getScriptStartId (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         dataElem          <- findChild "start" metadata
-        return (head (findAttribute "idref" dataElem))
+        findAttribute "idref" dataElem
 
 --queries the given script for its parameters
 getScriptParameters :: Monad m => Script -> m [Parameter]
@@ -66,38 +67,67 @@ getScriptParameters (Script scriptElem) = do
         return (map parseParameterAttributes (children parameterData))
 
 --Takes a playerstatement or an computerstatement element and returns the preconditions.
-getPreconditions :: Element -> Precondition
-getPreconditions elemVar = do
+getPreconditions :: Statement -> Precondition
+getPreconditions (Statement elemVar) = do
         parsePreconditions (findAllChildren "preconditions" elemVar)
 
 --Returns the id of the video tag of the computer- or playerstatement if there is one. Else it returns "Nothing".
-getMaybeVideoId :: Monad m => Element -> m (Maybe String)
-getMaybeVideoId elemVar = case findAllChildren "video" elemVar of
+getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
+getMaybeVideoId (Statement elemVar) = case findAllChildren "video" elemVar of
         []   -> return Nothing
         b:_ -> do
            videoId <- findAttribute "extid" b
            return (Just videoId)
 
 --Returns the effects of a playerstatement
-getEffects :: Monad m => Element -> m [Effect]
-getEffects elemVar = do
+getEffects :: Monad m => Statement -> m [Effect]
+getEffects (Statement elemVar) = do
         effects <- findChild "effects" elemVar
         return (map parseEffect (children effects))
 
 --Returns the text of a playerstatement or a computerstatement
-getText :: Monad m => Element -> m String
-getText elemVar = do
-        textElem <- findChild "text" elemVar
-        return (getData textElem)
+getText :: Monad m => Statement -> m String
+getText (Statement elemVar) = do
+        case name elemVar of
+            "conversation" -> return ""
+            _              -> do
+                textElem <- findChild "text" elemVar
+                return (getData textElem)
 
---Takes a script and a playerstatement id, a compterstatement id or a conversation id and then 
+getNexts :: Monad m => Statement -> m [String]
+getNexts (Statement elemVar) = do
+        case name elemVar of
+            "computerStatement" -> do
+                responsesElem <- findChild "responses" elemVar
+                mapM (findAttribute "idref") (children responsesElem)
+            "playerStatement"   ->
+                case findChild "nextComputerStatements" elemVar of
+                    Just nextComputerStatementsElem ->
+                        mapM (findAttribute "idref") (children nextComputerStatementsElem)
+                    Nothing -> do
+                        nextComputerStatementElem <- findChild "nextComputerStatement" elemVar
+                        mapM (findAttribute "idref") [nextComputerStatementElem]
+            "conversation"      -> return []
+            _                   ->
+                fail $ "Cannot find nexts of statement represented by element named " ++ (name elemVar)
+
+
+--Takes a script and a playerstatement id, a computerstatement id or a conversation id and then 
 --returns the corresponding element.
-getStatement :: Element -> String -> Element
-getStatement scriptVar idVar = head (filter (idAttributeIs idVar) (findAllChildren (getType idVar) scriptVar))
-        where getType idVar2 = case idVar2 of
-                'p':('a':_) -> "computerStatement"
-                'p':('h':_) -> "playerStatement"
-                'c':_       -> "conversation"
+getStatement :: Monad m => Script -> String -> m Statement
+getStatement (Script scriptElem) idVar = if null foundElems
+            then fail $ "Cannot find statement with ID " ++ idVar
+            else return $ Statement (head foundElems)
+        where foundElems = filter (idAttributeIs idVar) (children scriptElem)
+              idAttributeIs testId elemVar = maybe False ((==)testId) (findAttribute "id" elemVar)
+
+getTypedStatement :: Script -> StatementElementType -> String -> Element
+getTypedStatement (Script scriptElem) statementType idVar = head (filter
+            (idAttributeIs idVar)
+            (findAllChildren elementName scriptElem))
+        where elementName = applyToFirst toLower $ show statementType
+              applyToFirst f (x:xs) = (f x) : xs
+              applyToFirst _ [] = []
               idAttributeIs testId elemVar = (head (findAttribute "id" elemVar)) == testId
 
 --parses the XML script at "filepath" to a Script.
@@ -130,9 +160,8 @@ parsePreconditions elemVar = case elemVar of
         a:_ -> case children a of
                 []  -> AlwaysTrue
                 b:_ -> parsePrecondition b
-        
 
---parses a precondition. Recusivly parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
+--parses a precondition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
 parsePrecondition :: Element -> Precondition
 parsePrecondition elemVar = case name elemVar of
         "and"          | recResult == [] -> AlwaysTrue
@@ -203,6 +232,7 @@ findAllChildren s e = filter ((==s) . name) (children e)
 ---------------------------------------------------------
 
 newtype Script = Script Element
+newtype Statement = Statement Element
 
 --datatypes used when parsing preconditions
 data Precondition = And [Precondition] | Or [Precondition] | Condition ComparisonsPrecondition | AlwaysTrue deriving (Show, Eq)
@@ -220,6 +250,10 @@ data Parameter = Parameter
    , emotionId :: Maybe Emotion
    } deriving (Show, Eq)
 data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq)
+
+--datatypes for statement elements
+data StatementElementType = ComputerStatement | PlayerStatement | Conversation
+    deriving (Show, Eq)
 
 --datatypes used when parsing effects in the playerstatement
 data Effect = Effect
@@ -240,4 +274,4 @@ getTestPreconditions :: IO Precondition
 getTestPreconditions = do
         Script scriptElem <- parseScript testFilepath
         pStatement        <- findChild "computerStatement" scriptElem
-        return (getPreconditions pStatement)
+        return (getPreconditions (Statement pStatement))
