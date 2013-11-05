@@ -16,11 +16,15 @@ import qualified Domain.Scenarios.Services as S
 import qualified Domain.Scenarios.Exercises as E
 
 main :: IO ()
-main = do
-    myExercises <- E.getExercises  
-    defaultMain (ideasScenarios (map Some myExercises))
+main = createDomainReasoner >>= defaultMain
 
--- maindoc = makeDocumentation ideasScenarios "doc"
+maindoc :: IO ()
+maindoc = createDomainReasoner >>= flip makeDocumentation "doc"
+
+createDomainReasoner :: IO DomainReasoner
+createDomainReasoner = do
+    myExercises <- E.getExercises
+    return (ideasScenarios (map Some myExercises))
 
 ideasScenarios :: [Some Exercise] -> DomainReasoner
 ideasScenarios myExercises = (newDomainReasoner "ideas.scenarios")
