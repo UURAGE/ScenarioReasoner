@@ -1,5 +1,12 @@
-module Domain.Scenarios.Parser where
+module Domain.Scenarios.Parser
+    ( Script
+    , getScriptId, getScriptName, getScriptDate, getScriptDescription
+    , getScriptDifficulty, getScriptStartId, getScriptParameters
+    , getPreconditions, getMaybeVideoId, getEffects, getText, getStatement
+    , parseScript
+    ) where
 
+import Ideas.Common.Library
 import Ideas.Text.XML.Interface
 
 
@@ -23,6 +30,10 @@ to-do list:
 -----------------------------------------------------
 
 --queries the given script for its name.
+getScriptId :: Monad m => Script -> m String
+getScriptId = getMetaDataString "id"
+
+--queries the given script for its name.
 getScriptName :: Monad m => Script -> m String
 getScriptName = getMetaDataString "name"
 
@@ -35,8 +46,10 @@ getScriptDescription :: Monad m => Script -> m String
 getScriptDescription = getMetaDataString "description"
 
 --queries the given script for its difficulty.
-getScriptDifficulty :: Monad m => Script -> m String
-getScriptDifficulty = getMetaDataString "difficulty"
+getScriptDifficulty :: Monad m => Script -> m Difficulty
+getScriptDifficulty script = do
+    difficultyString <- getMetaDataString "difficulty" script
+    maybe (fail $ "Could not read difficulty " ++ difficultyString) return $ readDifficulty difficultyString
 
 --queries the given script for its startId
 getScriptStartId :: Monad m => Script -> m String
@@ -87,6 +100,12 @@ getStatement scriptVar idVar = head (filter (idAttributeIs idVar) (findAllChildr
                 'c':_       -> "conversation"
               idAttributeIs testId elemVar = (head (findAttribute "id" elemVar)) == testId
 
+--parses the XML script at "filepath" to a Script.
+--warning: crashes on invalid file or invalid XML.
+parseScript :: String -> IO Script
+parseScript filepath = do
+    text <- readFile filepath
+    return (Script (forceRight (parseXML text)))
 
 --functions to be used internally
 ------------------------------------------------------
@@ -167,13 +186,6 @@ getMetaDataString metaDataName (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
-
---parses the XML script at "filepath" to a XML-object of type "Element".
---warning: crashes on invalid file or invalid XML.
-parseScript :: String -> IO Script
-parseScript filepath = do
-    text <- readFile filepath
-    return (Script (forceRight (parseXML text)))
         
 -- Takes an either object. In the case of "right" data, returns the data. In the case of "left" data, crashes.
 forceRight :: Either a b -> b
