@@ -2,7 +2,7 @@ module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
     , getScriptDifficulty, getScriptStartId, getScriptParameters
-    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts, getStatement
+    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts, findStatement
     , parseScript
     ) where
 
@@ -30,7 +30,7 @@ to-do list:
 --functions to be exposed as an interface
 -----------------------------------------------------
 
---queries the given script for its name.
+--queries the given script for its ID.
 getScriptId :: Monad m => Script -> m String
 getScriptId = getMetaDataString "id"
 
@@ -73,11 +73,9 @@ getPreconditions (Statement elemVar) = do
 
 --Returns the id of the video tag of the computer- or playerstatement if there is one. Else it returns "Nothing".
 getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
-getMaybeVideoId (Statement elemVar) = case findAllChildren "video" elemVar of
-        []   -> return Nothing
-        b:_ -> do
-           videoId <- findAttribute "extid" b
-           return (Just videoId)
+getMaybeVideoId (Statement elemVar) = return $ case findAllChildren "video" elemVar of
+        []  -> Nothing
+        b:_ -> findAttribute "extid" b >>= Just
 
 --Returns the effects of a playerstatement
 getEffects :: Monad m => Statement -> m [Effect]
@@ -97,25 +95,22 @@ getText (Statement elemVar) = do
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement elemVar) = do
         case name elemVar of
-            "computerStatement" -> do
-                responsesElem <- findChild "responses" elemVar
-                mapM (findAttribute "idref") (children responsesElem)
-            "playerStatement"   ->
-                case findChild "nextComputerStatements" elemVar of
-                    Just nextComputerStatementsElem ->
-                        mapM (findAttribute "idref") (children nextComputerStatementsElem)
-                    Nothing -> do
-                        nextComputerStatementElem <- findChild "nextComputerStatement" elemVar
-                        mapM (findAttribute "idref") [nextComputerStatementElem]
-            "conversation"      -> return []
-            _                   ->
-                fail $ "Cannot find nexts of statement represented by element named " ++ (name elemVar)
-
+            "conversation"      -> getResponseIds getResponses
+            "computerStatement" -> getResponseIds getResponses
+            "playerStatement"   -> getResponseIds getNextComputerStatements
+            _                   -> fail $
+                "Cannot get nexts of statement represented by element named " ++ (name elemVar)
+        where getResponseIds = mapM (findAttribute "idref")
+              getResponses = findChild "responses" elemVar >>= children
+              getNextComputerStatements =
+                  case findChild "nextComputerStatements" elemVar of
+                      Just nCSElem -> children nCSElem
+                      Nothing      -> findChild "nextComputerStatement" elemVar >>= singleton
 
 --Takes a script and a playerstatement id, a computerstatement id or a conversation id and then 
 --returns the corresponding element.
-getStatement :: Monad m => Script -> String -> m Statement
-getStatement (Script scriptElem) idVar = if null foundElems
+findStatement :: Monad m => Script -> String -> m Statement
+findStatement (Script scriptElem) idVar = if null foundElems
             then fail $ "Cannot find statement with ID " ++ idVar
             else return $ Statement (head foundElems)
         where foundElems = filter (idAttributeIs idVar) (children scriptElem)
@@ -131,11 +126,10 @@ getTypedStatement (Script scriptElem) statementType idVar = head (filter
               idAttributeIs testId elemVar = (head (findAttribute "id" elemVar)) == testId
 
 --parses the XML script at "filepath" to a Script.
---warning: crashes on invalid file or invalid XML.
 parseScript :: String -> IO Script
 parseScript filepath = do
     text <- readFile filepath
-    return (Script (forceRight (parseXML text)))
+    either fail (return . Script) (parseXML text)
 
 --functions to be used internally
 ------------------------------------------------------
@@ -215,11 +209,6 @@ getMetaDataString metaDataName (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
-        
--- Takes an either object. In the case of "right" data, returns the data. In the case of "left" data, crashes.
-forceRight :: Either a b -> b
-forceRight (Right elem) = elem
-
 
 --functions added to the XML-parser
 ---------------------------------------------------------
