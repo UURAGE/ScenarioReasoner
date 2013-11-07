@@ -23,32 +23,18 @@ maindoc = createDomainReasoner >>= flip makeDocumentation "doc"
 
 createDomainReasoner :: IO DomainReasoner
 createDomainReasoner = do
-    myExercises <- E.getExercises
-    return (ideasScenarios (map Some myExercises))
-
-ideasScenarios :: [Some Exercise] -> DomainReasoner
-ideasScenarios myExercises = (newDomainReasoner "ideas.scenarios")
-      { exercises = myExercises
-      , services  = (myServices (ideasScenariosStub myExercises))
-      , views     = myViewList
-      , aliases   = myAliases
-      , scripts   = myScripts
-      , testSuite = myTestSuite
-      }
-
--- Emergency workaround
--- (cannot inject data into recursive definition)
-ideasScenariosStub :: [Some Exercise] -> DomainReasoner
-ideasScenariosStub myExercises = (newDomainReasoner "ideas.scenarios")
-      { exercises = myExercises
-      , views     = myViewList
-      , aliases   = myAliases
-      , scripts   = myScripts
-      , testSuite = myTestSuite
-      }
-
-myServices :: DomainReasoner -> [Service]
-myServices dr = S.customServices ++ metaServiceList dr ++ serviceList
+    flatExercises <- E.getExercises
+    let myExercises = map Some flatExercises
+    let ideasScenarios  = (newDomainReasoner "ideas.scenarios")
+            { exercises = myExercises
+            , services  = myServices
+            , views     = myViewList
+            , aliases   = myAliases
+            , scripts   = myScripts
+            , testSuite = myTestSuite
+            }
+        myServices = S.customServices ++ metaServiceList ideasScenarios ++ serviceList
+    return ideasScenarios
 
 myViewList :: [ViewPackage]
 myViewList = []
