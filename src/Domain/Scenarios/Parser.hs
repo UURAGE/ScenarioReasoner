@@ -1,3 +1,19 @@
+-----------------------------------------------------------------------------
+{- |
+Basic functions to query an XML script as specified by the Communicate!-team. Some things to note are:
+
+- This code doesn't do any error checking on the script. IO-exceptions and scripts deviating from the specifications
+will lead to unspecified behaviour (most likely a Haskell-exception).
+
+- Currently, only the 6 basic emotions as specified by Paul Ekman are supported as emotionid in the parameters;
+changing the available emotions requires changing the Emotion data-type and the parseEmotion function. However,
+unrecognized emotionids will be ignored, and will not lead to exceptions.
+
+To-do list:
+
+-add a "getScriptModel" function. Need more information about possible models for that.
+-}
+-----------------------------------------------------------------------------
 module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
@@ -6,84 +22,69 @@ module Domain.Scenarios.Parser
     , parseScript
     ) where
 
-import Ideas.Common.Library
-import Ideas.Text.XML.Interface
-
 import Data.Char
 
-{-
-The purpose of this source-code document is to supply basic functions to query an XML script as specified
-by the Communicate!-team. Some things to note are:
-
-- this code doesn't do any error checking on the script. IO-exceptions and scripts deviating from the specifications
-will lead to unspecified behaviour (most likely a Haskell-exception).
-- currently only the 6 basic emotions as specified by Paul Ekman are supported as emotionid in the parameters,
-changing the available emotions requires changing the Emotion data-type and the parseEmotion function. However
-unrecognized emotionids will be ignored, and will not lead to exceptions.
-
-to-do list:
--add a "getScriptModel" function. Need more information about possible models for that.
-
--}
-
+import Ideas.Common.Library
+import Ideas.Common.Utils (readM)
+import Ideas.Text.XML.Interface
 
 --functions to be exposed as an interface
 -----------------------------------------------------
 
---queries the given script for its ID.
+-- | Queries the given script for its ID.
 getScriptId :: Monad m => Script -> m String
 getScriptId = getMetaDataString "id"
 
---queries the given script for its name.
+-- | Queries the given script for its name.
 getScriptName :: Monad m => Script -> m String
 getScriptName = getMetaDataString "name"
 
---queries the given script for its date.
+-- | Queries the given script for its date.
 getScriptDate :: Monad m => Script -> m String
 getScriptDate = getMetaDataString "date"
 
---queries the given script for its description.
+-- | Queries the given script for its description.
 getScriptDescription :: Monad m => Script -> m String
 getScriptDescription = getMetaDataString "description"
 
---queries the given script for its difficulty.
+-- | Queries the given script for its difficulty.
 getScriptDifficulty :: Monad m => Script -> m Difficulty
 getScriptDifficulty script = do
     difficultyString <- getMetaDataString "difficulty" script
     maybe (fail $ "Could not read difficulty " ++ difficultyString) return $ readDifficulty difficultyString
 
---queries the given script for its startId
+-- | Queries the given script for its startId.
 getScriptStartId :: Monad m => Script -> m String
 getScriptStartId (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         dataElem          <- findChild "start" metadata
         findAttribute "idref" dataElem
 
---queries the given script for its parameters
+-- | Queries the given script for its parameters.
 getScriptParameters :: Monad m => Script -> m [Parameter]
 getScriptParameters (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         parameterData     <- findChild "parameters" metadata
         return (map parseParameterAttributes (children parameterData))
 
---Takes a playerstatement or an computerstatement element and returns the preconditions.
+-- | Takes a statement and returns its preconditions.
 getPreconditions :: Statement -> Precondition
 getPreconditions (Statement elemVar) = do
-        parsePreconditions (findAllChildren "preconditions" elemVar)
+        parsePreconditions (childrenNamed "preconditions" elemVar)
 
---Returns the id of the video tag of the computer- or playerstatement if there is one. Else it returns "Nothing".
+-- | Takes a statement and returns the ID of the video if there is one. Else it returns "Nothing".
 getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
-getMaybeVideoId (Statement elemVar) = return $ case findAllChildren "video" elemVar of
-        []  -> Nothing
-        b:_ -> findAttribute "extid" b >>= Just
+getMaybeVideoId (Statement elemVar) = case childrenNamed "video" elemVar of
+        []  -> return Nothing
+        b:_ -> findAttribute "extid" b >>= return . Just
 
---Returns the effects of a playerstatement
+-- | Takes a statement and returns its effects.
 getEffects :: Monad m => Statement -> m [Effect]
 getEffects (Statement elemVar) = do
         effects <- findChild "effects" elemVar
         return (map parseEffect (children effects))
 
---Returns the text of a playerstatement or a computerstatement
+-- | Takes a statement and returns its text.
 getText :: Monad m => Statement -> m String
 getText (Statement elemVar) = do
         case name elemVar of
@@ -92,6 +93,7 @@ getText (Statement elemVar) = do
                 textElem <- findChild "text" elemVar
                 return (getData textElem)
 
+-- | Takes a statement and returns the statements following it.
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement elemVar) = do
         case name elemVar of
@@ -107,8 +109,8 @@ getNexts (Statement elemVar) = do
                       Just nCSElem -> children nCSElem
                       Nothing      -> findChild "nextComputerStatement" elemVar >>= singleton
 
---Takes a script and a playerstatement id, a computerstatement id or a conversation id and then 
---returns the corresponding element.
+-- | Takes a script and a statement or conversation ID and 
+-- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
 findStatement (Script scriptElem) idVar = if null foundElems
             then fail $ "Cannot find statement with ID " ++ idVar
@@ -116,16 +118,16 @@ findStatement (Script scriptElem) idVar = if null foundElems
         where foundElems = filter (idAttributeIs idVar) (children scriptElem)
               idAttributeIs testId elemVar = maybe False ((==)testId) (findAttribute "id" elemVar)
 
-getTypedStatement :: Script -> StatementElementType -> String -> Element
-getTypedStatement (Script scriptElem) statementType idVar = head (filter
+-- | Takes a script, a statement element type and a statement or conversation ID and
+-- returns the corresponding element.
+findTypedStatement :: Script -> StatementElementType -> String -> Element
+findTypedStatement (Script scriptElem) statementType idVar = head (filter
             (idAttributeIs idVar)
-            (findAllChildren elementName scriptElem))
+            (childrenNamed elementName scriptElem))
         where elementName = applyToFirst toLower $ show statementType
-              applyToFirst f (x:xs) = (f x) : xs
-              applyToFirst _ [] = []
-              idAttributeIs testId elemVar = (head (findAttribute "id" elemVar)) == testId
+              idAttributeIs testId elemVar = maybe False ((==)testId) (findAttribute "id" elemVar)
 
---parses the XML script at "filepath" to a Script.
+-- | Parses the XML script at "filepath" to a Script.
 parseScript :: String -> IO Script
 parseScript filepath = do
     text <- readFile filepath
@@ -134,20 +136,19 @@ parseScript filepath = do
 --functions to be used internally
 ------------------------------------------------------
 
---parses an effect.
+-- | Parses an effect.
 parseEffect :: Element -> Effect
-parseEffect elemVar = Effect parseIdref getChangetype parseValue
-        where parseIdref      = head (findAttribute "idref" elemVar)
-              getChangetype = parseChangeType (head (findAttribute "changeType" elemVar))
-              parseValue      = parseCompareValue (head (findAttribute "value" elemVar))
+parseEffect elemVar = Effect
+            { effectIdref      = head (findAttribute "idref" elemVar)
+            , effectChangeType = parseChangeType (head (findAttribute "changeType" elemVar))
+            , effectValue      = parseCompareValue (head (findAttribute "value" elemVar))
+            }
 
---parses a string to a Changetype. Crashes on invalid input.
+-- | Parses a string to a Changetype. Gives an exception on invalid input.
 parseChangeType :: String -> ChangeType
-parseChangeType input = case input of
-        "set"   -> Set
-        "delta" -> Delta
+parseChangeType = read . applyToFirst toUpper
 
---parses preconditions. Empty preconditions gives an always true. 
+-- | Parses preconditions. Empty preconditions gives an always true. 
 parsePreconditions :: [Element] -> Precondition
 parsePreconditions elemVar = case elemVar of
         []  -> AlwaysTrue
@@ -155,7 +156,7 @@ parsePreconditions elemVar = case elemVar of
                 []  -> AlwaysTrue
                 b:_ -> parsePrecondition b
 
---parses a precondition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
+-- | Parses a precondition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
 parsePrecondition :: Element -> Precondition
 parsePrecondition elemVar = case name elemVar of
         "and"          | recResult == [] -> AlwaysTrue
@@ -164,58 +165,53 @@ parsePrecondition elemVar = case name elemVar of
         "or"           | recResult == [] -> AlwaysTrue
                        | otherwise       -> Or recResult
                 where recResult = map parsePrecondition (children elemVar)
-        "precondition" -> Condition (ComparisonsPrecondition parseParameter parseTest parseValue)
-          where parseParameter = head (findAttribute "idref" elemVar)
-                parseTest      = parseCompareOperator (head (findAttribute "test" elemVar))
-                parseValue     = parseCompareValue (head (findAttribute "value" elemVar))
+        "precondition" -> Condition $ ComparisonsPrecondition 
+                { preconditionIdref = head (findAttribute "idref" elemVar)
+                , preconditionTest  = parseCompareOperator (head (findAttribute "test" elemVar))
+                , preconditionValue = parseCompareValue (head (findAttribute "value" elemVar))
+                }
 
---Parses a compare operator. Gives an exception on invalid input.
+-- | Parses a compare operator. Gives an exception on invalid input.
 parseCompareOperator :: String -> CompareOperator
-parseCompareOperator input = case input of
-        "greaterThan"      -> GreaterThan
-        "greaterThanEqual" -> GreaterThanEqualTo
-        "equal"            -> EqualTo
-        "lessThanEqual"    -> LessThanEqualTo
-        "lessThan"         -> LessThan
+parseCompareOperator = read . applyToFirst toUpper
 
--- Parses a value in the precondition. This can be a bool or an int. Left isn't an error message.
+-- | Parses a value in the precondition. This can be a bool or an int. Left isn't an error message.
 parseCompareValue :: String -> Either Bool Int
 parseCompareValue input = case input of
         "true" -> Left True
         "false" -> Left False
         _       -> Right ((read input) :: Int)
---parses a parameter Element inside the parameters inside the metadata of the script.
-parseParameterAttributes :: Element -> Parameter
-parseParameterAttributes paraElem = Parameter parsedId parsedEmotionId
-        where parsedId       = head (findAttribute "id" paraElem)
-              parsedEmotionId = case findAttribute "emotionid" paraElem of
-                []   -> Nothing
-                b:_  -> parseEmotion b
-                
-parseEmotion :: String -> Maybe Emotion
-parseEmotion emotionString = case emotionString of
-        "Anger"     -> Just Anger
-        "Disgust"   -> Just Disgust
-        "Fear"      -> Just Fear
-        "Happiness" -> Just Happiness
-        "Sadness"   -> Just Sadness
-        "Surprise"  -> Just Surprise
-        _           -> Nothing
 
---queries the given script for basic information. Which information being queried is specified
---in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
+-- | Parses a parameter Element inside the parameters inside the metadata of the script.
+parseParameterAttributes :: Element -> Parameter
+parseParameterAttributes paraElem = Parameter
+        { parameterId      = head (findAttribute "id" paraElem)
+        , parameterEmotion = findAttribute "emotionid" paraElem >>= parseEmotion
+        }
+
+-- | Parses an emotion.
+parseEmotion :: String -> Maybe Emotion
+parseEmotion = readM . applyToFirst toUpper
+
+-- | Queries the given script for basic information. Which information being queried is specified
+--  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
 getMetaDataString :: Monad m => String -> Script -> m String
 getMetaDataString metaDataName (Script scriptElem) = do
         metadata          <- findChild "metadata" scriptElem
         dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
 
+-- | Applies a function to the first element of a list, if there is one.
+applyToFirst :: (a -> a) -> [a] -> [a]
+applyToFirst f (x:xs) = (f x) : xs
+applyToFirst _ [] = []
+
 --functions added to the XML-parser
 ---------------------------------------------------------
 
-findAllChildren :: String -> Element -> [Element]
-findAllChildren s e = filter ((==s) . name) (children e)
-
+-- | Returns all children of the given element with the given name.
+childrenNamed :: String -> Element -> [Element]
+childrenNamed s e = filter ((==s) . name) (children e)
 
 --data structures definitions
 ---------------------------------------------------------
@@ -226,19 +222,19 @@ newtype Statement = Statement Element
 --datatypes used when parsing preconditions
 data Precondition = And [Precondition] | Or [Precondition] | Condition ComparisonsPrecondition | AlwaysTrue deriving (Show, Eq)
 data ComparisonsPrecondition = ComparisonsPrecondition
-        { idref :: String
-        , test  :: CompareOperator
-        , value :: ParameterValue
+        { preconditionIdref :: String
+        , preconditionTest  :: CompareOperator
+        , preconditionValue :: ParameterValue
         } deriving (Show, Eq)
-data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq)
+data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq, Read)
 type ParameterValue = Either Bool Int
 
 --datatypes used when parsing parameters
 data Parameter = Parameter
-   { id        :: String
-   , emotionId :: Maybe Emotion
-   } deriving (Show, Eq)
-data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq)
+        { parameterId      :: String
+        , parameterEmotion :: Maybe Emotion
+        } deriving (Show, Eq)
+data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq, Read)
 
 --datatypes for statement elements
 data StatementElementType = ComputerStatement | PlayerStatement | Conversation
@@ -246,16 +242,15 @@ data StatementElementType = ComputerStatement | PlayerStatement | Conversation
 
 --datatypes used when parsing effects in the playerstatement
 data Effect = Effect
-        { idrefEffect :: String
-        , changeType  :: ChangeType
-        , valueEffect :: ParameterValue
+        { effectIdref      :: String
+        , effectChangeType :: ChangeType
+        , effectValue      :: ParameterValue
         } deriving (Show, Eq)
-data ChangeType = Set | Delta deriving (Show, Eq)
-
+data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
 -- code used for testing purposes only
 ---------------------------------------------------------
---the relative filepath to the test script XML file on my (wouters) computer
+-- | The relative filepath to the test script XML file on my (wouters) computer.
 testFilepath :: String
 testFilepath = "exampleScript.xml"
 
