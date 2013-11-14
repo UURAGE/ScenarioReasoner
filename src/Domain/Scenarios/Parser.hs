@@ -21,6 +21,7 @@ module Domain.Scenarios.Parser
     , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
     , findStatement
     , parseScript
+    , calculateScore
     ) where
 
 import Control.Monad
@@ -247,6 +248,18 @@ applyToFirst _ [] = []
 -- | Returns all children of the given element with the given name.
 childrenNamed :: String -> Element -> [Element]
 childrenNamed s e = filter ((==s) . name) (children e)
+
+
+--functions that actually don't belong here
+---------------------------------------------------------
+
+calculateScore :: Script -> State -> Int
+calculateScore script state = either error calculate $ getScriptScoringFunction script
+    where calculate scoringFunction = case scoringFunction of
+            Sum subFunctions         -> sum . map calculate $ subFunctions
+            Scale scalar subFunction -> scalar * calculate subFunction
+            ParamRef paramId         -> getParamOrZero paramId state
+            IntegeredCondition _     -> 0 -- TODO: Implement
 
 --data structures definitions
 ---------------------------------------------------------
