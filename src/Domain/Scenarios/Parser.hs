@@ -17,16 +17,20 @@ To-do list:
 module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
-    , getScriptDifficulty, getScriptStartId, getScriptParameters
-    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts, findStatement
+    , getScriptDifficulty, getScriptStartId, getScriptParameters, getScriptScoringFunction
+    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
+    , findStatement
     , parseScript
     ) where
 
+import Control.Monad
 import Data.Char
 
 import Ideas.Common.Library
 import Ideas.Common.Utils (readM)
 import Ideas.Text.XML.Interface
+
+import Domain.Scenarios.State
 
 --functions to be exposed as an interface
 -----------------------------------------------------
@@ -67,10 +71,18 @@ getScriptParameters (Script scriptElem) = do
         parameterData     <- findChild "parameters" metadata
         return (map parseParameterAttributes (children parameterData))
 
+-- | Queries the given script for its scoring function.
+getScriptScoringFunction :: Monad m => Script -> m ScoringFunction
+getScriptScoringFunction (Script scriptElem) = do
+        scoringFunctionElem <- findChild "scoringFunction" scriptElem
+        case children scoringFunctionElem of
+            [realScoringFunctionElem] -> parseScoringFunction realScoringFunctionElem
+            _                         -> fail "The scoring function element must consist of exactly one scoring function."
+
 -- | Takes a statement and returns its preconditions.
-getPreconditions :: Statement -> Precondition
+getPreconditions :: Statement -> Condition
 getPreconditions (Statement elemVar) = do
-        parsePreconditions (childrenNamed "preconditions" elemVar)
+        parseConditions (childrenNamed "preconditions" elemVar)
 
 -- | Takes a statement and returns the ID of the video if there is one. Else it returns "Nothing".
 getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
@@ -148,24 +160,24 @@ parseEffect elemVar = Effect
 parseChangeType :: String -> ChangeType
 parseChangeType = read . applyToFirst toUpper
 
--- | Parses preconditions. Empty preconditions gives an always true. 
-parsePreconditions :: [Element] -> Precondition
-parsePreconditions elemVar = case elemVar of
-        []  -> AlwaysTrue
-        a:_ -> case children a of
-                []  -> AlwaysTrue
-                b:_ -> parsePrecondition b
+-- | Parses conditions. Empty conditions gives AlwaysTrue.
+parseConditions :: [Element] -> Condition
+parseConditions conditionsElems = case conditionsElems of
+        []               -> AlwaysTrue
+        conditionsElem:_ -> case children conditionsElem of
+                []              -> AlwaysTrue
+                conditionElem:_ -> parseCondition conditionElem
 
--- | Parses a precondition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
-parsePrecondition :: Element -> Precondition
-parsePrecondition elemVar = case name elemVar of
+-- | Parses a condition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
+parseCondition :: Element -> Condition
+parseCondition elemVar = case name elemVar of
         "and"          | recResult == [] -> AlwaysTrue
                        | otherwise       -> And recResult
-                where recResult = map parsePrecondition (children elemVar)
+                where recResult = map parseCondition (children elemVar)
         "or"           | recResult == [] -> AlwaysTrue
                        | otherwise       -> Or recResult
-                where recResult = map parsePrecondition (children elemVar)
-        "precondition" -> Condition $ ComparisonsPrecondition 
+                where recResult = map parseCondition (children elemVar)
+        "precondition" -> Condition $ ComparisonsCondition
                 { preconditionIdref = head (findAttribute "idref" elemVar)
                 , preconditionTest  = parseCompareOperator (head (findAttribute "test" elemVar))
                 , preconditionValue = parseCompareValue (head (findAttribute "value" elemVar))
@@ -178,9 +190,25 @@ parseCompareOperator = read . applyToFirst toUpper
 -- | Parses a value in the precondition. This can be a bool or an int. Left isn't an error message.
 parseCompareValue :: String -> Either Bool Int
 parseCompareValue input = case input of
-        "true" -> Left True
+        "true"  -> Left True
         "false" -> Left False
         _       -> Right ((read input) :: Int)
+
+-- | Parses a scoring function element.
+parseScoringFunction :: Monad m => Element -> m ScoringFunction
+parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
+        "sum"                -> liftM Sum $ mapM parseScoringFunction $ children scoringFunctionElem
+        "scale"              -> do
+                scalarEl          <- findAttribute "scalar" scoringFunctionElem
+                scalar            <- readM scalarEl
+                scoringFunctionEl <- getExactlyOne "scoringFunction" (children scoringFunctionElem)
+                scoringFunction   <- parseScoringFunction scoringFunctionEl
+                return $ Scale scalar scoringFunction
+        "paramRef"           -> liftM ParamRef $ findAttribute "idref" scoringFunctionElem
+        "integeredCondition" -> do
+                conditionEl       <- getExactlyOne "condition" (children scoringFunctionElem)
+                return $ IntegeredCondition $ parseCondition conditionEl
+        otherName            -> fail $ "Cannot parse scoring function element named " ++ otherName
 
 -- | Parses a parameter Element inside the parameters inside the metadata of the script.
 parseParameterAttributes :: Element -> Parameter
@@ -201,6 +229,13 @@ getMetaDataString metaDataName (Script scriptElem) = do
         dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
 
+-- | Gets exactly one element and fails appropriately if there are more or fewer.
+getExactlyOne :: Monad m => String -> [Element] -> m Element
+getExactlyOne elDescription els = case els of
+    [el] -> return el
+    []   -> fail $ "needed exactly one " ++ elDescription ++ ", got zero"
+    _    -> fail $ "needed exactly one " ++ elDescription ++ ", got " ++ (show (length els))
+
 -- | Applies a function to the first element of a list, if there is one.
 applyToFirst :: (a -> a) -> [a] -> [a]
 applyToFirst f (x:xs) = (f x) : xs
@@ -217,11 +252,18 @@ childrenNamed s e = filter ((==s) . name) (children e)
 ---------------------------------------------------------
 
 newtype Script = Script Element
+instance HasId Script where
+    getId script = either error id $ do
+                scriptId <- getScriptId script
+                scriptDescription <- getScriptDescription script
+                return $ describe scriptDescription $ newId ("scenarios." ++ scriptId)
+    changeId _ _ = error "It wouldn't be right to change a script's ID."
+
 newtype Statement = Statement Element
 
 --datatypes used when parsing preconditions
-data Precondition = And [Precondition] | Or [Precondition] | Condition ComparisonsPrecondition | AlwaysTrue deriving (Show, Eq)
-data ComparisonsPrecondition = ComparisonsPrecondition
+data Condition = And [Condition] | Or [Condition] | Condition ComparisonsCondition | AlwaysTrue deriving (Show, Eq)
+data ComparisonsCondition = ComparisonsCondition
         { preconditionIdref :: String
         , preconditionTest  :: CompareOperator
         , preconditionValue :: ParameterValue
@@ -234,6 +276,7 @@ data Parameter = Parameter
         { parameterId      :: String
         , parameterEmotion :: Maybe Emotion
         } deriving (Show, Eq)
+
 data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq, Read)
 
 --datatypes for statement elements
@@ -248,13 +291,19 @@ data Effect = Effect
         } deriving (Show, Eq)
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
+--datatype for scoring function
+data ScoringFunction = Sum [ScoringFunction]
+                     | Scale Int ScoringFunction
+                     | ParamRef String
+                     | IntegeredCondition Condition
+
 -- code used for testing purposes only
 ---------------------------------------------------------
 -- | The relative filepath to the test script XML file on my (wouters) computer.
 testFilepath :: String
 testFilepath = "exampleScript.xml"
 
-getTestPreconditions :: IO Precondition
+getTestPreconditions :: IO Condition
 getTestPreconditions = do
         Script scriptElem <- parseScript testFilepath
         pStatement        <- findChild "computerStatement" scriptElem
