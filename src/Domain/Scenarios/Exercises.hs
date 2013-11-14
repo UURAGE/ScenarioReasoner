@@ -1,26 +1,28 @@
 module Domain.Scenarios.Exercises where
 
+import Control.Monad
+
 import Domain.Scenarios.State
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Strategy
 
 import Ideas.Common.Library
 
-getExercises :: IO [Exercise State]
-getExercises = mapM getExercise [""]
+getExercises :: IO ([Exercise State], [Script])
+getExercises = liftM unzip $ mapM getExercise [""]
 
-getExercise :: String -> IO (Exercise State)
-getExercise path = parseScript path >>= exerciseFromScript
+getExercise :: String -> IO (Exercise State, Script)
+getExercise path = do
+    script <- parseScript path
+    exercise <- exerciseFromScript script
+    return (exercise, script)
 
 exerciseFromScript :: Monad m => Script -> m (Exercise State)
 exerciseFromScript script = do
-    scriptId <- getScriptId script
-    scriptDescription <- getScriptDescription script
     scriptDifficulty <- getScriptDifficulty script
     scriptStrategy <- makeStrategy script
     return makeExercise
-       { exerciseId     = describe scriptDescription $
-                             newId ("scenarios." ++ scriptId)
+       { exerciseId     = getId script
        , status         = Alpha
        , parser         = readJSON
        , prettyPrinter  = showJSON

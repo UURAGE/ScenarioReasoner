@@ -23,7 +23,7 @@ maindoc = createDomainReasoner >>= flip makeDocumentation "doc"
 
 createDomainReasoner :: IO DomainReasoner
 createDomainReasoner = do
-    flatExercises <- E.getExercises
+    (flatExercises, scripts) <- E.getExercises
     let myExercises = map Some flatExercises
     let ideasScenarios  = (newDomainReasoner "ideas.scenarios")
             { exercises = myExercises
@@ -33,7 +33,7 @@ createDomainReasoner = do
             , scripts   = myScripts
             , testSuite = myTestSuite
             }
-        myServices = S.customServices ++ metaServiceList ideasScenarios ++ serviceList
+        myServices = S.customServices scripts ++ metaServiceList ideasScenarios ++ serviceList
     return ideasScenarios
 
 myViewList :: [ViewPackage]

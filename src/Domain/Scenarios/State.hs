@@ -10,7 +10,7 @@ import qualified Data.Map as M
 
 {-- 
 The state is affected by every step in a strategy.
---}
+--} 
 
 ---------------------------
 -- State
@@ -43,6 +43,9 @@ instance IsTerm (M.Map String Int) where
  fromTerm x = do 
    x' <- fromTerm x
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
+
+getParamOrZero :: String -> State -> Int
+getParamOrZero = M.findWithDefault 0 
 
 setZero, setOne :: String -> State -> State
 setZero = flip M.insert 1
