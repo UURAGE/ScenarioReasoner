@@ -106,21 +106,21 @@ getText (Statement elemVar) = do
                 textElem <- findChild "text" elemVar
                 return (getData textElem)
 
--- | Takes a statement and returns the statements following it.
+-- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement elemVar) = do
         case name elemVar of
-            "conversation"      -> getResponseIds getResponses
-            "computerStatement" -> getResponseIds getResponses
-            "playerStatement"   -> getResponseIds getNextComputerStatements
+            "conversation"      -> getResponses >>= getIdrefs
+            "computerStatement" -> getResponses >>= getIdrefs
+            "playerStatement"   -> getNextComputerStatements >>= getIdrefs
             _                   -> fail $
                 "Cannot get nexts of statement represented by element named " ++ (name elemVar)
-        where getResponseIds = mapM (findAttribute "idref")
-              getResponses = findChild "responses" elemVar >>= children
+        where getIdrefs = mapM (findAttribute "idref")
+              getResponses = liftM children $ findChild "responses" elemVar
               getNextComputerStatements =
                   case findChild "nextComputerStatements" elemVar of
-                      Just nCSElem -> children nCSElem
-                      Nothing      -> findChild "nextComputerStatement" elemVar >>= singleton
+                      Just nCSElem -> return $ children nCSElem
+                      Nothing      -> liftM singleton $ findChild "nextComputerStatement" elemVar
 
 -- | Takes a script and a statement or conversation ID and 
 -- returns the corresponding element.
