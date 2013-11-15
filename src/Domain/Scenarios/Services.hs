@@ -1,9 +1,11 @@
 module Domain.Scenarios.Services where
 
-import Unsafe.Coerce
+import Data.Maybe
+
 import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
+
 import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
@@ -25,5 +27,8 @@ scoreS scripts = makeService "scenarios.score"
 
 score :: [Script] -> State a -> Int
 score scripts state = case filter (\script -> (getId script) == (getId $ exercise state)) scripts of
-    [script] -> calculateScore script $ stateTerm (unsafeCoerce state)
-    _        -> error "score"
+    [script] ->
+        calculateScore script $ fromMaybe (error "Cannot score exercise: casting failed.") $
+            castFrom (exercise state) (stateTerm state)
+    _        ->
+        error "Cannot score exercise: exercise not found in list of scoreable exercises."

@@ -30,6 +30,7 @@ exerciseFromScript script = do
        , similarity     = (\_ _-> True)
        , ready          = true
        , suitable       = true
+       , hasTypeable    = useTypeable
        -- , extraRules     = undefined
        , strategy       = liftToContext $ label "The One And Only Strategy" scriptStrategy
        -- , navigation     = undefined
