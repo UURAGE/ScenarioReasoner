@@ -1,16 +1,22 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Types where
 
+import Control.Monad
+import qualified Data.Map as M
+
 import Ideas.Common.Library
 import Ideas.Common.Utils
 import Ideas.Text.JSON
-import Control.Monad
 
-import qualified Data.Map as M
+-----------------------------------------------------------------------------
+-- | A condition
+data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
+               | Or [Condition] -- ^ A list of conditions, one of which needs to be satisfied
+               | Condition ComparisonsCondition -- ^ A comparison condition
+               | AlwaysTrue -- ^ A condition that is always satisfied
+               deriving (Show, Eq)
 
----------------------------
---datatypes used when parsing preconditions
-data Condition = And [Condition] | Or [Condition] | Condition ComparisonsCondition | AlwaysTrue deriving (Show, Eq)
+-- | A condition that compares the value of a parameter using a binary predicate
 data ComparisonsCondition = ComparisonsCondition
         { conditionIdref :: String
         , conditionTest  :: CompareOperator
@@ -19,19 +25,21 @@ data ComparisonsCondition = ComparisonsCondition
 data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq, Read)
 type ParameterValue = Int
 
---datatypes used when parsing parameters
+-- | A parameter
 data Parameter = Parameter
         { parameterId      :: String
         , parameterEmotion :: Maybe Emotion
         } deriving (Show, Eq)
 
-data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq, Read)
+-- | An emotion (as specified by Paul Ekman)
+data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise
+    deriving (Show, Eq, Read)
 
---datatypes for statement elements
+-- | A value describing the type of a statement element 
 data StatementElementType = ComputerStatement | PlayerStatement | Conversation
     deriving (Show, Eq)
 
---datatypes used when parsing effects in the playerstatement
+-- | An effect of a statement on the current state
 data Effect = Effect
         { effectIdref      :: String
         , effectChangeType :: ChangeType
@@ -39,12 +47,13 @@ data Effect = Effect
         } deriving (Show, Eq)
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
---datatype for scoring function
+-- | A function to calculate the score based on the current state
 data ScoringFunction = Sum [ScoringFunction]
                      | Scale Int ScoringFunction
                      | ParamRef String
                      | IntegeredCondition Condition
 
+-- | Calculates the value of a condition based on the given state.
 calculateCondition :: Condition -> State -> Bool
 calculateCondition mainCondition state = calculate mainCondition
     where calculate :: Condition -> Bool
@@ -54,12 +63,14 @@ calculateCondition mainCondition state = calculate mainCondition
             Or subConditions     -> or . map calculate $ subConditions
             Condition comparison -> calculateComparisonsCondition comparison state
 
+-- | Calculates the value of a comparison based on the given state.
 calculateComparisonsCondition :: ComparisonsCondition -> State -> Bool
 calculateComparisonsCondition comparison state = operator tested value
     where operator = calculateCompareOperator (conditionTest comparison)
           tested = getParamOrZero (conditionIdref comparison) state
           value  = conditionValue comparison
 
+-- | Returns the binary predicate corresponding to the given operator type.
 calculateCompareOperator :: CompareOperator -> (Int -> Int -> Bool)
 calculateCompareOperator operator = case operator of
             LessThan -> (<)
@@ -68,6 +79,7 @@ calculateCompareOperator operator = case operator of
             GreaterThanEqualTo -> (>=)
             GreaterThan -> (>)
 
+-- | Calculates the value of a scoring function based on the given state.
 calculateScore :: ScoringFunction -> State -> Int
 calculateScore mainScoringFunction state = calculate mainScoringFunction  
     where calculate scoringFunction = case scoringFunction of
@@ -76,8 +88,8 @@ calculateScore mainScoringFunction state = calculate mainScoringFunction
             ParamRef paramId             -> getParamOrZero paramId state
             IntegeredCondition condition -> if calculateCondition condition state then 1 else 0
 
----------------------------
--- State
+-----------------------------------------------------------------------------
+-- | State
 -- The state is affected by every step in a strategy.
 
 type State = M.Map String Int

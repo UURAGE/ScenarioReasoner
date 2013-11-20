@@ -2,11 +2,11 @@ module Domain.Scenarios.Exercises where
 
 import Control.Monad
 
+import Ideas.Common.Library
+
 import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Strategy
-
-import Ideas.Common.Library
 
 getExercises :: IO ([Exercise State], [Script])
 getExercises = liftM unzip $ mapM getExercise [""]

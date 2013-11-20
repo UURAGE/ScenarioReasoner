@@ -1,10 +1,12 @@
 module Domain.Scenarios.Strategy where 
 
-import Ideas.Common.Library
-import Domain.Scenarios.Types
-import Domain.Scenarios.Parser
 import Control.Monad
 import qualified Data.Map as M
+
+import Ideas.Common.Library
+
+import Domain.Scenarios.Types
+import Domain.Scenarios.Parser
 
 type StrategyMap a = M.Map String (Strategy a)
 
