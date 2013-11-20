@@ -31,7 +31,7 @@ import Ideas.Common.Library
 import Ideas.Common.Utils (readM)
 import Ideas.Text.XML.Interface
 
-import Domain.Scenarios.State
+import Domain.Scenarios.Types
 
 --functions to be exposed as an interface
 -----------------------------------------------------

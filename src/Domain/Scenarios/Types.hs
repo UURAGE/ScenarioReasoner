@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
-module Domain.Scenarios.State where
+module Domain.Scenarios.Types where
 
 import Ideas.Common.Library
 import Ideas.Common.Utils

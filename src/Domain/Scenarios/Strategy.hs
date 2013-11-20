@@ -1,7 +1,7 @@
 module Domain.Scenarios.Strategy where 
 
 import Ideas.Common.Library
-import Domain.Scenarios.State
+import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
 import Control.Monad
 import qualified Data.Map as M

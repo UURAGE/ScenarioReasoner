@@ -2,7 +2,7 @@ module Domain.Scenarios.Exercises where
 
 import Control.Monad
 
-import Domain.Scenarios.State
+import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Strategy
 
