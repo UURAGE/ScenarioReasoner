@@ -8,12 +8,77 @@ import Control.Monad
 
 import qualified Data.Map as M
 
-{-- 
-The state is affected by every step in a strategy.
---} 
+---------------------------
+--datatypes used when parsing preconditions
+data Condition = And [Condition] | Or [Condition] | Condition ComparisonsCondition | AlwaysTrue deriving (Show, Eq)
+data ComparisonsCondition = ComparisonsCondition
+        { conditionIdref :: String
+        , conditionTest  :: CompareOperator
+        , conditionValue :: ParameterValue
+        } deriving (Show, Eq)
+data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq, Read)
+type ParameterValue = Int
+
+--datatypes used when parsing parameters
+data Parameter = Parameter
+        { parameterId      :: String
+        , parameterEmotion :: Maybe Emotion
+        } deriving (Show, Eq)
+
+data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq, Read)
+
+--datatypes for statement elements
+data StatementElementType = ComputerStatement | PlayerStatement | Conversation
+    deriving (Show, Eq)
+
+--datatypes used when parsing effects in the playerstatement
+data Effect = Effect
+        { effectIdref      :: String
+        , effectChangeType :: ChangeType
+        , effectValue      :: ParameterValue
+        } deriving (Show, Eq)
+data ChangeType = Set | Delta deriving (Show, Eq, Read)
+
+--datatype for scoring function
+data ScoringFunction = Sum [ScoringFunction]
+                     | Scale Int ScoringFunction
+                     | ParamRef String
+                     | IntegeredCondition Condition
+
+calculateCondition :: Condition -> State -> Bool
+calculateCondition mainCondition state = calculate mainCondition
+    where calculate :: Condition -> Bool
+          calculate condition = case condition of
+            AlwaysTrue           -> True
+            And subConditions    -> and . map calculate $ subConditions
+            Or subConditions     -> or . map calculate $ subConditions
+            Condition comparison -> calculateComparisonsCondition comparison state
+
+calculateComparisonsCondition :: ComparisonsCondition -> State -> Bool
+calculateComparisonsCondition comparison state = operator tested value
+    where operator = calculateCompareOperator (conditionTest comparison)
+          tested = getParamOrZero (conditionIdref comparison) state
+          value  = conditionValue comparison
+
+calculateCompareOperator :: CompareOperator -> (Int -> Int -> Bool)
+calculateCompareOperator operator = case operator of
+            LessThan -> (<)
+            LessThanEqualTo -> (<=)
+            EqualTo -> (==)
+            GreaterThanEqualTo -> (>=)
+            GreaterThan -> (>)
+
+calculateScore :: ScoringFunction -> State -> Int
+calculateScore mainScoringFunction state = calculate mainScoringFunction  
+    where calculate scoringFunction = case scoringFunction of
+            Sum subFunctions             -> sum . map calculate $ subFunctions
+            Scale scalar subFunction     -> scalar * calculate subFunction
+            ParamRef paramId             -> getParamOrZero paramId state
+            IntegeredCondition condition -> if calculateCondition condition state then 1 else 0
 
 ---------------------------
 -- State
+-- The state is affected by every step in a strategy.
 
 type State = M.Map String Int
 

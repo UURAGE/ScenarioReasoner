@@ -21,7 +21,6 @@ module Domain.Scenarios.Parser
     , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
     , findStatement
     , parseScript
-    , calculateScore
     ) where
 
 import Control.Monad
@@ -178,22 +177,19 @@ parseCondition elemVar = case name elemVar of
         "or"           | recResult == [] -> AlwaysTrue
                        | otherwise       -> Or recResult
                 where recResult = map parseCondition (children elemVar)
-        "precondition" -> Condition $ ComparisonsCondition
-                { preconditionIdref = head (findAttribute "idref" elemVar)
-                , preconditionTest  = parseCompareOperator (head (findAttribute "test" elemVar))
-                , preconditionValue = parseCompareValue (head (findAttribute "value" elemVar))
+        "condition" -> Condition $ ComparisonsCondition
+                { conditionIdref = head (findAttribute "idref" elemVar)
+                , conditionTest  = parseCompareOperator (head (findAttribute "test" elemVar))
+                , conditionValue = parseCompareValue (head (findAttribute "value" elemVar))
                 }
 
 -- | Parses a compare operator. Gives an exception on invalid input.
 parseCompareOperator :: String -> CompareOperator
 parseCompareOperator = read . applyToFirst toUpper
 
--- | Parses a value in the precondition. This can be a bool or an int. Left isn't an error message.
-parseCompareValue :: String -> Either Bool Int
-parseCompareValue input = case input of
-        "true"  -> Left True
-        "false" -> Left False
-        _       -> Right ((read input) :: Int)
+-- | Parses a value in a condition.
+parseCompareValue :: String -> Int
+parseCompareValue input = read input
 
 -- | Parses a scoring function element.
 parseScoringFunction :: Monad m => Element -> m ScoringFunction
@@ -249,18 +245,6 @@ applyToFirst _ [] = []
 childrenNamed :: String -> Element -> [Element]
 childrenNamed s e = filter ((==s) . name) (children e)
 
-
---functions that actually don't belong here
----------------------------------------------------------
-
-calculateScore :: Script -> State -> Int
-calculateScore script state = either error calculate $ getScriptScoringFunction script
-    where calculate scoringFunction = case scoringFunction of
-            Sum subFunctions         -> sum . map calculate $ subFunctions
-            Scale scalar subFunction -> scalar * calculate subFunction
-            ParamRef paramId         -> getParamOrZero paramId state
-            IntegeredCondition _     -> 0 -- TODO: Implement
-
 --data structures definitions
 ---------------------------------------------------------
 
@@ -273,42 +257,6 @@ instance HasId Script where
     changeId _ _ = error "It wouldn't be right to change a script's ID."
 
 newtype Statement = Statement Element
-
---datatypes used when parsing preconditions
-data Condition = And [Condition] | Or [Condition] | Condition ComparisonsCondition | AlwaysTrue deriving (Show, Eq)
-data ComparisonsCondition = ComparisonsCondition
-        { preconditionIdref :: String
-        , preconditionTest  :: CompareOperator
-        , preconditionValue :: ParameterValue
-        } deriving (Show, Eq)
-data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq, Read)
-type ParameterValue = Either Bool Int
-
---datatypes used when parsing parameters
-data Parameter = Parameter
-        { parameterId      :: String
-        , parameterEmotion :: Maybe Emotion
-        } deriving (Show, Eq)
-
-data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise deriving (Show, Eq, Read)
-
---datatypes for statement elements
-data StatementElementType = ComputerStatement | PlayerStatement | Conversation
-    deriving (Show, Eq)
-
---datatypes used when parsing effects in the playerstatement
-data Effect = Effect
-        { effectIdref      :: String
-        , effectChangeType :: ChangeType
-        , effectValue      :: ParameterValue
-        } deriving (Show, Eq)
-data ChangeType = Set | Delta deriving (Show, Eq, Read)
-
---datatype for scoring function
-data ScoringFunction = Sum [ScoringFunction]
-                     | Scale Int ScoringFunction
-                     | ParamRef String
-                     | IntegeredCondition Condition
 
 -- code used for testing purposes only
 ---------------------------------------------------------

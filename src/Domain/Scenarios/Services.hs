@@ -6,6 +6,7 @@ import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
 
+import Domain.Scenarios.Types (calculateScore)
 import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
@@ -27,8 +28,10 @@ scoreS scripts = makeService "scenarios.score"
 
 score :: [Script] -> State a -> Int
 score scripts state = case filter (\script -> (getId script) == (getId $ exercise state)) scripts of
-    [script] ->
-        calculateScore script $ fromMaybe (error "Cannot score exercise: casting failed.") $
-            castFrom (exercise state) (stateTerm state)
+    [script] -> calculateScore
+        (fromMaybe (error "Cannot score exercise: no scoring function found.") $
+            getScriptScoringFunction script)
+        (fromMaybe (error "Cannot score exercise: casting failed.") $
+            castFrom (exercise state) (stateTerm state))
     _        ->
         error "Cannot score exercise: exercise not found in list of scoreable exercises."
