@@ -25,6 +25,7 @@ module Domain.Scenarios.Parser
 
 import Control.Monad
 import Data.Char
+import Data.Maybe
 
 import Ideas.Common.Library
 import Ideas.Common.Utils (readM)
@@ -92,9 +93,8 @@ getMaybeVideoId (Statement elemVar) = case childrenNamed "video" elemVar of
 
 -- | Takes a statement and returns its effects.
 getEffects :: Monad m => Statement -> m [Effect]
-getEffects (Statement elemVar) = do
-        effects <- findChild "effects" elemVar
-        return (map parseEffect (children effects))
+getEffects (Statement elemVar) = return $ fromMaybe [] $
+        liftM (map parseEffect . children) $ findChild "effects" elemVar
 
 -- | Takes a statement and returns its text.
 getText :: Monad m => Statement -> m String
@@ -210,8 +210,9 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
 -- | Parses a parameter Element inside the parameters inside the metadata of the script.
 parseParameterAttributes :: Element -> Parameter
 parseParameterAttributes paraElem = Parameter
-        { parameterId      = head (findAttribute "id" paraElem)
-        , parameterEmotion = findAttribute "emotionid" paraElem >>= parseEmotion
+        { parameterId           = head (findAttribute "id" paraElem)
+        , parameterEmotion      = findAttribute "emotionid" paraElem >>= parseEmotion
+        , parameterInitialValue = findAttribute "initialValue" paraElem >>= read
         }
 
 -- | Parses an emotion.
@@ -226,12 +227,12 @@ getMetaDataString metaDataName (Script scriptElem) = do
         dataElem          <- findChild metaDataName metadata
         return (getData dataElem)
 
--- | Gets exactly one element and fails appropriately if there are more or fewer.
-getExactlyOne :: Monad m => String -> [Element] -> m Element
-getExactlyOne elDescription els = case els of
-    [el] -> return el
-    []   -> fail $ "needed exactly one " ++ elDescription ++ ", got zero"
-    _    -> fail $ "needed exactly one " ++ elDescription ++ ", got " ++ (show (length els))
+-- | Gets exactly one item from a list and fails appropriately if there are more or fewer.
+getExactlyOne :: Monad m => String -> [a] -> m a
+getExactlyOne iDescription is = case is of
+    [i] -> return i
+    []   -> fail $ "needed exactly one " ++ iDescription ++ ", got zero"
+    _    -> fail $ "needed exactly one " ++ iDescription ++ ", got " ++ (show (length is))
 
 -- | Applies a function to the first element of a list, if there is one.
 applyToFirst :: (a -> a) -> [a] -> [a]

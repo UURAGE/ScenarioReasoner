@@ -21,6 +21,9 @@ exerciseFromScript :: Monad m => Script -> m (Exercise State)
 exerciseFromScript script = do
     scriptDifficulty <- getScriptDifficulty script
     scriptStrategy <- makeStrategy script
+    scriptParameters <- getScriptParameters script
+    let initialState = fromList [(i, v) |
+            Parameter {parameterId = i, parameterInitialValue = Just v} <- scriptParameters]
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
@@ -36,5 +39,5 @@ exerciseFromScript script = do
        -- , navigation     = undefined
        , testGenerator  = Nothing
        -- , randomExercise = undefined
-       , examples = [(scriptDifficulty, emptyState)]
+       , examples = [(scriptDifficulty, initialState)]
        }

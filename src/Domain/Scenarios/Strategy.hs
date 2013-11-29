@@ -25,6 +25,7 @@ makeSubStrategy script strategyMap statementId = do
     scriptId <- getScriptId script
     statement <- findStatement script statementId
     statementDescription <- getText statement
+    statementEffects <- getEffects statement
     case M.lookup statementId strategyMap of
         Just statementStrategy -> return (statementStrategy, strategyMap)
         Nothing -> do
@@ -32,7 +33,7 @@ makeSubStrategy script strategyMap statementId = do
                     ("scenarios." ++ scriptId ++ "." ++ statementId)
                     (statementDescription)
                     (const true)
-                    (id)
+                    (\state -> foldr applyEffect state statementEffects)
             nextIds <- getNexts statement
             case nextIds of
                 []                        -> do

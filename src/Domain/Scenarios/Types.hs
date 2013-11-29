@@ -27,8 +27,9 @@ type ParameterValue = Int
 
 -- | A parameter
 data Parameter = Parameter
-        { parameterId      :: String
-        , parameterEmotion :: Maybe Emotion
+        { parameterId           :: String
+        , parameterEmotion      :: Maybe Emotion
+        , parameterInitialValue :: Maybe ParameterValue
         } deriving (Show, Eq)
 
 -- | An emotion (as specified by Paul Ekman)
@@ -52,6 +53,14 @@ data ScoringFunction = Sum [ScoringFunction]
                      | Scale Int ScoringFunction
                      | ParamRef String
                      | IntegeredCondition Condition
+
+-- | Applies an effect to a state.
+applyEffect :: Effect -> State -> State
+applyEffect effect state = case effectChangeType effect of
+        Set -> setParam idref value state
+        Delta -> setParam idref ((getParamOrZero idref state) + value) state
+    where idref = effectIdref effect
+          value = effectValue effect
 
 -- | Calculates the value of a condition based on the given state.
 calculateCondition :: Condition -> State -> Bool
@@ -122,11 +131,14 @@ instance IsTerm (M.Map String Int) where
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
 
 getParamOrZero :: String -> State -> Int
-getParamOrZero = M.findWithDefault 0 
+getParamOrZero = M.findWithDefault 0
 
 setZero, setOne :: String -> State -> State
 setZero = flip M.insert 1
 setOne = flip M.insert 1
+
+setParam :: String -> Int -> State -> State
+setParam = M.insert
 
 onlyOne :: String -> State -> State
 onlyOne s = (flip M.insert 1 s).(M.map (\_-> 0))
@@ -155,3 +167,6 @@ orF f g a = (f a) || (g a)
 
 emptyState :: State
 emptyState = M.empty
+
+fromList :: [(String, Int)] -> State
+fromList = M.fromList
