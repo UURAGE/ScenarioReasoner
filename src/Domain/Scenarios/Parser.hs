@@ -213,11 +213,16 @@ parseParameterAttributes paraElem = Parameter
         { parameterId           = head (findAttribute "id" paraElem)
         , parameterEmotion      = findAttribute "emotionid" paraElem >>= parseEmotion
         , parameterInitialValue = findAttribute "initialValue" paraElem >>= read
+        , parameterScored       = fromMaybe False $ findAttribute "scored" paraElem >>= parseBool
         }
 
 -- | Parses an emotion.
 parseEmotion :: String -> Maybe Emotion
 parseEmotion = readM . applyToFirst toUpper
+
+-- | Parses a Bool.
+parseBool :: String -> Maybe Bool
+parseBool = readM . applyToFirst toUpper
 
 -- | Queries the given script for basic information. Which information being queried is specified
 --  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.

@@ -30,6 +30,7 @@ data Parameter = Parameter
         { parameterId           :: String
         , parameterEmotion      :: Maybe Emotion
         , parameterInitialValue :: Maybe ParameterValue
+        , parameterScored       :: Bool
         } deriving (Show, Eq)
 
 -- | An emotion (as specified by Paul Ekman)
@@ -96,6 +97,12 @@ calculateScore mainScoringFunction state = calculate mainScoringFunction
             Scale scalar subFunction     -> scalar * calculate subFunction
             ParamRef paramId             -> getParamOrZero paramId state
             IntegeredCondition condition -> if calculateCondition condition state then 1 else 0
+
+-- | Calculates the values of the scored parameters in the given state.
+calculateSubScores :: [Parameter] -> State -> [(String, Int)]
+calculateSubScores parameters state = 
+    map (\param -> (parameterId param, getParamOrZero (parameterId param) state)) .
+        filter ((== True) . parameterScored) $ parameters
 
 -----------------------------------------------------------------------------
 -- | State
