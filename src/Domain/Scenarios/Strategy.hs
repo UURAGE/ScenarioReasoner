@@ -25,6 +25,7 @@ makeSubStrategy script strategyMap statementId = do
     scriptId <- getScriptId script
     statement <- findStatement script statementId
     statementDescription <- getText statement
+    statementPreconditions <- getPreconditions statement
     statementEffects <- getEffects statement
     case M.lookup statementId strategyMap of
         Just statementStrategy -> return (statementStrategy, strategyMap)
@@ -32,7 +33,7 @@ makeSubStrategy script strategyMap statementId = do
             let rule = guardedRule
                     ("scenarios." ++ scriptId ++ "." ++ statementId)
                     (statementDescription)
-                    (const true)
+                    (calculateCondition statementPreconditions)
                     (\state -> foldr applyEffect state statementEffects)
             nextIds <- getNexts statement
             case nextIds of

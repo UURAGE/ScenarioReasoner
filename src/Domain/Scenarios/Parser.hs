@@ -81,9 +81,9 @@ getScriptScoringFunction (Script scriptElem) = do
             _                         -> fail "The scoring function element must consist of exactly one scoring function."
 
 -- | Takes a statement and returns its preconditions.
-getPreconditions :: Statement -> Condition
+getPreconditions :: Monad m => Statement -> m Condition
 getPreconditions (Statement elemVar) = do
-        parseConditions (childrenNamed "preconditions" elemVar)
+        return $ parseConditions (childrenNamed "preconditions" elemVar)
 
 -- | Takes a statement and returns the ID of the video if there is one. Else it returns "Nothing".
 getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
@@ -165,8 +165,8 @@ parseConditions :: [Element] -> Condition
 parseConditions conditionsElems = case conditionsElems of
         []               -> AlwaysTrue
         conditionsElem:_ -> case children conditionsElem of
-                []              -> AlwaysTrue
-                conditionElem:_ -> parseCondition conditionElem
+                [conditionElem] -> parseCondition conditionElem
+                _               -> error "parseConditions: expected exactly one condition"
 
 -- | Parses a condition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
 parseCondition :: Element -> Condition
@@ -269,4 +269,4 @@ getTestPreconditions :: IO Condition
 getTestPreconditions = do
         Script scriptElem <- parseScript testFilepath
         pStatement        <- findChild "computerStatement" scriptElem
-        return (getPreconditions (Statement pStatement))
+        getPreconditions (Statement pStatement)
