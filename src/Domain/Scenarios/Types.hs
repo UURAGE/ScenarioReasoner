@@ -28,6 +28,7 @@ type ParameterValue = Int
 -- | A parameter
 data Parameter = Parameter
         { parameterId           :: String
+        , parameterName         :: String
         , parameterEmotion      :: Maybe Emotion
         , parameterInitialValue :: Maybe ParameterValue
         , parameterScored       :: Bool
@@ -99,10 +100,12 @@ calculateScore mainScoringFunction state = calculate mainScoringFunction
             IntegeredCondition condition -> if calculateCondition condition state then 1 else 0
 
 -- | Calculates the values of the scored parameters in the given state.
-calculateSubScores :: [Parameter] -> State -> [(String, Int)]
+calculateSubScores :: [Parameter] -> State -> [(String, String, Int)]
 calculateSubScores parameters state = 
-    map (\param -> (parameterId param, getParamOrZero (parameterId param) state)) .
-        filter ((== True) . parameterScored) $ parameters
+    map (\param -> ( parameterId param
+                   , parameterName param
+                   , getParamOrZero (parameterId param) state)
+        ) . filter ((== True) . parameterScored) $ parameters
 
 -----------------------------------------------------------------------------
 -- | State

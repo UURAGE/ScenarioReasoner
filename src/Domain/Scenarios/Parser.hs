@@ -211,6 +211,7 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
 parseParameterAttributes :: Element -> Parameter
 parseParameterAttributes paraElem = Parameter
         { parameterId           = head (findAttribute "id" paraElem)
+        , parameterName         = fromMaybe (head (findAttribute "id" paraElem)) (findAttribute "name" paraElem)
         , parameterEmotion      = findAttribute "emotionid" paraElem >>= parseEmotion
         , parameterInitialValue = findAttribute "initialValue" paraElem >>= read
         , parameterScored       = fromMaybe False $ findAttribute "scored" paraElem >>= parseBool

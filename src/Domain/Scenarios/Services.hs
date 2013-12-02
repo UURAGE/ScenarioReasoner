@@ -26,7 +26,7 @@ scoreS scripts = makeService "scenarios.score"
     "Calculates the score of a given state." $
     (score scripts) ::: typed
 
-score :: [Script] -> State a -> (Int,[(String,Int)])
+score :: [Script] -> State a -> (Int, [(String, String, Int)])
 score scripts fstate = (mainScore, subScores)
     where script = case filter (\testScript -> (getId testScript) == (getId $ exercise fstate)) scripts of
               [foundScript] -> foundScript
