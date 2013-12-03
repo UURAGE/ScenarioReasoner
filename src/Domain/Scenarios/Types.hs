@@ -106,7 +106,7 @@ calculateSubScores parameters state =
     map (\param -> ( parameterId param
                    , parameterName param
                    , getParamOrZero (parameterId param) state)
-        ) . filter ((== True) . parameterScored) $ parameters
+        ) . filter parameterScored $ parameters
 
 -- | Returns the value to be used to represent a statement type in a rule ID.
 toIdTypeSegment :: StatementElementType -> String
