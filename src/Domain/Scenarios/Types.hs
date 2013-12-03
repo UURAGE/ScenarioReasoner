@@ -2,6 +2,7 @@
 module Domain.Scenarios.Types where
 
 import Control.Monad
+import Data.Char
 import qualified Data.Map as M
 
 import Ideas.Common.Library
@@ -40,7 +41,7 @@ data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise
 
 -- | A value describing the type of a statement element 
 data StatementElementType = ComputerStatement | PlayerStatement | Conversation
-    deriving (Show, Eq)
+    deriving (Show, Eq, Read)
 
 -- | An effect of a statement on the current state
 data Effect = Effect
@@ -106,6 +107,15 @@ calculateSubScores parameters state =
                    , parameterName param
                    , getParamOrZero (parameterId param) state)
         ) . filter ((== True) . parameterScored) $ parameters
+
+-- | Returns the value to be used to represent a statement type in a rule ID.
+toIdTypeSegment :: StatementElementType -> String
+toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show
+
+-- | Applies a function to the first element of a list, if there is one.
+applyToFirst :: (a -> a) -> [a] -> [a]
+applyToFirst f (x:xs) = (f x) : xs
+applyToFirst _ [] = []
 
 -----------------------------------------------------------------------------
 -- | State

@@ -18,7 +18,7 @@ module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
     , getScriptDifficulty, getScriptStartId, getScriptParameters, getScriptScoringFunction
-    , getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
+    , getType, getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
     , findStatement
     , parseScript
     ) where
@@ -79,6 +79,10 @@ getScriptScoringFunction (Script scriptElem) = do
         case children scoringFunctionElem of
             [realScoringFunctionElem] -> parseScoringFunction realScoringFunctionElem
             _                         -> fail "The scoring function element must consist of exactly one scoring function."
+
+-- | Takes a statement and returns its type.
+getType :: Monad m => Statement -> m StatementElementType
+getType (Statement elemVar) = readM . applyToFirst toUpper . name $ elemVar
 
 -- | Takes a statement and returns its preconditions.
 getPreconditions :: Monad m => Statement -> m Condition
@@ -239,11 +243,6 @@ getExactlyOne iDescription is = case is of
     [i] -> return i
     []   -> fail $ "needed exactly one " ++ iDescription ++ ", got zero"
     _    -> fail $ "needed exactly one " ++ iDescription ++ ", got " ++ (show (length is))
-
--- | Applies a function to the first element of a list, if there is one.
-applyToFirst :: (a -> a) -> [a] -> [a]
-applyToFirst f (x:xs) = (f x) : xs
-applyToFirst _ [] = []
 
 --functions added to the XML-parser
 ---------------------------------------------------------

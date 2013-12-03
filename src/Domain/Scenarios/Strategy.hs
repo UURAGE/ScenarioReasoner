@@ -1,6 +1,7 @@
 module Domain.Scenarios.Strategy where 
 
 import Control.Monad
+import Data.List
 import qualified Data.Map as M
 
 import Ideas.Common.Library
@@ -24,6 +25,7 @@ makeSubStrategy :: Monad m => Script -> StrategyMap State -> String -> m (Strate
 makeSubStrategy script strategyMap statementId = do
     scriptId <- getScriptId script
     statement <- findStatement script statementId
+    statementType <- getType statement
     statementDescription <- getText statement
     statementPreconditions <- getPreconditions statement
     statementEffects <- getEffects statement
@@ -31,7 +33,7 @@ makeSubStrategy script strategyMap statementId = do
         Just statementStrategy -> return (statementStrategy, strategyMap)
         Nothing -> do
             let rule = guardedRule
-                    ("scenarios." ++ scriptId ++ "." ++ statementId)
+                    (intercalate "." ["scenarios", scriptId, toIdTypeSegment statementType, statementId])
                     (statementDescription)
                     (calculateCondition statementPreconditions)
                     (\state -> foldr applyEffect state statementEffects)
