@@ -25,6 +25,7 @@ module Domain.Scenarios.Parser
 
 import Control.Monad
 import Data.Char
+import Data.List
 import Data.Maybe
 
 import Ideas.Common.Library
@@ -104,7 +105,9 @@ getEffects (Statement elemVar) = return $ fromMaybe [] $
 getText :: Monad m => Statement -> m String
 getText (Statement elemVar) = do
         case name elemVar of
-            "conversation" -> return ""
+            "conversation" -> return $
+                intercalate " // " $ map getData $
+                    filter (isSuffixOf "Text" . name) $ children elemVar 
             _              -> do
                 textElem <- findChild "text" elemVar
                 return (getData textElem)
