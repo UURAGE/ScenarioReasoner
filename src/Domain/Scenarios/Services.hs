@@ -1,25 +1,32 @@
 module Domain.Scenarios.Services where
 
 import Data.Maybe
+import Data.List
 
 import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
 
-import Domain.Scenarios.Types (calculateScore, calculateSubScores)
+import Domain.Scenarios.Types (calculateScore, calculateSubScores, toIdTypeSegment)
 import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
-customServices scripts = [alldescriptionsS, scoreS scripts]
+customServices scripts = [alldescriptionsS scripts, scoreS scripts]
 
-alldescriptionsS :: Service
-alldescriptionsS = makeService "scenarios.alldescriptions"
+alldescriptionsS :: [Script] -> Service
+alldescriptionsS scripts = makeService "scenarios.alldescriptions"
     "Returns the descriptions of all rules in the exercise." $
-    alldescriptions ::: typed
+    (alldescriptions scripts) ::: typed
 
-alldescriptions :: Exercise a -> [(String, String)]
-alldescriptions = map idAndDescription . ruleset
-    where idAndDescription rule = (showId rule, description rule)
+alldescriptions :: [Script] -> Exercise a -> [(String, String)]
+alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStatements script
+    where script = findScript "describe" scripts ex
+          scriptId = getId script
+          idAndDescription statement = (show $ createId statement, createDescription statement)
+          createId s = scriptId # [typeSegment s, idSegment s]
+          typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
+          idSegment statement = show $ getId statement
+          createDescription = fromMaybe "" . getText
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
@@ -28,9 +35,7 @@ scoreS scripts = makeService "scenarios.score"
 
 score :: [Script] -> State a -> (Int, [(String, String, Int)])
 score scripts fstate = (mainScore, subScores)
-    where script = case filter (\testScript -> (getId testScript) == (getId $ exercise fstate)) scripts of
-              [foundScript] -> foundScript
-              _        -> error "Cannot score exercise: exercise not found in list of scoreable exercises."
+    where script = findScript "score" scripts $ exercise fstate
           state = (fromMaybe (error "Cannot score exercise: casting failed.") $
                       castFrom (exercise fstate) (stateTerm fstate))
           mainScore = calculateScore
@@ -38,3 +43,10 @@ score scripts fstate = (mainScore, subScores)
                   getScriptScoringFunction script)
               (state)
           subScores = calculateSubScores (fromMaybe [] $ getScriptParameters script) state
+
+findScript :: String -> [Script] -> Exercise a -> Script
+findScript usage scripts ex =
+    case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
+            [foundScript] -> foundScript
+            _             ->
+                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."

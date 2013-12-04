@@ -17,7 +17,8 @@ To-do list:
 module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
-    , getScriptDifficulty, getScriptStartId, getScriptParameters, getScriptScoringFunction
+    , getScriptDifficulty, getScriptStartId, getScriptParameters
+    , getScriptScoringFunction, getScriptStatements
     , getType, getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
     , findStatement
     , parseScript
@@ -80,6 +81,11 @@ getScriptScoringFunction (Script scriptElem) = do
         case children scoringFunctionElem of
             [realScoringFunctionElem] -> parseScoringFunction realScoringFunctionElem
             _                         -> fail "The scoring function element must consist of exactly one scoring function."
+
+-- | Extracts all statements from the given script.
+getScriptStatements :: Monad m => Script -> m [Statement]
+getScriptStatements (Script scriptElem) = return $ catMaybes $ map getIfStatement $ children scriptElem
+    where getIfStatement statement = getType (Statement statement) >> (Just $ Statement statement)
 
 -- | Takes a statement and returns its type.
 getType :: Monad m => Statement -> m StatementElementType
@@ -265,7 +271,13 @@ instance HasId Script where
                 return $ describe scriptDescription $ newId ("scenarios." ++ scriptId)
     changeId _ _ = error "It wouldn't be right to change a script's ID."
 
+-- TODO: Fix this instance to create the full listed ID immediately
 newtype Statement = Statement Element
+instance HasId Statement where
+    getId (Statement elemVar) = either error id $ do
+                statementId <- findAttribute "id" elemVar
+                return $ newId statementId
+    changeId _ _ = error "It wouldn't be right to change a statement's ID."
 
 -- code used for testing purposes only
 ---------------------------------------------------------
