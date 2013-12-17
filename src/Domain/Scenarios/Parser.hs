@@ -19,7 +19,7 @@ module Domain.Scenarios.Parser
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
     , getScriptDifficulty, getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
-    , getType, getPreconditions, getMaybeVideoId, getEffects, getText, getNexts
+    , getType, getPreconditions, getMedia, getEffects, getIntents, getText, getNexts
     , findStatement
     , parseScript
     ) where
@@ -96,16 +96,26 @@ getPreconditions :: Monad m => Statement -> m Condition
 getPreconditions (Statement elemVar) = do
         return $ parseConditions (childrenNamed "preconditions" elemVar)
 
--- | Takes a statement and returns the ID of the video if there is one. Else it returns "Nothing".
-getMaybeVideoId :: Monad m => Statement -> m (Maybe String)
-getMaybeVideoId (Statement elemVar) = case childrenNamed "video" elemVar of
-        []  -> return Nothing
-        b:_ -> findAttribute "extid" b >>= return . Just
+-- | Takes a statement and a media type and returns the media of that type
+-- associated with that element.
+getMedia :: Monad m => String -> Statement -> m [String]
+getMedia mediaType (Statement elemVar) = return $
+        childrenNamed "media" elemVar >>=
+        childrenNamed mediaType >>=
+        findAttribute "extid"
 
 -- | Takes a statement and returns its effects.
 getEffects :: Monad m => Statement -> m [Effect]
-getEffects (Statement elemVar) = return $ fromMaybe [] $
-        liftM (map parseEffect . children) $ findChild "effects" elemVar
+getEffects (Statement elemVar) = return $
+        findChild "effects" elemVar >>=
+        map parseEffect . children
+
+-- | Takes a statement and returns its intents.
+getIntents :: Monad m => Statement -> m [String]
+getIntents (Statement elemVar) = return $
+        findChild "intents" elemVar >>=
+        children >>=
+        findAttribute "name"
 
 -- | Takes a statement and returns its text.
 getText :: Monad m => Statement -> m String

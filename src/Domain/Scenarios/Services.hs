@@ -11,10 +11,10 @@ import Domain.Scenarios.Types (calculateScore, calculateSubScores, toIdTypeSegme
 import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
-customServices scripts = [alldescriptionsS scripts, scoreS scripts]
+customServices scripts = [alldescriptionsS scripts, statementsinfoS scripts, scoreS scripts]
 
 alldescriptionsS :: [Script] -> Service
-alldescriptionsS scripts = makeService "scenarios.alldescriptions"
+alldescriptionsS scripts = deprecate $ makeService "scenarios.alldescriptions"
     "Returns the descriptions of all rules in the exercise." $
     (alldescriptions scripts) ::: typed
 
@@ -27,6 +27,31 @@ alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStat
           typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
           idSegment statement = show $ getId statement
           createDescription = fromMaybe "" . getText
+
+statementsinfoS :: [Script] -> Service
+statementsinfoS scripts = makeService "scenarios.statementsinfo"
+    "Returns information for all statements of the scenario." $
+    (statementsinfo scripts) ::: typed
+
+statementsinfo :: [Script] -> Exercise a ->
+    [(String, Either String [(String, String)], [String], [[String]])]
+statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
+    where script = findScript "describe" scripts ex
+          scriptId = getId script
+          statementInfo statement =
+                ( show $ createId statement
+                , Left $ createDescription statement
+                , emptyOnFail $ getIntents statement
+                , [ emptyOnFail $ getMedia "video" statement
+                  , emptyOnFail $ getMedia "image" statement
+                  , emptyOnFail $ getMedia "audio" statement
+                  ]
+                )
+          createId s = scriptId # [typeSegment s, idSegment s]
+          typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
+          idSegment statement = show $ getId statement
+          createDescription = fromMaybe "" . getText
+          emptyOnFail = fromMaybe []
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
