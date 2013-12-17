@@ -34,7 +34,7 @@ makeSubStrategy script strategyMap statementId = do
         Nothing -> do
             let rule = guardedRule
                     (["scenarios", scriptId, toIdTypeSegment statementType, statementId])
-                    (statementDescription)
+                    (either id (intercalate " // " . map snd) statementDescription)
                     (calculateCondition statementPreconditions)
                     (\state -> foldr applyEffect state statementEffects)
             nextIds <- getNexts statement

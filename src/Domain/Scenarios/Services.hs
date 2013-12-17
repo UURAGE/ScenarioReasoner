@@ -26,7 +26,7 @@ alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStat
           createId s = scriptId # [typeSegment s, idSegment s]
           typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
           idSegment statement = show $ getId statement
-          createDescription = fromMaybe "" . getText
+          createDescription = either id (intercalate " // " . map snd) . errorOnFail . getText
 
 statementsinfoS :: [Script] -> Service
 statementsinfoS scripts = makeService "scenarios.statementsinfo"
@@ -40,7 +40,8 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
           scriptId = getId script
           statementInfo statement =
                 ( show $ createId statement
-                , Left $ createDescription statement
+                , either Left (Right . map showConversationTextTypeStringTuple) $
+                    errorOnFail $ getText statement
                 , emptyOnFail $ getIntents statement
                 , [ emptyOnFail $ getMedia "video" statement
                   , emptyOnFail $ getMedia "image" statement
@@ -50,8 +51,8 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
           createId s = scriptId # [typeSegment s, idSegment s]
           typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
           idSegment statement = show $ getId statement
-          createDescription = fromMaybe "" . getText
           emptyOnFail = fromMaybe []
+          showConversationTextTypeStringTuple (ctt, s) = (show ctt, s)
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
@@ -75,3 +76,6 @@ findScript usage scripts ex =
             [foundScript] -> foundScript
             _             ->
                 error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."
+
+errorOnFail :: Maybe a -> a
+errorOnFail = fromMaybe (error "failed...")

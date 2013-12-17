@@ -51,6 +51,12 @@ data Effect = Effect
         } deriving (Show, Eq)
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
+-- | A value describing the type of a piece of text in a conversation
+data ConversationTextType = PlayerText
+                          | ComputerText
+                          | SituationText
+    deriving (Show, Eq, Read)
+
 -- | A function to calculate the score based on the current state
 data ScoringFunction = Sum [ScoringFunction]
                      | Scale Int ScoringFunction

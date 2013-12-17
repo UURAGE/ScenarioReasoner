@@ -118,15 +118,16 @@ getIntents (Statement elemVar) = return $
         findAttribute "name"
 
 -- | Takes a statement and returns its text.
-getText :: Monad m => Statement -> m String
-getText (Statement elemVar) = do
+getText :: Monad m => Statement -> m (Either String [(ConversationTextType, String)])
+getText (Statement elemVar) =
         case name elemVar of
-            "conversation" -> return $
-                intercalate " // " $ map getData $
-                    filter (isSuffixOf "Text" . name) $ children elemVar 
+            "conversation" -> return $ Right $
+                map toConversationText $ filter (isSuffixOf "Text" . name) $ children elemVar 
             _              -> do
                 textElem <- findChild "text" elemVar
-                return (getData textElem)
+                return $ Left $ getData textElem
+    where toConversationText textEl =
+            (read $ applyToFirst toUpper $ name textEl, getData textEl)
 
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
