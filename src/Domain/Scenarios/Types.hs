@@ -34,10 +34,7 @@ data Parameter = Parameter
         , parameterInitialValue :: Maybe ParameterValue
         , parameterScored       :: Bool
         } deriving (Show, Eq)
-
--- | An emotion (as specified by Paul Ekman)
-data Emotion =  Anger | Disgust | Fear | Happiness | Sadness | Surprise
-    deriving (Show, Eq, Read)
+type Emotion = String
 
 -- | A value describing the type of a statement element 
 data StatementElementType = ComputerStatement | PlayerStatement | Conversation

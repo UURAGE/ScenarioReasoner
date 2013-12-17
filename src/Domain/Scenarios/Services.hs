@@ -7,11 +7,12 @@ import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
 
-import Domain.Scenarios.Types (calculateScore, calculateSubScores, toIdTypeSegment)
+import Domain.Scenarios.Types hiding (State)
 import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
-customServices scripts = [alldescriptionsS scripts, statementsinfoS scripts, scoreS scripts]
+customServices scripts = map (flip ($) scripts)
+    [alldescriptionsS, scenarioinfoS, statementsinfoS, scoreS]
 
 alldescriptionsS :: [Script] -> Service
 alldescriptionsS scripts = deprecate $ makeService "scenarios.alldescriptions"
@@ -28,6 +29,29 @@ alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStat
           idSegment statement = show $ getId statement
           createDescription = either id (intercalate " // " . map snd) . errorOnFail . getText
 
+scenarioinfoS :: [Script] -> Service
+scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
+    "Returns information about the scenario." $
+    (scenarioinfo scripts) ::: typed
+
+scenarioinfo :: [Script] -> Exercise a -> (String, String, String, [(String, String, Maybe String)])
+scenarioinfo scripts ex =
+                ( scriptId
+                , scriptName
+                , scriptDescription
+                , scriptParameters
+                )
+    where script = findScript "get info for" scripts ex
+          scriptId = show $ getId script
+          scriptName = errorOnFail $ getScriptName script
+          scriptDescription = errorOnFail $ getScriptDescription script
+          scriptParameters = map describeParameter $ errorOnFail $ getScriptParameters script
+          describeParameter param =
+                ( parameterId param
+                , parameterName param
+                , parameterEmotion param
+                )
+
 statementsinfoS :: [Script] -> Service
 statementsinfoS scripts = makeService "scenarios.statementsinfo"
     "Returns information for all statements of the scenario." $
@@ -36,7 +60,7 @@ statementsinfoS scripts = makeService "scenarios.statementsinfo"
 statementsinfo :: [Script] -> Exercise a ->
     [(String, Either String [(String, String)], [String], [[String]])]
 statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
-    where script = findScript "describe" scripts ex
+    where script = findScript "get info for" scripts ex
           scriptId = getId script
           statementInfo statement =
                 ( show $ createId statement

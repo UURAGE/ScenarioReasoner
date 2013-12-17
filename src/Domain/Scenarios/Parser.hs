@@ -236,14 +236,10 @@ parseParameterAttributes :: Element -> Parameter
 parseParameterAttributes paraElem = Parameter
         { parameterId           = head (findAttribute "id" paraElem)
         , parameterName         = fromMaybe (head (findAttribute "id" paraElem)) (findAttribute "name" paraElem)
-        , parameterEmotion      = findAttribute "emotionid" paraElem >>= parseEmotion
+        , parameterEmotion      = findAttribute "emotionid" paraElem
         , parameterInitialValue = findAttribute "initialValue" paraElem >>= read
         , parameterScored       = fromMaybe False $ findAttribute "scored" paraElem >>= parseBool
         }
-
--- | Parses an emotion.
-parseEmotion :: String -> Maybe Emotion
-parseEmotion = readM . applyToFirst toUpper
 
 -- | Parses a Bool.
 parseBool :: String -> Maybe Bool
