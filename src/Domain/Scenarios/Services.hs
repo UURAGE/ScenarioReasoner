@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.Services where
 
+import Data.Char
 import Data.Maybe
 import Data.List
 
@@ -34,49 +36,78 @@ scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     (scenarioinfo scripts) ::: typed
 
-scenarioinfo :: [Script] -> Exercise a -> (String, String, String, [(String, String, Maybe String)])
-scenarioinfo scripts ex =
-                ( scriptId
-                , scriptName
-                , scriptDescription
-                , scriptParameters
-                )
+data ScenarioInfo = ScenarioInfo String String String [ParameterInfo]
+instance Typed a ScenarioInfo where
+    typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
+                                (Pair (Tag "name" typed)
+                                (Pair (Tag "description" typed)
+                                      (Tag "parameters" typed))))
+        where pairify (ScenarioInfo a b c d) = (a, (b, (c, d)))
+
+data ParameterInfo = ParameterInfo String String (Maybe String)
+instance Typed a ParameterInfo where
+    typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
+                                (Pair (Tag "name" typed)
+                                      (Tag "emotion" typed)))
+        where pairify (ParameterInfo a b c) = (a, (b, c))
+
+scenarioinfo :: [Script] -> Exercise a -> ScenarioInfo
+scenarioinfo scripts ex = ScenarioInfo
+                (scriptId)
+                (scriptName)
+                (scriptDescription)
+                (scriptParameters)
     where script = findScript "get info for" scripts ex
           scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
           scriptDescription = errorOnFail $ getScriptDescription script
           scriptParameters = map describeParameter $ errorOnFail $ getScriptParameters script
-          describeParameter param =
-                ( parameterId param
-                , parameterName param
-                , parameterEmotion param
-                )
+          describeParameter param = ParameterInfo
+                (parameterId param)
+                (parameterName param)
+                (parameterEmotion param)
 
 statementsinfoS :: [Script] -> Service
 statementsinfoS scripts = makeService "scenarios.statementsinfo"
     "Returns information for all statements of the scenario." $
     (statementsinfo scripts) ::: typed
 
-statementsinfo :: [Script] -> Exercise a ->
-    [(String, Either String [(String, String)], [String], [[String]])]
+data StatementInfo = StatementInfo String String (Either String [(String, String)]) [String] MediaInfo
+instance Typed a StatementInfo where
+    typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
+                                (Pair (Tag "type" typed)
+                                (Pair (Tag "text" typed)
+                                (Pair (Tag "intents" typed)
+                                      (Tag "media" typed)))))
+        where pairify (StatementInfo a b c d e) = (a, (b, (c, (d, e))))
+
+data MediaInfo = MediaInfo [String] [String] [String]
+instance Typed a MediaInfo where
+    typed = Iso ((<-!) pairify) (Pair (Tag "videos" typed)
+                                (Pair (Tag "images" typed)
+                                      (Tag "audios" typed)))
+        where pairify (MediaInfo a b c) = (a, (b, c))
+
+statementsinfo :: [Script] -> Exercise a -> [StatementInfo]
 statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
     where script = findScript "get info for" scripts ex
           scriptId = getId script
-          statementInfo statement =
-                ( show $ createId statement
-                , either Left (Right . map showConversationTextTypeStringTuple) $
-                    errorOnFail $ getText statement
-                , emptyOnFail $ getIntents statement
-                , [ emptyOnFail $ getMedia "video" statement
-                  , emptyOnFail $ getMedia "image" statement
-                  , emptyOnFail $ getMedia "audio" statement
-                  ]
+          statementInfo statement = StatementInfo
+                (show $ createId statement)
+                (typeSegment statement)
+                (either Left (Right . map showConversationTextTypeStringTuple) $
+                    errorOnFail $ getText statement)
+                (emptyOnFail $ getIntents statement)
+                (MediaInfo
+                    (emptyOnFail $ getMedia "video" statement)
+                    (emptyOnFail $ getMedia "image" statement)
+                    (emptyOnFail $ getMedia "audio" statement)
                 )
           createId s = scriptId # [typeSegment s, idSegment s]
           typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
           idSegment statement = show $ getId statement
           emptyOnFail = fromMaybe []
-          showConversationTextTypeStringTuple (ctt, s) = (show ctt, s)
+          showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
