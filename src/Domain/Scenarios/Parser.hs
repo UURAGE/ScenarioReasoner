@@ -218,6 +218,7 @@ parseCompareValue input = read input
 -- | Parses a scoring function element.
 parseScoringFunction :: Monad m => Element -> m ScoringFunction
 parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
+        "constant"           -> liftM Constant $ findAttribute "value" scoringFunctionElem >>= readM
         "sum"                -> liftM Sum $ mapM parseScoringFunction $ children scoringFunctionElem
         "scale"              -> do
                 scalarEl          <- findAttribute "scalar" scoringFunctionElem

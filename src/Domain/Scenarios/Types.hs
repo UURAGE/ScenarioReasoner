@@ -55,7 +55,8 @@ data ConversationTextType = PlayerText
     deriving (Show, Eq, Read)
 
 -- | A function to calculate the score based on the current state
-data ScoringFunction = Sum [ScoringFunction]
+data ScoringFunction = Constant Int
+                     | Sum [ScoringFunction]
                      | Scale Int ScoringFunction
                      | ParamRef String
                      | IntegeredCondition Condition
@@ -98,6 +99,7 @@ calculateCompareOperator operator = case operator of
 calculateScore :: ScoringFunction -> State -> Int
 calculateScore mainScoringFunction state = calculate mainScoringFunction  
     where calculate scoringFunction = case scoringFunction of
+            Constant value               -> value
             Sum subFunctions             -> sum . map calculate $ subFunctions
             Scale scalar subFunction     -> scalar * calculate subFunction
             ParamRef paramId             -> getParamOrZero paramId state
