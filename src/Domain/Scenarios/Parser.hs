@@ -76,11 +76,10 @@ getScriptParameters (Script scriptElem) = do
 
 -- | Queries the given script for its scoring function.
 getScriptScoringFunction :: Monad m => Script -> m ScoringFunction
-getScriptScoringFunction (Script scriptElem) = do
-        scoringFunctionElem <- findChild "scoringFunction" scriptElem
-        case children scoringFunctionElem of
-            [realScoringFunctionElem] -> parseScoringFunction realScoringFunctionElem
-            _                         -> fail "The scoring function element must consist of exactly one scoring function."
+getScriptScoringFunction (Script scriptElem) =
+        findChild "scoringFunction" scriptElem >>=
+        getExactlyOne "scoring function" . children >>=
+        parseScoringFunction
 
 -- | Extracts all statements from the given script.
 getScriptStatements :: Monad m => Script -> m [Statement]
