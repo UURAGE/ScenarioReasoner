@@ -13,12 +13,11 @@ import Ideas.Text.JSON
 -- | A condition
 data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
                | Or [Condition] -- ^ A list of conditions, one of which needs to be satisfied
-               | Condition ComparisonsCondition -- ^ A comparison condition
-               | AlwaysTrue -- ^ A condition that is always satisfied
+               | Condition ComparisonCondition -- ^ A comparison condition
                deriving (Show, Eq)
 
 -- | A condition that compares the value of a parameter using a binary predicate
-data ComparisonsCondition = ComparisonsCondition
+data ComparisonCondition = ComparisonsCondition
         { conditionIdref :: String
         , conditionTest  :: CompareOperator
         , conditionValue :: ParameterValue
@@ -74,17 +73,20 @@ calculateCondition :: Condition -> State -> Bool
 calculateCondition mainCondition state = calculate mainCondition
     where calculate :: Condition -> Bool
           calculate condition = case condition of
-            AlwaysTrue           -> True
             And subConditions    -> and . map calculate $ subConditions
             Or subConditions     -> or . map calculate $ subConditions
-            Condition comparison -> calculateComparisonsCondition comparison state
+            Condition comparison -> calculateComparisonCondition comparison state
 
 -- | Calculates the value of a comparison based on the given state.
-calculateComparisonsCondition :: ComparisonsCondition -> State -> Bool
-calculateComparisonsCondition comparison state = operator tested value
+calculateComparisonCondition :: ComparisonCondition -> State -> Bool
+calculateComparisonCondition comparison state = operator tested value
     where operator = calculateCompareOperator (conditionTest comparison)
           tested = getParamOrZero (conditionIdref comparison) state
           value  = conditionValue comparison
+
+-- | Calculates the value of a possible condition based on the given state.
+calculateMaybeCondition :: Maybe Condition -> State -> Bool
+calculateMaybeCondition = maybe (const True) calculateCondition
 
 -- | Returns the binary predicate corresponding to the given operator type.
 calculateCompareOperator :: CompareOperator -> (Int -> Int -> Bool)

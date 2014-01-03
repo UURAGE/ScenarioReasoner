@@ -19,7 +19,7 @@ module Domain.Scenarios.Parser
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
     , getScriptDifficulty, getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
-    , getType, getPreconditions, getMedia, getEffects, getIntents, getText, getNexts
+    , getType, getMaybePrecondition, getMedia, getEffects, getIntents, getText, getNexts
     , findStatement
     , parseScript
     ) where
@@ -91,10 +91,11 @@ getScriptStatements (Script scriptElem) = return $ catMaybes $ map getIfStatemen
 getType :: Monad m => Statement -> m StatementElementType
 getType (Statement elemVar) = readM . applyToFirst toUpper . name $ elemVar
 
--- | Takes a statement and returns its preconditions.
-getPreconditions :: Monad m => Statement -> m Condition
-getPreconditions (Statement elemVar) = do
-        return $ parseConditions (childrenNamed "preconditions" elemVar)
+-- | Takes a statement and returns its precondition, if it has one.
+getMaybePrecondition :: Monad m => Statement -> m (Maybe Condition)
+getMaybePrecondition (Statement elemVar) = do
+        maybe (return Nothing) (liftM Just . parseConditionRoot) $
+            findChild "preconditions" elemVar
 
 -- | Takes a statement and a media type and returns the media of that type
 -- associated with that element.
@@ -184,23 +185,17 @@ parseEffect elemVar = Effect
 parseChangeType :: String -> ChangeType
 parseChangeType = read . applyToFirst toUpper
 
--- | Parses conditions. Empty conditions gives AlwaysTrue.
-parseConditions :: [Element] -> Condition
-parseConditions conditionsElems = case conditionsElems of
-        []               -> AlwaysTrue
-        conditionsElem:_ -> case children conditionsElem of
-                [conditionElem] -> parseCondition conditionElem
-                _               -> error "parseConditions: expected exactly one condition"
+-- | Parses a condition root if it contains exactly one condition.
+parseConditionRoot :: Monad m => Element -> m Condition
+parseConditionRoot conditionRootElem =
+    getExactlyOne "condition" (children conditionRootElem) >>=
+    return . parseCondition
 
--- | Parses a condition. Recursively parses Ands and Ors. Empty Ands and Ors gives AlwaysTrue.
+-- | Parses a condition. Recursively parses Ands and Ors.
 parseCondition :: Element -> Condition
 parseCondition elemVar = case name elemVar of
-        "and"          | recResult == [] -> AlwaysTrue
-                       | otherwise       -> And recResult
-                where recResult = map parseCondition (children elemVar)
-        "or"           | recResult == [] -> AlwaysTrue
-                       | otherwise       -> Or recResult
-                where recResult = map parseCondition (children elemVar)
+        "and"       -> And $ map parseCondition (children elemVar)
+        "or"        -> Or  $ map parseCondition (children elemVar)
         "condition" -> Condition $ ComparisonsCondition
                 { conditionIdref = head (findAttribute "idref" elemVar)
                 , conditionTest  = parseCompareOperator (head (findAttribute "test" elemVar))
@@ -286,15 +281,3 @@ instance HasId Statement where
                 statementId <- findAttribute "id" elemVar
                 return $ newId statementId
     changeId _ _ = error "It wouldn't be right to change a statement's ID."
-
--- code used for testing purposes only
----------------------------------------------------------
--- | The relative filepath to the test script XML file on my (wouters) computer.
-testFilepath :: String
-testFilepath = "exampleScript.xml"
-
-getTestPreconditions :: IO Condition
-getTestPreconditions = do
-        Script scriptElem <- parseScript testFilepath
-        pStatement        <- findChild "computerStatement" scriptElem
-        getPreconditions (Statement pStatement)
