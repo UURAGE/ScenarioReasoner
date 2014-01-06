@@ -77,7 +77,8 @@ getScriptParameters (Script scriptElem) = do
 -- | Queries the given script for its scoring function.
 getScriptScoringFunction :: Monad m => Script -> m ScoringFunction
 getScriptScoringFunction (Script scriptElem) =
-        findChild "scoringFunction" scriptElem >>=
+        findChild "metadata" scriptElem >>=
+        findChild "scoringFunction" >>=
         getExactlyOne "scoring function" . children >>=
         parseScoringFunction
 
