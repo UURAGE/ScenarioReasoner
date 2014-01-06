@@ -108,14 +108,15 @@ getMedia mediaType (Statement elemVar) = return $
 getEffects :: Monad m => Statement -> m [Effect]
 getEffects (Statement elemVar) = return $
         findChild "effects" elemVar >>=
-        map parseEffect . children
+        children >>=
+        return . parseEffect
 
 -- | Takes a statement and returns its intents.
 getIntents :: Monad m => Statement -> m [String]
 getIntents (Statement elemVar) = return $
         findChild "intents" elemVar >>=
         children >>=
-        findAttribute "name"
+        return . getData
 
 -- | Takes a statement and returns its text.
 getText :: Monad m => Statement -> m (Either String [(ConversationTextType, String)])
