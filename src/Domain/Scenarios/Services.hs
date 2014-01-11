@@ -14,17 +14,7 @@ import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
 customServices scripts = map (flip ($) scripts)
-    [alldescriptionsS, scenarioinfoS, statementsinfoS, scoreS]
-
-alldescriptionsS :: [Script] -> Service
-alldescriptionsS scripts = deprecate $ makeService "scenarios.alldescriptions"
-    "Returns the descriptions of all rules in the exercise." $
-    (alldescriptions scripts) ::: typed
-
-alldescriptions :: [Script] -> Exercise a -> [(String, String)]
-alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStatements script
-    where script = findScript "describe" scripts ex
-          idAndDescription statement = (show $ createFullId script statement, description statement)
+    [scenarioinfoS, statementsinfoS, scoreS]
 
 scenarioinfoS :: [Script] -> Service
 scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
