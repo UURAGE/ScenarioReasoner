@@ -18,6 +18,7 @@ module Domain.Scenarios.Parser
     , getType, getMaybePrecondition, getMedia, getEffects, getIntents, getText, getNexts
     , findStatement
     , parseScript
+    , createFullId
     ) where
 
 import Control.Monad
@@ -259,7 +260,7 @@ getExactlyOne iDescription is = case is of
 childrenNamed :: String -> Element -> [Element]
 childrenNamed s e = filter ((==s) . name) (children e)
 
--- Definitions of data structures
+-- Definitions of data structures and related functions
 ---------------------------------------------------------
 
 newtype Script = Script Element
@@ -267,13 +268,21 @@ instance HasId Script where
     getId script = either error id $ do
                 scriptId <- getScriptId script
                 scriptDescription <- getScriptDescription script
-                return $ describe scriptDescription $ newId ("scenarios." ++ scriptId)
-    changeId _ _ = error "It wouldn't be right to change a script's ID."
+                return $ describe scriptDescription $ "scenarios" # scriptId
+    changeId _ _ = error "The ID of a Script is determined externally."
 
--- TODO: Fix this instance to create the full listed ID immediately
 newtype Statement = Statement Element
 instance HasId Statement where
-    getId (Statement element) = either error id $ do
+    getId statement@(Statement element) = either error id $ do
                 statementId <- findAttribute "id" element
-                return $ newId statementId
-    changeId _ _ = error "It wouldn't be right to change a statement's ID."
+                statementText <- getText statement
+                let statementDescription = either id (intercalate " // " . map snd) statementText
+                return $ describe statementDescription $ newId statementId
+    changeId _ _ = error "The ID of a Statement is determined externally."
+
+-- | Creates the full ID for the given statement in the context of the given script.
+createFullId :: Script -> Statement -> Id
+createFullId script statement = scriptId # typeSegment # idSegment
+    where scriptId = getId script
+          typeSegment = toIdTypeSegment $ fromJust $ getType statement
+          idSegment = getId statement

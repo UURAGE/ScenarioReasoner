@@ -24,12 +24,7 @@ alldescriptionsS scripts = deprecate $ makeService "scenarios.alldescriptions"
 alldescriptions :: [Script] -> Exercise a -> [(String, String)]
 alldescriptions scripts ex = map idAndDescription $ fromMaybe [] $ getScriptStatements script
     where script = findScript "describe" scripts ex
-          scriptId = getId script
-          idAndDescription statement = (show $ createId statement, createDescription statement)
-          createId s = scriptId # [typeSegment s, idSegment s]
-          typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
-          idSegment statement = show $ getId statement
-          createDescription = either id (intercalate " // " . map snd) . errorOnFail . getText
+          idAndDescription statement = (show $ createFullId script statement, description statement)
 
 scenarioinfoS :: [Script] -> Service
 scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
@@ -91,10 +86,9 @@ instance Typed a MediaInfo where
 statementsinfo :: [Script] -> Exercise a -> [StatementInfo]
 statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
     where script = findScript "get info for" scripts ex
-          scriptId = getId script
           statementInfo statement = StatementInfo
-                (show $ createId statement)
-                (typeSegment statement)
+                (show $ createFullId script statement)
+                (toIdTypeSegment $ fromJust $ getType statement)
                 (either Left (Right . map showConversationTextTypeStringTuple) $
                     errorOnFail $ getText statement)
                 (emptyOnFail $ getIntents statement)
@@ -103,9 +97,6 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                     (emptyOnFail $ getMedia "image" statement)
                     (emptyOnFail $ getMedia "audio" statement)
                 )
-          createId s = scriptId # [typeSegment s, idSegment s]
-          typeSegment statement = toIdTypeSegment $ fromJust $ getType statement
-          idSegment statement = show $ getId statement
           emptyOnFail = fromMaybe []
           showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
 
