@@ -5,10 +5,6 @@ Basic functions to query an XML script as specified by the Communicate!-team. So
 - This code doesn't do any error checking on the script. IO-exceptions and scripts deviating from the specifications
 will lead to unspecified behaviour (most likely a Haskell-exception).
 
-- Currently, only the 6 basic emotions as specified by Paul Ekman are supported as emotionid in the parameters;
-changing the available emotions requires changing the Emotion data-type and the parseEmotion function. However,
-unrecognized emotionids will be ignored, and will not lead to exceptions.
-
 To-do list:
 
 -add a "getScriptModel" function. Need more information about possible models for that.
@@ -35,7 +31,7 @@ import Ideas.Text.XML.Interface
 
 import Domain.Scenarios.Types
 
---functions to be exposed as an interface
+-- Functions to be exposed as an interface
 -----------------------------------------------------
 
 -- | Queries the given script for its ID.
@@ -171,7 +167,7 @@ parseScript filepath = do
     text <- readFile filepath
     either fail (return . Script) (parseXML text)
 
---functions to be used internally
+-- Functions to be used internally
 ------------------------------------------------------
 
 -- | Parses an effect.
@@ -257,14 +253,14 @@ getExactlyOne iDescription is = case is of
     []   -> fail $ "needed exactly one " ++ iDescription ++ ", got zero"
     _    -> fail $ "needed exactly one " ++ iDescription ++ ", got " ++ (show (length is))
 
---functions added to the XML-parser
+-- Functions that extend the XML parser
 ---------------------------------------------------------
 
 -- | Returns all children of the given element with the given name.
 childrenNamed :: String -> Element -> [Element]
 childrenNamed s e = filter ((==s) . name) (children e)
 
---data structures definitions
+-- Definitions of data structures
 ---------------------------------------------------------
 
 newtype Script = Script Element
