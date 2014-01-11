@@ -20,7 +20,7 @@ module Ideas.Encoding.LinkManager
    , linkToIndex, linkToExercises, linkToServices, linkToService
      -- links to exercise information
    , linkToExercise, linkToStrategy, linkToRules, linkToExamples
-   , linkToDerivations, linkToRule, linkToRandomExample
+   , linkToDerivations, linkToRule, linkToRandomExample, linkToTestReport
      -- links to state information (dynamic)
    , linkToState, linkToFirsts, linkToApplications, linkToDerivation
    ) where
@@ -35,7 +35,8 @@ import Ideas.Text.HTML
 import Ideas.Text.XML
 
 data LinkManager = LinkManager
-   { urlForResource      :: String -> String
+   { urlForCSS           :: String -> String
+   , urlForImage         :: String -> String
    , urlForRequest       :: String
    , isStatic            :: Bool
      -- links to services and exercises
@@ -50,6 +51,7 @@ data LinkManager = LinkManager
    , urlForExamples      :: forall a . Exercise a -> String
    , urlForDerivations   :: forall a . Exercise a -> String
    , urlForRule          :: forall a . Exercise a -> Rule (Context a) -> String
+   , urlForTestReport    :: forall a . Exercise a -> String
      -- dynamic exercise information
    , urlForRandomExample :: forall a . Exercise a -> Difficulty -> String
      -- dynamic state information
@@ -95,6 +97,9 @@ linkToDerivations = linkWith . urlForDerivations
 linkToRule :: LinkManager -> Exercise a -> Rule (Context a) -> HTMLBuilder -> HTMLBuilder
 linkToRule lm = linkWith . urlForRule lm
 
+linkToTestReport :: LinkManager -> Exercise a -> HTMLBuilder -> HTMLBuilder
+linkToTestReport = linkWith . urlForTestReport
+
 ---------------------------------------------------------------------
 -- dynamic exercise information
 
@@ -123,7 +128,8 @@ dynamicLinks :: String -> LinkManager
 dynamicLinks cgiBinary = LinkManager
    { isStatic        = False
    , urlForRequest   = prefix
-   , urlForResource  = id
+   , urlForCSS       = ("http://ideas.cs.uu.nl/css/" ++)
+   , urlForImage     = ("http://ideas.cs.uu.nl/images/" ++)
    , urlForIndex     = url $ simpleRequest "index"
    , urlForExercises = url $ simpleRequest "exerciselist"
    , urlForServices  = url $ simpleRequest "servicelist"
@@ -132,6 +138,7 @@ dynamicLinks cgiBinary = LinkManager
    , urlForExercise    = url . exerciseRequest "exerciseinfo"
    , urlForStrategy    = url . exerciseRequest "strategyinfo"
    , urlForRules       = url . exerciseRequest "rulelist"
+   , urlForTestReport  = url . exerciseRequest "testreport" 
    , urlForExamples    = url . exerciseRequest "examples"
    , urlForDerivations = url . exerciseRequest "examplederivations"
    , urlForRule = \ex r ->
@@ -196,7 +203,8 @@ escapeInURL = concatMap f
 staticLinks :: LinkManager
 staticLinks = LinkManager
    { isStatic        = True
-   , urlForResource  = id
+   , urlForCSS       = id
+   , urlForImage     = id
    , urlForRequest   = ""
    , -- links to services and exercises
      urlForIndex     = "index.html"
@@ -210,6 +218,7 @@ staticLinks = LinkManager
    , urlForExamples    = idToFilePathWith "-examples.html"
    , urlForDerivations = idToFilePathWith "-derivations.html"
    , urlForRule        = \ex r -> idToFilePathWith ("/" ++ showId r ++ ".html") ex
+   , urlForTestReport  = idToFilePathWith "-testreport.html"
      -- dynamic exercise information
    , urlForRandomExample = \_ _ -> ""
      -- dynamic state information
@@ -222,7 +231,6 @@ staticLinks = LinkManager
 linksUp :: Int -> LinkManager -> LinkManager
 linksUp n lm = lm
    { isStatic        = isStatic lm
-   , urlForResource  = f1 urlForResource
      -- links to services and exercises
    , urlForIndex     = f0 urlForIndex
    , urlForExercises = f0 urlForExercises

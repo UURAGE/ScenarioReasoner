@@ -26,7 +26,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 
-import Ideas.Common.Library
+import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
 import Ideas.Text.XML.Interface
 

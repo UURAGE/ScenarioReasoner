@@ -12,7 +12,12 @@
 -- Main module for feedback services
 --
 -----------------------------------------------------------------------------
-module Ideas.Main.Default (defaultMain, newDomainReasoner) where
+module Ideas.Main.Default 
+   ( defaultMain, newDomainReasoner
+     -- extra exports
+   , Some(..), serviceList, metaServiceList, Service
+   , module Ideas.Service.DomainReasoner
+   ) where
 
 import Control.Exception
 import Control.Monad
@@ -20,7 +25,7 @@ import Data.IORef
 import Data.Maybe
 import Data.Time
 import Ideas.Common.Id
-import Ideas.Common.Utils (useFixedStdGen)
+import Ideas.Common.Utils (useFixedStdGen, Some(..))
 import Ideas.Common.Utils.TestSuite
 import Ideas.Encoding.ModeJSON (processJSON)
 import Ideas.Encoding.ModeXML (processXML)
@@ -29,6 +34,8 @@ import Ideas.Main.Documentation
 import Ideas.Main.LoggingDatabase
 import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
+import Ideas.Service.ServiceList
+import Ideas.Service.Types (Service)
 import Ideas.Service.FeedbackScript.Analysis
 import Ideas.Service.Request
 import Network.CGI
@@ -58,7 +65,7 @@ defaultCGI dr startTime = do
                    Just s  -> return s
       (req, txt, ctp) <- liftIO $ process dr (Just cgiBin) input
       -- save logging action for later
-      unless (encoding req == Just HTMLEncoding) $
+      when (useLogging req) $
          liftIO $ writeIORef logRef $
             logMessage req input txt addr startTime
       setHeader "Content-type" ctp
@@ -94,7 +101,7 @@ defaultCommandLine dr flags = do
          -- blackbox tests
          Test dir -> do
             tests  <- blackBoxTests dr dir
-            result <- runTestSuiteResult tests
+            result <- runTestSuiteResult True tests
             printSummary result
          -- generate documentation pages
          MakePages dir ->
@@ -106,8 +113,8 @@ defaultCommandLine dr flags = do
 process :: DomainReasoner -> Maybe String -> String -> IO (Request, String, String)
 process dr cgiBin input =
    case discoverDataFormat input of
-      Just XML  -> processXML dr cgiBin input
-      Just JSON -> processJSON (isJust cgiBin) dr input
+      Just XML  -> processXML (Just 5) dr cgiBin input
+      Just JSON -> processJSON (Just 5) (isJust cgiBin) dr input
       _ -> fail "Invalid input"
 
 newDomainReasoner :: IsId a => a -> DomainReasoner

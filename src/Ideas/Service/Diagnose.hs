@@ -14,14 +14,18 @@
 -----------------------------------------------------------------------------
 module Ideas.Service.Diagnose
    ( Diagnosis(..), diagnose, restartIfNeeded, newState
+   , difference, differenceEqual
    ) where
 
+import Control.Monad
+import Data.Function
 import Data.List (sortBy)
 import Data.Maybe
 import Ideas.Common.Library hiding (ready)
 import Ideas.Service.BasicServices hiding (apply)
 import Ideas.Service.State
 import Ideas.Service.Types
+import qualified Ideas.Common.Rewriting.Difference as Diff
 
 ----------------------------------------------------------------
 -- Result types for diagnose service
@@ -30,20 +34,26 @@ data Diagnosis a
    = Buggy          Environment (Rule (Context a))
 --   | Missing
 --   | IncorrectPart  [a]
-   | NotEquivalent
+   | NotEquivalent  String
    | Similar        Bool (State a)
+   | WrongRule      Bool (State a) (Maybe (Rule (Context a)))
    | Expected       Bool (State a) (Rule (Context a))
    | Detour         Bool (State a) Environment (Rule (Context a))
    | Correct        Bool (State a)
+   | Unknown        Bool (State a)  -- Added for the FP domain, to indicate that no
+                                    -- diagnose is possible (i.e., QC gave up)
 
 instance Show (Diagnosis a) where
    show diagnosis =
       case diagnosis of
-         Buggy as r        -> "Buggy rule " ++ show (show r) ++ showArgs as
+         Buggy as r       -> "Buggy rule " ++ show (show r) ++ showArgs as
+         Unknown _ _      -> "Unknown step"
 --         Missing          -> "Missing solutions"
 --         IncorrectPart xs -> "Incorrect parts (" ++ show (length xs) ++ " items)"
-         NotEquivalent    -> "Unknown mistake"
+         NotEquivalent s  -> if null s then "Unknown mistake" else s
          Similar _ _      -> "Very similar"
+         WrongRule _ _ mr -> "Wrong rule selected"  ++
+                             maybe "" (\r -> ", " ++ showId r ++ "recognized") mr
          Expected _ _ r   -> "Rule " ++ show (show r) ++ ", expected by strategy"
          Detour _ _ _ r   -> "Rule " ++ show (show r) ++ ", not following strategy"
          Correct _ _      -> "Unknown step"
@@ -56,23 +66,31 @@ newState :: Diagnosis a -> Maybe (State a)
 newState diagnosis =
    case diagnosis of
       Buggy _ _        -> Nothing
-      NotEquivalent    -> Nothing
+      NotEquivalent _  -> Nothing
       Similar  _ s     -> Just s
+      WrongRule _ s _  -> Just s
       Expected _ s _   -> Just s
       Detour   _ s _ _ -> Just s
       Correct  _ s     -> Just s
+      Unknown  _ s     -> Just s
 
 ----------------------------------------------------------------
 -- The diagnose service
 
-diagnose :: State a -> Context a -> Diagnosis a
-diagnose state new
+diagnose :: State a -> Context a -> Maybe Id -> Diagnosis a
+diagnose state new ruleUsed
    -- Is the submitted term equivalent?
    | not (equivalence ex (stateContext state) new) =
         -- Is the rule used discoverable by trying all known buggy rules?
-        case discovered True of
+        case discovered True Nothing of
            Just (r, as) -> Buggy as r -- report the buggy rule
-           Nothing      -> NotEquivalent -- compareParts state new
+           Nothing      -> NotEquivalent "" -- compareParts state new
+
+   -- Is the used rule that is submitted applied correctly?
+   | isJust ruleUsed && isNothing (discovered False ruleUsed) =
+        let mr = fmap fst $ discovered False Nothing
+                  `mplus`   discovered True  Nothing
+        in WrongRule (ready state) state mr
 
    -- Was the submitted term expected by the strategy?
    | isJust expected =
@@ -81,11 +99,13 @@ diagnose state new
         in Expected (ready ns) ns r
 
    -- Is the submitted term (very) similar to the previous one?
+   -- (this check is performed after "expected by strategy". TODO: fix
+   -- granularity of some math rules)
    | similar = Similar (ready state) state
 
    -- Is the rule used discoverable by trying all known rules?
    | otherwise =
-        case discovered False of
+        case discovered False Nothing of
            Just (r, as) ->  -- If yes, report the found rule as a detour
               Detour (ready restarted) restarted as r
            Nothing -> -- If not, we give up
@@ -100,10 +120,11 @@ diagnose state new
           p (_, ns) = similarity ex new (stateContext ns) -- use rule recognizer?
       listToMaybe (filter p xs)
 
-   discovered searchForBuggy = listToMaybe
+   discovered searchForBuggy searchForRule = listToMaybe
       [ (r, env)
       | r <- sortBy (ruleOrdering ex) (ruleset ex)
       , isBuggy r == searchForBuggy
+      , maybe True (`elem` getId r:ruleSiblings r) searchForRule
       , (_, env) <- recognizeRule ex r sub1 sub2
       ]
     where
@@ -133,20 +154,36 @@ instance Typed a (Diagnosis a) where
       f (Left (Left (as, r))) = Buggy as r
    --   f (Left (Right (Left ()))) = Missing
    --   f (Left (Right (Right (Left xs)))) = IncorrectPart xs
-      f (Left (Right ())) = NotEquivalent
+      f (Left (Right (Left s))) = NotEquivalent s
+      f (Left (Right (Right (b, s, mr)))) = WrongRule b s mr
       f (Right (Left (b, s))) = Similar b s
       f (Right (Right (Left (b, s, r)))) = Expected b s r
       f (Right (Right (Right (Left (b, s, as, r))))) = Detour b s as r
-      f (Right (Right (Right (Right (b, s))))) = Correct b s
-
+      f (Right (Right (Right (Right (Left (b, s)))))) = Correct b s
+      f (Right (Right (Right (Right (Right (b, s)))))) = Unknown b s
+                         
       g (Buggy as r)       = Left (Left (as, r))
    --   g Missing            = Left (Right (Left ()))
    --   g (IncorrectPart xs) = Left (Right (Right (Left xs)))
-      g NotEquivalent      = Left (Right ())
+      g (NotEquivalent s)  = Left (Right (Left s))
+      g (WrongRule b s mr) = Left (Right (Right (b, s, mr)))
       g (Similar b s)      = Right (Left (b, s))
       g (Expected b s r)   = Right (Right (Left (b, s, r)))
       g (Detour b s as r)  = Right (Right (Right (Left (b, s, as, r))))
-      g (Correct b s)      = Right (Right (Right (Right (b, s))))
+      g (Correct b s)      = Right (Right (Right (Right (Left (b, s)))))
+      g (Unknown b s)      = Right (Right (Right (Right (Right (b, s)))))
+
+difference :: Exercise a -> a -> a -> Maybe (a, a)
+difference ex a b = do
+   v <- hasTermView ex
+   Diff.differenceWith v a b
+
+-- Used by the FP tutor
+differenceEqual :: Exercise a -> a -> a -> Maybe (a, a)
+differenceEqual ex a b = do
+   v <- hasTermView ex
+   let simpleEq = equivalence ex `on` inContext ex
+   Diff.differenceEqualWith v simpleEq a b
 
 ----------------------------------------------------------------
 -- Compare answer sets (and search for missing parts/incorrect parts)

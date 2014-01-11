@@ -13,7 +13,6 @@
 -----------------------------------------------------------------------------
 module Ideas.Encoding.ModeJSON (processJSON) where
 
-import Control.Monad
 import Data.Char
 import Ideas.Common.Library hiding (exerciseId)
 import Ideas.Common.Utils (Some(..), timedSeconds)
@@ -21,16 +20,18 @@ import Ideas.Encoding.DecoderJSON
 import Ideas.Encoding.EncoderJSON
 import Ideas.Encoding.Evaluator
 import Ideas.Service.DomainReasoner
+import Ideas.Service.FeedbackScript.Syntax (Script)
 import Ideas.Service.Request
 import Ideas.Text.JSON
 import System.Random hiding (getStdGen)
 
-processJSON :: Bool -> DomainReasoner -> String -> IO (Request, String, String)
-processJSON cgiMode dr input = do
+processJSON :: Maybe Int -> Bool -> DomainReasoner -> String -> IO (Request, String, String)
+processJSON maxTime cgiMode dr input = do
    json <- either fail return (parseJSON input)
    req  <- jsonRequest json
-   resp <- jsonRPC json (myHandler dr)
-   let f   = if cgiMode then showCompact else showPretty
+   resp <- jsonRPC json $ \fun arg -> 
+              maybe id timedSeconds maxTime (myHandler dr fun arg)
+   let f   = if compactOutputDefault cgiMode req then compactJSON else show
        out = addVersion (version dr) (toJSON resp)
    return (req, f out, "application/json")
 
@@ -62,8 +63,8 @@ jsonRequest json = do
               _               -> fail "Invalid method"
    let a = lookupM "params" json >>= extractExerciseId
    enc  <- case lookupM "encoding" json of
-              Nothing         -> return Nothing
-              Just (String s) -> liftM Just (readEncoding s)
+              Nothing         -> return []
+              Just (String s) -> readEncoding s
               _               -> fail "Invalid encoding"
    src  <- case lookupM "source" json of
               Nothing         -> return Nothing
@@ -78,18 +79,19 @@ jsonRequest json = do
       }
 
 myHandler :: DomainReasoner -> RPCHandler IO
-myHandler dr fun arg = timedSeconds 5 $ do
+myHandler dr fun json = do
    srv <- findService dr (newId fun)
    Some ex <-
       if fun == "exerciselist"
       then return (Some emptyExercise)
-      else extractExerciseId arg >>= findExercise dr
+      else extractExerciseId json >>= findExercise dr
    script <- defaultScript dr (getId ex)
    stdgen <- newStdGen
-   let jds = JSONDecoderState ex script stdgen
-   runEncoderStateM (evalService (jsonConverter ex) srv) jds arg
+   evalService (jsonConverter script ex stdgen json) srv
 
-jsonConverter :: Exercise a -> Evaluator a (JSONDecoder a) JSON
-jsonConverter ex = Evaluator
-   (runEncoderStateM jsonEncoder (String . prettyPrinter ex))
-   jsonDecoder
+jsonConverter :: Script -> Exercise a -> StdGen -> JSON -> Evaluator a JSON
+jsonConverter script ex stdgen json = Evaluator 
+   (runEncoderStateM jsonEncoder (String . prettyPrinter ex))  
+   (\tp -> runEncoderStateM (jsonDecoder tp) jds json)
+ where
+   jds = JSONDecoderState ex script stdgen

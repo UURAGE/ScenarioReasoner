@@ -11,8 +11,8 @@
 -----------------------------------------------------------------------------
 module Ideas.Main.BlackBoxTests (blackBoxTests) where
 
+import Control.Exception
 import Control.Monad
-import Control.Monad.Error
 import Data.List
 import Ideas.Common.Utils (useFixedStdGen, snd3)
 import Ideas.Common.Utils.TestSuite
@@ -21,64 +21,54 @@ import Ideas.Encoding.ModeXML
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import System.Directory
-import System.IO
+import System.IO hiding (readFile)
 
 -- Returns the number of tests performed
 blackBoxTests :: DomainReasoner -> String -> IO TestSuite
 blackBoxTests dr path = do
-   putStrLn ("Scanning " ++ path)
    -- analyse content
    xs0 <- getDirectoryContents path
    let (xml,  xs1) = partition (".xml"  `isSuffixOf`) xs0
        (json, xs2) = partition (".json" `isSuffixOf`) xs1
-   -- perform tests
-   ts1 <- forM json $ \x ->
-             doBlackBoxTest dr JSON (path ++ "/" ++ x)
-   ts2 <- forM xml $ \x ->
-             doBlackBoxTest dr XML (path ++ "/" ++ x)
+       xs3         = map (path </>) (filter ((/= ".") . take 1) xs2)
    -- recursively visit subdirectories
-   ts3 <- forM (filter ((/= ".") . take 1) xs2) $ \x -> do
-             let p = path ++ "/" ++ x
-             valid <- doesDirectoryExist p
-             if not valid
-                then return (return ())
-                else liftM (suite $ "Directory " ++ simplerDirectory p)
-                           (blackBoxTests dr p)
-   return $
-      sequence_ (ts1 ++ ts2 ++ ts3)
+   subs <- filterM doesDirectoryExist xs3
+   rest <- mapM (blackBoxTests dr) subs
+   return $ suite ("Directory " ++ simplerDirectory path) $
+      [ doBlackBoxTest dr JSON (path </> x)
+      | x <- json
+      ] ++
+      [ doBlackBoxTest dr XML (path </> x)
+      | x <- xml
+      ] ++
+      rest
 
-doBlackBoxTest :: DomainReasoner -> DataFormat -> FilePath -> IO TestSuite
-doBlackBoxTest dr format path = do
-   hSetBinaryMode stdout True
-   b <- doesFileExist expPath
-   return $ if not b
-      then warn $ expPath ++ " does not exist"
-      else assertIO (stripDirectoryPart path) $ do
-         -- Comparing output with expected output
-         (h1, h2, txt, expt) <- liftIO $ do
-            useFixedStdGen -- fix the random number generator
-            h1   <- openBinaryFile path ReadMode
-            txt  <- hGetContents h1
-            h2   <- openBinaryFile expPath ReadMode
-            expt <- hGetContents h2
-            return (h1, h2, txt, expt)
+doBlackBoxTest :: DomainReasoner -> DataFormat -> FilePath -> TestSuite
+doBlackBoxTest dr format path =
+   assertMessageIO (stripDirectoryPart path) $ do
+      -- Comparing output with expected output
+      useFixedStdGen -- fix the random number generator
+      withFile path ReadMode $ \h1 -> do
+         hSetBinaryMode h1 True
+         txt <- hGetContents h1
          out  <- case format of
-                    JSON -> liftM snd3 (processJSON False dr txt)
-                    XML  -> liftM snd3 (processXML dr Nothing txt)
-         -- Force evaluation of the result, to make sure that
-         -- all file handles are closed afterwards.
-         let result = out ~= expt
-         liftIO $ result `seq` (hClose h1 >> hClose h2 >> return result)
-       `catchError`
-         \_ -> return False
+                    JSON -> liftM snd3 (processJSON Nothing False dr txt)
+                    XML  -> liftM snd3 (processXML Nothing dr Nothing txt)
+         withFile expPath ReadMode $ \h2 -> do
+            hSetBinaryMode h2 True
+            expt <- hGetContents h2
+            -- Force evaluation of the result, to make sure that
+            -- all file handles are closed afterwards.
+            if out ~= expt then return mempty else return (message path)
  where
    expPath = baseOf path ++ ".exp"
    baseOf  = reverse . drop 1 . dropWhile (/= '.') . reverse
    x ~= y  = filterVersion x == filterVersion y -- compare line-based
 
-   filterVersion =
-      let p s = not (null s || "version" `isInfixOf` s)
-      in filter p . lines . filter (/= '\r')
+filterVersion :: String -> [String]
+filterVersion =
+   let p s = not (null s || "version" `isInfixOf` s)
+   in filter p . lines . filter (/= '\r')
 
 simplerDirectory :: String -> String
 simplerDirectory s
@@ -88,6 +78,9 @@ simplerDirectory s
 
 stripDirectoryPart :: String -> String
 stripDirectoryPart = reverse . takeWhile (/= '/') . reverse
+
+(</>) :: FilePath -> FilePath -> FilePath
+x </> y = x ++ "/" ++ y
 
 {-
 logicConfluence :: IO ()

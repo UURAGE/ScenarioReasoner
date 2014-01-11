@@ -12,6 +12,8 @@
 module Ideas.Service.ServiceList (serviceList, metaServiceList) where
 
 import Ideas.Common.Library hiding (apply, applicable, derivation, ready)
+import Ideas.Common.ExerciseTests
+import Ideas.Common.Utils.TestSuite
 import Ideas.Service.BasicServices
 import Ideas.Service.DomainReasoner
 import Ideas.Service.FeedbackText
@@ -41,7 +43,7 @@ metaServiceList :: DomainReasoner -> [Service]
 metaServiceList dr =
    [ indexS dr, servicelistS dr, serviceinfoS dr, exerciselistS dr
    , rulelistS, ruleinfoS, rulesinfoS, strategyinfoS, exerciseinfoS
-   , stateinfoS, examplederivationsS
+   , stateinfoS, examplederivationsS, testreportS
    ]
 
 ------------------------------------------------------
@@ -110,7 +112,7 @@ generateS :: Service
 generateS = makeService "basic.generate"
    "Given an exercise code and a difficulty level (optional), this service \
    \returns an initial state with a freshly generated expression." $
-   generateWith ::: typed
+   generate ::: typed
 
 examplesS :: Service
 examplesS = makeService "basic.examples"
@@ -248,3 +250,8 @@ stateinfoS = makeService "meta.stateinfo"
 examplederivationsS :: Service
 examplederivationsS = makeService "meta.examplederivations"
    "Show example derivations" $ exampleDerivations ::: typed
+   
+testreportS :: Service
+testreportS = makeService "meta.testreport"
+   "Show test report for an exercise." $ 
+   (\stdgen -> runTestSuiteResult False . exerciseTestSuite stdgen) ::: typed 

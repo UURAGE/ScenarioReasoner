@@ -5,7 +5,7 @@ import Control.Monad
 import Data.Char
 import qualified Data.Map as M
 
-import Ideas.Common.Library
+import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils
 import Ideas.Text.JSON
 
@@ -140,7 +140,7 @@ instance InJSON a => InJSON (M.Map String a)  where
     fromJSON _ = fail "expecting an object"
 
 showJSON :: State -> String
-showJSON = showCompact . toJSON
+showJSON = compactJSON . toJSON
 
 readJSON :: String -> Either String State
 readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON

@@ -108,7 +108,7 @@ encodePrefixes :: XMLEncoder a [Prefix (Context a)]
 encodePrefixes = encoderFor $ \ps ->
    case ps of
       [] -> mempty
-      _  -> element "prefix" [ text p | p <- ps ]
+      _  -> element "prefix" $ map (string . showPrefix) ps
 
 encodeContext :: XMLEncoder a (Context a)
 encodeContext = encoderStateFor $ \xp ctx ->
@@ -195,10 +195,14 @@ encodeDiagnosis = encoderFor $ \diagnosis ->
    case diagnosis of
       Buggy env r -> element "buggy"
          [encodeEnvironment // env, "ruleid" .=. showId r]
-      NotEquivalent ->
-         return (emptyTag "notequiv")
+      NotEquivalent s ->
+          if null s then return (emptyTag "notequiv")
+                    else element "notequiv" [ "reason" .=.  s ]
       Similar b st -> element "similar"
          ["ready" .=. showBool b, encodeState // st]
+      WrongRule b st mr -> element "wrongrule" $
+         [ "ready" .=. showBool b, encodeState // st ] ++
+         maybe [] (\r -> ["ruleid" .=. showId r]) mr
       Expected b st r -> element "expected"
          ["ready" .=. showBool b, encodeState // st, "ruleid" .=. showId r]
       Detour b st env r -> element "detour"
@@ -206,6 +210,8 @@ encodeDiagnosis = encoderFor $ \diagnosis ->
          , encodeEnvironment // env, "ruleid" .=. showId r
          ]
       Correct b st -> element "correct"
+         ["ready" .=. showBool b, encodeState // st]
+      Unknown b st -> element "unknown"
          ["ready" .=. showBool b, encodeState // st]
 
 encodeDecompositionReply :: XMLEncoder a (PD.Reply a)

@@ -34,34 +34,35 @@ import qualified Ideas.Common.Algebra.FieldLaws as F
 -- Properties
 
 tests :: TestSuite
-tests = suite "Strategy combinator properties" $ do
-   -- monoids and semi-rings
-   fs (commutative : idempotent : monoidLaws :: [Law Choice])
-   fs (monoidZeroLaws :: [Law Sequence])
-   fs (commutative : monoidZeroLaws :: [Law Interleave])
-   fs (F.distributiveLaws :: [Law Sequence])
-   fs (F.distributiveLaws :: [Law Interleave])
+tests = suite "Strategy combinator properties"
+   [ -- monoids and semi-rings
+     fs (commutative : idempotent : monoidLaws :: [Law Choice])
+   , fs (monoidZeroLaws :: [Law Sequence])
+   , fs (commutative : monoidZeroLaws :: [Law Interleave])
+   , fs (F.distributiveLaws :: [Law Sequence])
+   , fs (F.distributiveLaws :: [Law Interleave])
 
    -- properties of atomic
-   addProperty "atomic-twice" $ \a ->
-      atomic (atomic a) === atomic (idS a)
-   assertTrue  "atomic-succeed" $
-      atomic succeed === succeed
-   assertTrue  "atomic-fail" $
-      atomic fail === fail
-   addProperty "atomic-choice" $ \a b ->
-      atomic (idS a <|> idS b) === atomic a <|> atomic b
+   , useProperty "atomic-twice" $ \a ->
+        atomic (atomic a) === atomic (idS a)
+   , assertTrue  "atomic-succeed" $
+        atomic succeed === succeed
+   , assertTrue  "atomic-fail" $
+        atomic fail === fail
+   , useProperty "atomic-choice" $ \a b ->
+        atomic (idS a <|> idS b) === atomic a <|> atomic b
 
    -- splits theorm parallel/atomic
-   addProperty "atomic-split"  $ \x y a b ->
-      (atomic x <*> a) <%> (atomic y <*> b)
-      ===
-      (idS x <*> (a <%> (atomic y <*> b)))
-        <|>
-      (idS y <*> ((atomic x <*> idS a) <%> idS b))
+   , useProperty "atomic-split"  $ \x y a b ->
+        (atomic x <*> a) <%> (atomic y <*> b)
+        ===
+        (idS x <*> (a <%> (atomic y <*> b)))
+          <|>
+        (idS y <*> ((atomic x <*> idS a) <%> idS b))
+   ]
  where
    fs :: (Arbitrary a, Show a, Eq a) => [Law a] -> TestSuite
-   fs = mapM_ (\p -> addProperty (show p) p)
+   fs ps = mconcat [ useProperty (show p) p | p <- ps ]
 
 ---------------------------------------------------------
 -- Algebraic instances
@@ -115,14 +116,13 @@ infix 1 ===
 (===) :: Strategy Int -> Strategy Int -> Bool
 s1 === s2 = rec 100 [(start s1, start s2)]
  where
-   start = return . flip makeState 0 . toCore
+   start = return . makeState 0 . toCore
 
-   rec :: Int -> [([State LabelInfo Int], [State LabelInfo Int])] -> Bool
+   rec :: Int -> [([ParseState LabelInfo Int], [ParseState LabelInfo Int])] -> Bool
    rec _ [] = True
    rec n (pair:rest)
       | n == 0    = True
       | otherwise = testReady xs ys
-                 && testValue xs ys
                  && testFirsts gxs gys
                  && rec (n-1) (rest ++ new)
 
@@ -132,24 +132,29 @@ s1 === s2 = rec 100 [(start s1, start s2)]
       new           = uncurry zip (mapBoth (map snd) gp)
 
       testReady  = (==) `on` any (isReady . fst)
-      testValue  = (==) `on` (nub . sort . map (value . snd))
       testFirsts = (==) `on` map fst
 
       f          = map merge . groupBy eqFst . sortBy cmpFst . results
       merge   as = (fst (head as), map snd as)
-      results as = [ (a, b) | (Result a, b) <- as ]
+      results as = [ (a, b) | (a, b) <- as ]
 
       cmpFst = comparing (show . fst)
       eqFst  = (==) `on` fst
 
-myFirsts :: State l a -> [(Result (Step l a), State l a)]
+firsts :: Bool -> ParseState l a -> [(Step l a, ParseState l a)]
+firsts = undefined -- fix me
+
+isReady :: Step l a -> Bool
+isReady = undefined -- fix me
+
+myFirsts :: ParseState l a -> [(Step l a, ParseState l a)]
 myFirsts = concatMap f . firsts False
  where
    f pair@(result, a) =
       case result of
-         Result (Enter _) -> myFirsts a
-         Result (Exit _)  -> myFirsts a
-         _                -> [pair]
+         Enter _ -> myFirsts a
+         Exit _  -> myFirsts a
+         _       -> [pair]
 
 {-
 debug :: Show a => Strategy a -> a -> IO ()

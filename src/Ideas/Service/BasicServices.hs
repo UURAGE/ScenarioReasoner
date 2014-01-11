@@ -12,8 +12,8 @@
 module Ideas.Service.BasicServices
    ( -- * Basic Services
      stepsremaining, findbuggyrules, ready, allfirsts, derivation
-   , onefirst, applicable, allapplications, apply, generate, generateWith
-   , StepInfo, exampleDerivations
+   , onefirst, applicable, allapplications, apply, generate
+   , StepInfo, exampleDerivations, recognizeRule
    ) where
 
 import Control.Monad
@@ -26,12 +26,9 @@ import Ideas.Service.State
 import System.Random
 import qualified Ideas.Common.Classes as Apply
 
-generate :: Exercise a -> Maybe Difficulty -> IO (State a)
-generate ex = liftM (emptyState ex) . randomTerm ex
-
-generateWith :: StdGen -> Exercise a -> Maybe Difficulty -> Either String (State a)
-generateWith rng ex md =
-   case randomTermWith rng ex md of
+generate :: StdGen -> Exercise a -> Maybe Difficulty -> Either String (State a)
+generate rng ex md =
+   case randomTerm rng ex md of
       Just a  -> return (emptyState ex a)
       Nothing -> fail "No random term"
 
@@ -75,7 +72,7 @@ allfirsts state
    | otherwise =
         let trees  = map tree ps
             tree p = cutOnStep (justMajor . lastStepInPrefix)
-                               (prefixTree False p (stateContext state))
+                               (prefixTree (stateContext state) p)
             f ((r1, _, _), _) ((r2, _, _), _) =
                ruleOrdering (exercise state) r1 r2
             justMajor = maybe False isMajor
@@ -169,6 +166,18 @@ findbuggyrules state a =
    ]
  where
    ex = exercise state
+
+-- Recognize a rule at (possibly multiple) locations
+recognizeRule :: Exercise a -> Rule (Context a) -> Context a -> Context a -> [(Location, Environment)]
+recognizeRule ex r ca cb = rec (top ca)
+ where
+   final = addTransRecognizer (similarity ex) r
+   rec x = do
+      -- here
+      as <- recognizeAll final x cb
+      return (location x, as)
+    `mplus` -- or there
+      concatMap rec (downs x)
 
 exampleDerivations :: Exercise a -> Either String [Derivation (Rule (Context a), Environment) (Context a)]
 exampleDerivations ex = mapM (derivation Nothing . emptyState ex . snd) (examples ex)

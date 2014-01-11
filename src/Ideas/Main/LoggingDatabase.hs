@@ -44,7 +44,7 @@ logMessage req input output ipaddress begin = do
              , toSql $ maybe "unknown" show (exerciseId req)
              , toSql $ fromMaybe "unknown" (source req)
              , toSql $ show (dataformat req)
-             , toSql $ maybe "unknown" show (encoding req)
+             , toSql $ show (encoding req)
              , toSql $ input
              , toSql $ output
              , toSql $ ipaddress
@@ -55,7 +55,7 @@ logMessage req input output ipaddress begin = do
 
      -- close the connection to the database
      disconnect conn
-  `catch` \err -> do putStrLn $ "Error in logging to database: " ++ show err
+  `catchSql` \err -> do putStrLn $ "Error in logging to database: " ++ show err
 
 {-
 -- | Log table schema

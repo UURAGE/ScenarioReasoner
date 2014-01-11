@@ -37,8 +37,8 @@ module Ideas.Common.Strategy
    , strategyLocations, subStrategy
    , subTaskLocation, nextTaskLocation
      -- * Prefixes
-   , Prefix, emptyPrefix, makePrefix, prefixTree, Step(..)
-   , prefixToSteps, stepsToRules, lastStepInPrefix
+   , Prefix, showPrefix, emptyPrefix, makePrefix, prefixTree, Step(..), Path, emptyPath
+   , prefixToSteps, stepsToRules, lastStepInPrefix, activeLabels
      -- * Misc
    , cleanUpStrategy, cleanUpStrategyAfter
    , rulesInStrategy
@@ -50,5 +50,6 @@ import Ideas.Common.Strategy.Configuration
 import Ideas.Common.Strategy.Location
 import Ideas.Common.Strategy.Parsing
 import Ideas.Common.Strategy.Prefix
+import Ideas.Common.Strategy.Path
 import Ideas.Common.Strategy.Traversal hiding (full, spine, stop, once)
 import Prelude ()

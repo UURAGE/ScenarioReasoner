@@ -9,44 +9,42 @@
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- This module defines the concept of an exercise
+-- The 'Exercise' record defines all the components that are needed for 
+-- calculating feedback for one class of exercises. The fields of an exercise
+-- have to be consistent; consistency can be checked with the 
+-- "Ideas.Common.ExerciseTests" module.
 --
 -----------------------------------------------------------------------------
 module Ideas.Common.Exercise
-   ( -- * Exercises
-     Exercise, makeExercise, emptyExercise
-   , exerciseId, status, parser, prettyPrinter
-   , equivalence, similarity, ready, suitable, isReady, isSuitable
-   , hasTermView
-   , strategy, navigation, canBeRestarted, extraRules, ruleOrdering
-   , difference, differenceEqual
-   , testGenerator, randomExercise, examples, getRule
-   , simpleGenerator, useGenerator
-   , randomTerm, randomTermWith, ruleset
-   , makeContext, inContext, recognizeRule
-   , ruleOrderingWith, ruleOrderingWithId
-   , Examples, mapExamples, examplesContext
-   , Difficulty(..), readDifficulty, level
-   , hasTypeable, useTypeable, castFrom, castTo
-     -- * Exercise status
+   ( -- * Exercise record
+     Exercise(..), emptyExercise, makeExercise
+     -- * Convenience functions
+   , prettyPrinterContext, isReady, isSuitable
+   , ruleset, getRule, ruleOrderingWith
+     -- * Status
    , Status(..), isPublic, isPrivate
-     -- * Miscellaneous
-   , withoutContext, simpleSimilarity, simpleEquivalence
-   , prettyPrinterContext, restrictGenerator
-   , showDerivation, printDerivation
-   , ExerciseDerivation, defaultDerivation
-   , derivationDiffEnv
-   , checkExercise, checkParserPretty
-   , checkExamples, exerciseTestSuite
+     -- * Examples
+   , Examples, Difficulty(..), readDifficulty
+   , level, mapExamples, examplesContext
+     -- * Context
+   , inContext, withoutContext
+     -- * Type casting
+   , useTypeable, castFrom, castTo
+     -- * Exercise properties
+   , setProperty, getProperty
+     -- * Random generators
+   , simpleGenerator, useGenerator, randomTerm, randomTerms
+     -- * Derivations
+   , showDerivation, showDerivations, printDerivation, printDerivations
+   , diffEnvironment
    ) where
 
-import Control.Monad.Error
 import Data.Char
+import Data.Dynamic
 import Data.Function
 import Data.List
 import Data.Maybe
 import Data.Ord
-import Data.Typeable
 import Ideas.Common.Classes
 import Ideas.Common.Context
 import Ideas.Common.Derivation
@@ -57,40 +55,80 @@ import Ideas.Common.Predicate
 import Ideas.Common.Rewriting
 import Ideas.Common.Rule
 import Ideas.Common.Strategy hiding (not, fail, repeat, replicate)
-import Ideas.Common.Traversal.Navigator (top, downs)
 import Ideas.Common.Utils (ShowString(..))
-import Ideas.Common.Utils.TestSuite
 import Ideas.Common.View
 import System.Random
 import Test.QuickCheck hiding (label)
 import Test.QuickCheck.Gen
-import qualified Ideas.Common.Rewriting.Difference as Diff
 import qualified Ideas.Common.Strategy as S
+import qualified Data.Map as M
 
-data Exercise a = Exercise
-   { -- identification and meta-information
-     exerciseId     :: Id -- identifier that uniquely determines the exercise
-   , status         :: Status
-     -- parsing and pretty-printing
-   , parser         :: String -> Either String a
-   , prettyPrinter  :: a -> String
-     -- syntactic and semantic checks
-   , equivalence    :: Context a -> Context a -> Bool
-   , similarity     :: Context a -> Context a -> Bool -- possibly more liberal than syntactic equality
-   , ready          :: Predicate a
-   , suitable       :: Predicate a
-   , hasTermView    :: Maybe (View Term a)
-   , hasTypeable    :: Maybe (IsTypeable a)
-     -- strategies and rules
-   , strategy       :: LabeledStrategy (Context a)
-   , navigation     :: a -> ContextNavigator a
-   , canBeRestarted :: Bool                -- By default, assumed to be the case
-   , extraRules     :: [Rule (Context a)]  -- Extra rules (possibly buggy) not appearing in strategy
-   , ruleOrdering   :: Rule (Context a) -> Rule (Context a) -> Ordering -- Ordering on rules (for onefirst)
-     -- testing and exercise generation
-   , testGenerator  :: Maybe (Gen a)
+-----------------------------------------------------------------------------
+-- Exercise record
+
+-- | For constructing an empty exercise, use function 'emptyExercise' or
+-- 'makeExercise'.
+data Exercise a = 
+  NewExercise
+   { -- | Identifier that uniquely determines the exercise: see 'HasId' for
+     -- how to use values with identifiers.
+     exerciseId :: Id
+     -- | The status of the exercise.
+   , status :: Status
+     -- | Parser for expressions of the exercise class, which either results
+     -- in an error ('Left') or a result ('Right').
+   , parser :: String -> Either String a
+     -- | Pretty-printer for expressions of the exercise class. Pretty-printing
+     -- should be the inverse of parsing.
+   , prettyPrinter :: a -> String
+     -- | Tests wether two expressions (with their contexts) are semantically 
+     -- equivalent. Use 'withoutContext' for defining the equivalence check 
+     -- when the context is not relevant.
+   , equivalence :: Context a -> Context a -> Bool
+     -- | Tests wether two expressions (with their contexts) are syntactically 
+     -- the same, or nearly so. Expressions that are similar must also be 
+     -- equivalent. Use 'withoutContext' if the context is not relevant for the 
+     -- similarity check.
+   , similarity :: Context a -> Context a -> Bool
+     -- | Predicate suitable identifies which expressions can be solved by the 
+     -- strategy of the exercise class. It acts as the pre-condition of the 
+     -- strategy.
+   , suitable :: Predicate a
+     -- | Predicate ready checks if an expression is in a solved form (accepted
+     -- as a final solution). It acts as the post-condition of the strategy.
+   , ready :: Predicate a
+     -- | The rewrite strategy that specifies how to solve an exercise.
+   , strategy :: LabeledStrategy (Context a)
+     -- | Is it possible to restart the rewrite strategy at any point in time?
+     -- Restarting the strategy is needed when a student deviates from the 
+     -- strategy (detour). By default, restarting is assumed to be possible.
+   , canBeRestarted :: Bool
+     -- | Are there extra rules, possibly buggy, that do not appear in the 
+     -- strategy? Use 'ruleset' to get all rules.
+   , extraRules :: [Rule (Context a)]
+     -- | The rule ordering is a tiebreaker in situations where more than one
+     -- rule can be used (e.g. feedback services onefirst and derivation; other
+     -- feedback services return all possible rules).
+   , ruleOrdering :: Rule (Context a) -> Rule (Context a) -> Ordering
+     -- | A navigator is needed for traversing the expression and for using the
+     -- traversal strategy combinators. By default, an exercise has no 
+     -- navigator.
+   , navigation :: a -> ContextNavigator a
+     -- | A finite list of examples, each with an assigned difficulty.
+   , examples :: Examples a
+     -- | A generator for random exercises of a certain difficulty.
    , randomExercise :: Maybe (StdGen -> Maybe Difficulty -> a)
-   , examples       :: [(Difficulty, a)]
+     -- | An exercise generator for testing purposes (including corner cases).
+   , testGenerator  :: Maybe (Gen a)
+     -- | Conversion to and from the (generic) 'Term' datatype. Needed for
+     -- representing the expression in the OpenMath standard.
+   , hasTermView :: Maybe (View Term a)
+     -- | Representation of the type of expression: this provides a back door
+     -- for exercise-specific functionality.
+   , hasTypeable :: Maybe (IsTypeable a)
+     -- | Extra exercise-specific properties, not used by the default
+     -- feedback services.
+   , properties :: M.Map String Dynamic -- extra, domain-specific properties
    }
 
 instance Eq (Exercise a) where
@@ -106,15 +144,10 @@ instance HasId (Exercise a) where
    getId = exerciseId
    changeId f ex = ex { exerciseId = f (exerciseId ex) }
 
-makeExercise :: (Show a, Eq a, IsTerm a) => Exercise a
-makeExercise = emptyExercise
-   { prettyPrinter = show
-   , similarity    = (==)
-   , hasTermView   = Just termView
-   }
-
+-- | The 'emptyExercise' constructor function provides sensible defaults for 
+-- all fields of the 'Exercise' record.
 emptyExercise :: Exercise a
-emptyExercise = Exercise
+emptyExercise = NewExercise
    { -- identification and meta-information
      exerciseId     = mempty
    , status         = Experimental
@@ -128,6 +161,7 @@ emptyExercise = Exercise
    , suitable       = true
    , hasTermView    = Nothing
    , hasTypeable    = Nothing
+   , properties     = M.empty
      -- strategies and rules
    , strategy       = label "Fail" S.fail
    , navigation     = noNavigator
@@ -140,23 +174,81 @@ emptyExercise = Exercise
    , examples       = []
    }
 
-makeContext :: Exercise a -> Environment -> a -> Context a
-makeContext ex env = newContext env . navigation ex
+-- | In addition to the defaults of 'emptyExercise', this constructor sets 
+-- the fields 'prettyPrinter', 'similarity', and 'hasTermView'.
+makeExercise :: (Show a, Eq a, IsTerm a) => Exercise a
+makeExercise = emptyExercise
+   { prettyPrinter = show
+   , similarity    = (==)
+   , hasTermView   = Just termView
+   }
 
--- | Put a value into an empty environment
-inContext :: Exercise a -> a -> Context a
-inContext = flip makeContext mempty
+-----------------------------------------------------------------------------
+-- Convenience functions
 
----------------------------------------------------------------
--- Difficulty levels
+-- | Pretty print a value in its context.
+prettyPrinterContext :: Exercise a -> Context a -> String
+prettyPrinterContext ex =
+   maybe "<<invalid term>>" (prettyPrinter ex) . fromContext
+
+-- | Checks if an expression is in a solved form.
+isReady :: Exercise a -> a -> Bool
+isReady = evalPredicate . ready
+
+-- | Checks if the expression is suitable and can be solved by the strategy.
+isSuitable :: Exercise a -> a -> Bool
+isSuitable = evalPredicate . suitable
+
+-- | Returns a sorted list of rules, without duplicates.
+ruleset :: Exercise a -> [Rule (Context a)]
+ruleset ex = nub (sortBy compareId list)
+ where
+   list = extraRules ex ++ rulesInStrategy (strategy ex)
+
+-- | Finds a rule of an exercise based on its identifier.
+getRule :: Monad m => Exercise a -> Id -> m (Rule (Context a))
+getRule ex a =
+   case filter ((a ==) . getId) (ruleset ex) of
+      [hd] -> return hd
+      []   -> fail $ "Could not find ruleid " ++ showId a
+      _    -> fail $ "Ambiguous ruleid " ++ showId a
+
+-- | Makes a rule ordering based on a list of values with identifiers (e.g.,
+-- a list of rules). Rules with identifiers that are not in the list are 
+-- considered after the rules in the list, and are sorted based on their 
+-- identifier.
+ruleOrderingWith :: HasId b => [b] -> Rule a -> Rule a -> Ordering
+ruleOrderingWith bs r1 r2 =
+   let xs = map getId bs in
+   case (elemIndex (getId r1) xs, elemIndex (getId r2) xs) of
+      (Just i,  Just j ) -> i `compare` j
+      (Just _,  Nothing) -> LT
+      (Nothing, Just _ ) -> GT
+      (Nothing, Nothing) -> compareId r1 r2
+
+-----------------------------------------------------------------------------
+-- Status
+
+-- | The status of an exercise class.
+data Status
+   = Stable       -- ^ A released exercise that has undergone some thorough testing
+   | Provisional  -- ^ A released exercise, possibly with some deficiencies
+   | Alpha        -- ^ An exercise that is under development
+   | Experimental -- ^ An exercise for experimentation purposes only
+   deriving (Show, Eq)
+
+-- | An exercise with the status 'Stable' or 'Provisional'
+isPublic :: Exercise a -> Bool
+isPublic ex = status ex `elem` [Stable, Provisional]
+
+-- | An exercise that is not public
+isPrivate :: Exercise a -> Bool
+isPrivate = not . isPublic
+
+-----------------------------------------------------------------------------
+-- Examples
 
 type Examples a = [(Difficulty, a)]
-
-mapExamples :: (a -> b) -> Examples a -> Examples b
-mapExamples f = map (second f)
-
-examplesContext :: Exercise a -> Examples (Context a)
-examplesContext ex = mapExamples (inContext ex) (examples ex)
 
 data Difficulty = VeryEasy | Easy | Medium | Difficult | VeryDifficult
    deriving (Eq, Ord, Enum)
@@ -166,6 +258,8 @@ instance Show Difficulty where
     where
       xs = ["very_easy", "easy", "medium", "difficult", "very_difficult"]
 
+-- | Parser for difficulty levels, which ignores non-alpha charactes (including
+-- spaces) and upper/lower case distinction.
 readDifficulty :: String -> Maybe Difficulty
 readDifficulty s =
    case filter p [VeryEasy .. VeryDifficult] of
@@ -175,342 +269,163 @@ readDifficulty s =
    normal = filter isAlpha . map toLower
    p = (== normal s) . normal . show
 
+-- | Assigns a difficulty level to a list of expressions.
 level :: Difficulty -> [a] -> Examples a
 level = zip . repeat
 
----------------------------------------------------------------
--- Exercise generators
+mapExamples :: (a -> b) -> Examples a -> Examples b
+mapExamples f = map (second f)
 
--- returns a sorted list of rules (no duplicates)
-ruleset :: Exercise a -> [Rule (Context a)]
-ruleset ex = nub (sortBy compareId list)
- where
-   list = extraRules ex ++ rulesInStrategy (strategy ex)
+-- | Returns the examples of an exercise class lifted to a context. 
+examplesContext :: Exercise a -> Examples (Context a)
+examplesContext ex = mapExamples (inContext ex) (examples ex)
 
-simpleGenerator :: Gen a -> Maybe (StdGen -> Maybe Difficulty -> a)
-simpleGenerator = useGenerator (const True) . const
+-----------------------------------------------------------------------------
+-- Context
 
-useGenerator :: (a -> Bool) -> (Maybe Difficulty -> Gen a) -> Maybe (StdGen -> Maybe Difficulty -> a)
-useGenerator p makeGen = Just (\rng -> rec rng . makeGen)
- where
-   rec rng gen@(MkGen f)
-      | p a       = a
-      | otherwise = rec (snd (next rng)) gen
-    where
-      (size, r) = randomR (0, 100) rng
-      a         = f r size
-
-restrictGenerator :: (a -> Bool) -> Gen a -> Gen a
-restrictGenerator p g = do
-   a <- g
-   if p a then return a
-          else restrictGenerator p g
-
-randomTerm :: Exercise a -> Maybe Difficulty -> IO a
-randomTerm ex mdif = do
-   rng <- newStdGen
-   maybe (fail "no random term") return $ randomTermWith rng ex mdif
-
-randomTermWith :: StdGen -> Exercise a -> Maybe Difficulty -> Maybe a
-randomTermWith rng ex mdif =
-   case randomExercise ex of
-      Just f  -> return (f rng mdif)
-      Nothing
-         | null xs   -> Nothing
-         | otherwise -> Just $
-              snd $ xs !! fst (randomR (0, length xs - 1) rng)
-       where
-         xs = filter p (examples ex)
-         p (d, _) = maybe True (==d) mdif
-
-difference :: Exercise a -> a -> a -> Maybe (a, a)
-difference ex a b = do
-   v <- hasTermView ex
-   Diff.differenceWith v a b
-
-differenceEqual :: Exercise a -> a -> a -> Maybe (a, a)
-differenceEqual ex a b = do
-   v <- hasTermView ex
-   Diff.differenceEqualWith v (simpleEquivalence ex) a b
-
--- Recognize a rule at (possibly multiple) locations
-recognizeRule :: Exercise a -> Rule (Context a) -> Context a -> Context a -> [(Location, Environment)]
-recognizeRule ex r ca cb = rec (top ca)
- where
-   final = addTransRecognizer (similarity ex) r
-   rec x = do
-      -- here
-      as <- recognizeAll final x cb
-      return (location x, as)
-    `mplus` -- or there
-      concatMap rec (downs x)
-
-ruleOrderingWith :: [Rule a] -> Rule a -> Rule a -> Ordering
-ruleOrderingWith = ruleOrderingWithId . map getId
-
-ruleOrderingWithId :: HasId b => [b] -> Rule a -> Rule a -> Ordering
-ruleOrderingWithId bs r1 r2 =
-   let xs = map getId bs in
-   case (elemIndex (getId r1) xs, elemIndex (getId r2) xs) of
-      (Just i,  Just j ) -> i `compare` j
-      (Just _,  Nothing) -> LT
-      (Nothing, Just _ ) -> GT
-      (Nothing, Nothing) -> compareId r1 r2
-
----------------------------------------------------------------
--- Using type representations for casts
+-- | Puts a value into a context with an empty environment.
+inContext :: Exercise a -> a -> Context a
+inContext ex = newContext . navigation ex
+   
+-- | Function for defining equivalence or similarity without taking
+-- the context into account.
+withoutContext :: (a -> a -> Bool) -> Context a -> Context a -> Bool
+withoutContext f a b = fromMaybe False (fromContextWith2 f a b)
+   
+-----------------------------------------------------------------------------
+-- Type casting
 
 data IsTypeable a = IT (forall b . Typeable b => a -> Maybe b)
                        (forall b . Typeable b => b -> Maybe a)
 
+-- | Encapsulates a type representation (use for 'hasTypeable' field).
 useTypeable :: Typeable a => Maybe (IsTypeable a)
 useTypeable = Just (IT cast cast)
 
+-- | Cast from polymorphic type (to exercise-specific type).
+-- This only works if 'hasTypeable' contains the right type representation.
 castFrom :: Typeable b => Exercise a -> a -> Maybe b
 castFrom ex a = do
    IT f _ <- hasTypeable ex
    f a
 
+-- | Cast to polymorphic type (from exercise-specific type).
+-- This only works if 'hasTypeable' contains the right type representation.
 castTo :: Typeable b => Exercise a -> b -> Maybe a
 castTo ex a = do
    IT _ g <- hasTypeable ex
    g a
 
----------------------------------------------------------------
--- Exercise status
+-----------------------------------------------------------------------------
+-- Exercise-specific properties
 
-data Status
-   = Stable       -- ^ A released exercise that has undergone some thorough testing
-   | Provisional  -- ^ A released exercise, possibly with some deficiencies
-   | Alpha        -- ^ An exercise that is under development
-   | Experimental -- ^ An exercise for experimentation purposes only
-   deriving (Show, Eq)
+-- | Set an exercise-specific property (with a dynamic type)
+setProperty :: Typeable val => String -> val -> Exercise a -> Exercise a
+setProperty key a ex = 
+   ex { properties = M.insert key (toDyn a) (properties ex) }
 
--- | An exercise with the status @Stable@ or @Provisional@
-isPublic :: Exercise a -> Bool
-isPublic ex = status ex `elem` [Stable, Provisional]
-
--- | An exercise that is not public
-isPrivate :: Exercise a -> Bool
-isPrivate = not . isPublic
+-- | Get an exercise-specific property (of a dynamic type)
+getProperty :: Typeable val => String -> Exercise a -> Maybe val
+getProperty key ex = M.lookup key (properties ex) >>= fromDynamic
 
 ---------------------------------------------------------------
--- Rest
+-- Random generators
 
--- | Function for defining equivalence or similarity without taking
--- the context into account.
-withoutContext :: (a -> a -> Bool) -> Context a -> Context a -> Bool
-withoutContext f a b = fromMaybe False (fromContextWith2 f a b)
+-- | Makes a random exercise generator from a QuickCheck generator; the exercise
+-- generator ignores the difficulty level. See the 'randomExercise' field.
+simpleGenerator :: Gen a -> Maybe (StdGen -> Maybe Difficulty -> a)
+simpleGenerator = useGenerator . const
 
-isReady :: Exercise a -> a -> Bool
-isReady = evalPredicate . ready
+-- | Makes a random exercise generator based on a QuickCheck generator for a 
+-- particular difficulty level. See the 'randomExercise' field.
+useGenerator :: (Maybe Difficulty -> Gen a) -> Maybe (StdGen -> Maybe Difficulty -> a)
+useGenerator makeGen = Just (\rng -> rec rng . makeGen)
+ where
+   rec rng (MkGen f) = a
+    where
+      (size, r) = randomR (0, 100) rng
+      a         = f r size
 
-isSuitable :: Exercise a -> a -> Bool
-isSuitable = evalPredicate . suitable
+-- | Returns a random exercise of a certain difficulty with some random
+-- number generator. The field 'randomExercise' is used; if this is not 
+-- defined (i.e., Nothing), one of the examples is used instead.
+randomTerm :: StdGen -> Exercise a -> Maybe Difficulty -> Maybe a
+randomTerm rng ex mdif =
+   case randomExercise ex of
+      Just f  -> return (f rng mdif)
+      Nothing
+         | null xs   -> Nothing
+         | otherwise -> Just (snd (xs !! i))
+       where
+         xs = filter p (examples ex)
+         p (d, _) = maybe True (==d) mdif
+         i = fst (randomR (0, length xs - 1) rng)
 
--- | Similarity on terms without a context
-simpleSimilarity :: Exercise a -> a -> a -> Bool
-simpleSimilarity ex = similarity ex `on` inContext ex
+-- | Returns a list of randomly generated terms of a certain difficulty.
+randomTerms :: StdGen -> Exercise a -> Maybe Difficulty -> [a]
+randomTerms rng ex mdif = rec rng
+ where
+   rec a = maybe id (:) (randomTerm a ex mdif) (rec (snd (next a)))
 
--- | Equivalence on terms without a context
-simpleEquivalence :: Exercise a -> a -> a -> Bool
-simpleEquivalence ex = equivalence ex `on` inContext ex
+---------------------------------------------------------------
+-- Derivations
 
-prettyPrinterContext :: Exercise a -> Context a -> String
-prettyPrinterContext ex =
-   maybe "<<invalid term>>" (prettyPrinter ex) . fromContext
-
-getRule :: Monad m => Exercise a -> Id -> m (Rule (Context a))
-getRule ex a =
-   case filter ((a ==) . getId) (ruleset ex) of
-      [hd] -> return hd
-      []   -> fail $ "Could not find ruleid " ++ showId a
-      _    -> fail $ "Ambiguous ruleid " ++ showId a
-
--- |Shows a derivation for a given start term. The specified rule ordering
+-- | Shows the default derivation for a given start term. The specified rule ordering
 -- is used for selection.
 showDerivation :: Exercise a -> a -> String
-showDerivation ex a = show (present der) ++ extra
+showDerivation ex a = showThisDerivation (defaultDerivation ex a) ex
+
+-- | Shows all derivations for a given start term. Warning: there can be many
+-- derivations.
+showDerivations :: Exercise a -> a -> String
+showDerivations ex a = unlines 
+   [ "Derivation #" ++ show i ++ "\n" ++ showThisDerivation d ex
+   | (i, d) <- zip [1::Int ..] (allDerivations ex a)
+   ]
+
+-- | Prints the default derivation for a given start term. The specified rule ordering
+-- is used for selection.
+printDerivation :: Exercise a -> a -> IO ()
+printDerivation ex = putStrLn . showDerivation ex
+
+-- | Prints all derivations for a given start term. Warning: there can be many
+-- derivations.
+printDerivations :: Exercise a -> a -> IO ()
+printDerivations ex = putStrLn . showDerivations ex
+
+-- also pass derivation as an argument
+showThisDerivation :: Derivation (Rule b, Environment) (Context a) -> Exercise a -> String
+showThisDerivation d ex = show (present der) ++ extra
  where
-   der   = derivationDiffEnv (defaultDerivation ex a)
+   der   = diffEnvironment d
    extra =
       case fromContext (lastTerm der) of
          Nothing               -> "<<invalid term>>"
          Just b | isReady ex b -> ""
                 | otherwise    -> "<<not ready>>"
    present = biMap (ShowString . f) (ShowString . prettyPrinterContext ex)
-   f ((r, local), global) = showId r ++ part1 ++ part2
+   f ((r, local), global) = showId r ++ part local ++ part global
     where
-      newl  = "\n      "
-      part1 = newl ++ show local
-      part2 | noBindings global = ""
-            | otherwise         = newl ++ show global
+      newl = "\n      "
+      part env | noBindings env = "" 
+               | otherwise      = newl ++ show env
 
-type ExerciseDerivation a = Derivation (Rule (Context a), Environment) (Context a)
-
-defaultDerivation :: Exercise a -> a -> ExerciseDerivation a
-defaultDerivation ex a =
-   let ca     = inContext ex a
-       tree   = sortTree (ruleOrdering ex `on` fst) (derivationTree False (strategy ex) ca)
-       single = emptyDerivation ca
-   in fromMaybe single (derivation tree)
-
-derivationDiffEnv :: Derivation s (Context a) -> Derivation (s, Environment) (Context a)
-derivationDiffEnv = updateSteps $ \old a new ->
-   let keep x = not (getId x `sameId` "location" || x `elem` list)
+-- | Adds the difference of the environments in a derivation to the steps. 
+-- Bindings with identifier @location@ are ignored. This utility function is
+-- useful for printing derivations.
+diffEnvironment :: HasEnvironment a => Derivation s a -> Derivation (s, Environment) a
+diffEnvironment = updateSteps $ \old a new ->
+   let keep x = not (getId x == newId "location" || x `elem` list)
        list = bindings old
    in (a, makeEnvironment $ filter keep $ bindings new)
 
-printDerivation :: Exercise a -> a -> IO ()
-printDerivation ex = putStrLn . showDerivation ex
-
----------------------------------------------------------------
--- Checks for an exercise
-
-checkExercise :: Exercise a -> IO ()
-checkExercise = runTestSuite . exerciseTestSuite
-
-exerciseTestSuite :: Exercise a -> TestSuite
-exerciseTestSuite ex = suite ("Exercise " ++ show (exerciseId ex)) $ do
-   -- get some exercises
-   xs <- if isJust (randomExercise ex)
-         then liftIO $ replicateM 10 (randomTerm ex Nothing)
-         else return (map snd (examples ex))
-   -- do tests
-   assertTrue "Exercise terms defined" (not (null xs))
-   assertTrue "Equivalence implemented" $
-      let eq a b = equivalence ex (inContext ex a) (inContext ex b)
-      in length (nubBy eq xs) > 1
-   assertTrue "Similarity implemented" $
-      let sim a b = similarity ex (inContext ex a) (inContext ex b)
-      in length (nubBy sim xs) > 1
-   checkExamples ex
-   case testGenerator ex of
-      Nothing  -> return ()
-      Just gen -> do
-         let showAsGen = showAs (prettyPrinter ex) gen
-         addProperty "parser/pretty printer" $ forAll showAsGen $
-            checkParserPrettyEx ex . inContext ex . fromS
-
-         {-
-         suite "Soundness non-buggy rules" $
-            forM_ (filter (not . isBuggyRule) $ ruleset ex) $ \r ->
-               let eq a b = equivalence ex (fromS a) (fromS b)
-                   myGen  = showAs (prettyPrinterContext ex) (liftM (inContext ex) gen)
-                   myView = makeView (return . fromS) (S (prettyPrinterContext ex))
-                   args   = stdArgs {maxSize = 10, maxSuccess = 10, maxDiscard = 100}
-               in addPropertyWith (showId r) args $
-                     propRuleSmart eq (liftView myView r) myGen -}
-
-         addProperty "soundness strategy/generator" $
-            forAll showAsGen $
-               maybe False (isReady ex) . fromContext
-               . applyD (strategy ex) . inContext ex . fromS
-
-data ShowAs a = S {showS :: a -> String, fromS :: a}
-
-instance Show (ShowAs a) where
-   show a = showS a (fromS a)
-
-showAs :: (a -> String) -> Gen a -> Gen (ShowAs a)
-showAs f = liftM (S f)
-
--- check combination of parser and pretty-printer
-checkParserPretty :: (a -> a -> Bool) -> (String -> Either String a) -> (a -> String) -> a -> Bool
-checkParserPretty eq p pretty a =
-   either (const False) (eq a) (p (pretty a))
-
-checkParserPrettyEx :: Exercise a -> Context a -> Bool
-checkParserPrettyEx ex ca =
-   let f    = mapSecond make . parser ex
-       make = newContext (environment ca) . navigation ex
-   in checkParserPretty (similarity ex) f (prettyPrinterContext ex) ca
-
-{-
-propRule :: Show a => (a -> a -> Bool) -> Rule a -> Gen a -> Property
-propRule eq r gen =
-   forAll gen $ \a ->
-   let xs = applyAll r a in
-   not (null xs) ==>
-   forAll (elements xs) $ \b ->
-   a `eq` b -}
-
-checkExamples :: Exercise a -> TestSuite
-checkExamples ex = do
-   let xs = map snd (examples ex)
-   unless (null xs) $ suite "Examples" $
-      mapM_ (checksForTerm True ex) xs
-
-checksForTerm :: Bool -> Exercise a -> a -> TestSuite
-checksForTerm leftMost ex a = do
-   let tree = derivationTree False (strategy ex) (inContext ex a)
-   -- Left-most derivation
-   when leftMost $
-      case derivation tree of
-         Just d  -> checksForDerivation ex d
-         Nothing ->
-            fail $ "no derivation for " ++ prettyPrinter ex a
-   -- Random derivation
-   g <- liftIO getStdGen
-   case randomDerivation g tree of
-      Just d  -> checksForDerivation ex d
-      Nothing -> return ()
-
-checksForDerivation :: Exercise a -> Derivation (Rule (Context a), Environment) (Context a) -> TestSuite
-checksForDerivation ex d = do
-   -- Conditions on starting term
-   let start = firstTerm d
-   assertTrue
-      ("start term not suitable: " ++ prettyPrinterContext ex start) $
-      maybe False (isSuitable ex) (fromContext start)
-
-   {-
-   b2 <- do let b = False -- maybe True (isReady ex) (fromContext start)
-            when b $ report $
-               "start term is ready: " ++ prettyPrinterContext ex start
-            return b-}
-   -- Conditions on final term
-   let final = lastTerm d
-   {-
-   b3 <- do let b = False -- maybe True (isSuitable ex) (fromContext final)
-            when b $ report $
-               "final term is suitable: " ++ prettyPrinterContext ex start
-               ++ "  =>  " ++ prettyPrinterContext ex final
-            return b -}
-   assertTrue
-      ("final term not ready: " ++ prettyPrinterContext ex start
-               ++ "  =>  " ++ prettyPrinterContext ex final) $
-      maybe False (isReady ex) (fromContext final)
-
-   -- Parser/pretty printer on terms
-   let ts  = terms d
-       p1  = not . checkParserPrettyEx ex
-   assertNull "parser/pretty-printer" $ take 1 $ flip map (filter p1 ts) $ \hd ->
-      let s = prettyPrinterContext ex hd
-      in "parse error for " ++ s ++ ": parsed as "
-         ++ either show (prettyPrinter ex) (parser ex s)
-
-   -- Equivalences between terms
-   let pairs    = [ (x, y) | x <- ts, y <- ts ]
-       p2 (x, y) = not (equivalence ex x y)
-   assertNull "equivalences" $ take 1 $ flip map (filter p2 pairs) $ \(x, y) ->
-      "not equivalent: " ++ prettyPrinterContext ex x
-      ++ "  with  " ++ prettyPrinterContext ex y
-
-   -- Similarity of terms
-   let p3 (x, (_, _), y) = similarity ex x y &&
-                           on (==) (maybe False (isReady ex) . fromContext) x y
-   assertNull  "similars" $ take 1 $ flip map (filter p3 (triples d)) $ \(x, r, y) ->
-      "similar subsequent terms: " ++ prettyPrinterContext ex x
-      ++ "  with  " ++ prettyPrinterContext ex y
-      ++ "  using  " ++ show r
-
-   assertNull "self similarity" $ take 1 $ do
-      x <- terms d
-      guard (not (similarity ex x x))
-      return $ "term not similar to itself: " ++ prettyPrinterContext ex x
-
-   -- Parameters
-   assertNull "parameters" $ take 1 $ do
-      (r, env) <- steps d
-      maybeToList (checkReferences r env)
+defaultDerivation :: Exercise a -> a -> Derivation (Rule (Context a), Environment) (Context a)
+defaultDerivation ex a =
+   case allDerivations ex a of
+      []  -> emptyDerivation (inContext ex a)
+      d:_ -> d
+   
+allDerivations :: Exercise a -> a -> [Derivation (Rule (Context a), Environment) (Context a)]
+allDerivations ex =
+   derivations . sortTree (ruleOrdering ex `on` fst) 
+   . derivationTree (strategy ex) . inContext ex

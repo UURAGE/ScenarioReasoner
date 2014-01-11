@@ -158,7 +158,8 @@ processLabelInfo getInfo = rec []
  where
    rec env core =
       case core of
-         Rec n a   -> Rec n (rec ((n, core):env) a)
+         -- Rec n a   -> Rec n (rec ((n, core):env) a) 
+         -- Let ??
          Label l a -> forLabel env l (rec env a)
          _ -> descend (rec env) core
 
@@ -178,14 +179,14 @@ processLabelInfo getInfo = rec []
 
 -- | Returns the derivation tree for a strategy and a term, including all
 -- minor rules
-fullDerivationTree :: IsStrategy f => Bool -> f a -> a -> DerivationTree (Step LabelInfo a) a
-fullDerivationTree search = make . processLabelInfo id . toCore . toStrategy
+fullDerivationTree :: IsStrategy f => f a -> a -> DerivationTree (Step LabelInfo a) a
+fullDerivationTree = make . processLabelInfo id . toCore . toStrategy
  where
-   make core = fmap value . parseDerivationTree search . makeState core
+   make core a = fmap fst (parseDerivationTree a (makeState a core))
 
 -- | Returns the derivation tree for a strategy and a term with only major rules
-derivationTree :: IsStrategy f => Bool -> f a -> a -> DerivationTree (Rule a, Environment) a
-derivationTree search s = mergeMaybeSteps . mapFirst f . fullDerivationTree search s
+derivationTree :: IsStrategy f => f a -> a -> DerivationTree (Rule a, Environment) a
+derivationTree s = mergeMaybeSteps . mapFirst f . fullDerivationTree s
  where
    f (RuleStep env r) | isMajor r = Just (r, env)
    f _ = Nothing
@@ -215,7 +216,7 @@ mapRulesM f = liftM S . T.mapM f . toCore
 cleanUpStrategy :: (a -> a) -> LabeledStrategy a -> LabeledStrategy a
 cleanUpStrategy f (LS n s) = cleanUpStrategyAfter f (LS n (make s))
  where
-   make = liftCore2 (.*.) (doAfter f (idRule ()))
+   make = liftCore2 (:*:) (doAfter f (idRule ()))
 
 -- | Use a function as do-after hook for all rules in a labeled strategy
 cleanUpStrategyAfter :: (a -> a) -> LabeledStrategy a -> LabeledStrategy a
@@ -226,7 +227,6 @@ noInterleaving :: IsStrategy f => f a -> Strategy a
 noInterleaving = liftCore $ transform f
    where
       f (a :%:  b) = a :*: b
-      f (a :!%: b) = a :*: b
       f (Atomic a) = a
       f s          = s
 

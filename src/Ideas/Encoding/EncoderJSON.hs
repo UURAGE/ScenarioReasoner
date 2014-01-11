@@ -95,7 +95,7 @@ encodeState = encoderStateFor $ \encTerm st ->
    let f x = [ String (showId (exercise st))
              , String $ case statePrefixes st of
                            [] -> "NoPrefix"
-                           ps -> intercalate ";" $ map show ps
+                           ps -> intercalate ";" $ map showPrefix ps
              , encTerm (stateTerm st)
              , x
              ]
@@ -122,8 +122,9 @@ encodeResult = encoderFor $ \result -> Object <$>
          [ ("result", String "Buggy")
          , ("rules", Array $ map (String . showId) rs)
          ]
-      Submit.NotEquivalent -> pure
-         [ ("result", String "NotEquivalent") ]
+      Submit.NotEquivalent s -> pure $
+         [ ("result", String "NotEquivalent") ] ++
+         [ ("reason", String s) | not (null s)]
       Submit.Ok rs st ->
          let f x =
                 [ ("result", String "Ok")
@@ -148,24 +149,31 @@ encodeResult = encoderFor $ \result -> Object <$>
 encodeDiagnosis :: JSONEncoder a (Diagnose.Diagnosis a)
 encodeDiagnosis = encoderFor $ \diagnosis ->
    case diagnosis of
-      Diagnose.NotEquivalent ->
-         pure $ Object [("notequiv", Null)]
+      Diagnose.NotEquivalent s ->
+         if null s then pure (Object [("notequiv", Null)])
+                   else make "notequiv" [fromReason s]
       Diagnose.Buggy env r ->
          make "buggy" [fromEnv env, fromRule r]
       Diagnose.Similar b st ->
          make "similar" [fromReady b, fromState st]
+      Diagnose.WrongRule b st mr -> 
+         make "wrongrule" [fromReady b, fromState st, fromMaybeRule mr]
       Diagnose.Expected b st r ->
          make "expected" [fromReady b, fromState st, fromRule r]
       Diagnose.Detour b st env r ->
          make "detour" [fromReady b, fromState st, fromEnv env, fromRule r]
       Diagnose.Correct b st ->
          make "correct" [fromReady b, fromState st]
+      Diagnose.Unknown b st ->
+         make "unknown" [fromReady b, fromState st]
  where
    make s = liftM (\xs -> Object [(s, Array xs)]) . sequence
-   fromEnv env  = jsonEncoder // (env ::: typed)
-   fromRule r   = return (toJSON (showId r))
-   fromReady b  = return (Object [("ready", toJSON b)])
-   fromState st = jsonEncoder // (st ::: typed)
+   fromEnv env      = jsonEncoder // (env ::: typed)
+   fromRule r       = return (toJSON (showId r))
+   fromMaybeRule mr = return (maybe Null (toJSON . showId) mr)
+   fromReady b      = return (Object [("ready", toJSON b)])
+   fromState st     = jsonEncoder // (st ::: typed)
+   fromReason s     = return (Object [("reason", toJSON s)])
 
 {-
 encodeTree :: Tree JSON -> JSON

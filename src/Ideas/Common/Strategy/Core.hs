@@ -15,29 +15,30 @@
 -----------------------------------------------------------------------------
 module Ideas.Common.Strategy.Core
    ( GCore(..), Core
-   , (.|.), (.*.), (.%.)
-   , coreMany, coreRepeat, coreOrElse, coreFix
+   , coreFix, coreSubstAll
    , noLabels, substCoreVar
    ) where
 
-import Control.Applicative
+import Data.Maybe
 import Ideas.Common.Classes
 import Ideas.Common.Rule
 import Ideas.Common.Utils.QuickCheck
 import Ideas.Common.Utils.Uniplate
-import qualified Data.Foldable as F
-import qualified Data.Traversable as T
+import Ideas.Common.Strategy.Sequential
 
 -----------------------------------------------------------------
 -- Strategy (internal) data structure, containing a selection
 -- of combinators
 
-infixr 2 :%:, :!%:, .%.
-infixr 3 :|:, :|>:, .|.
-infixr 5 :*:, .*.
+infixr 2 :%:, :@:
+infixr 3 :|:, :|>:
+infixr 5 :*:
 
 -- | Core expression, with rules
 type Core l a = GCore l (Rule a)
+
+-- | An environment with generalized Core expressions
+type CoreEnv l a = [(Int, GCore l a)]
 
 -- | A generalized Core expression, not restricted to rules. This makes GCore
 -- a (traversable and foldable) functor.
@@ -46,18 +47,23 @@ data GCore l a
    | GCore l a :|:  GCore l a
    | GCore l a :|>: GCore l a
    | GCore l a :%:  GCore l a -- interleave
-   | GCore l a :!%: GCore l a -- interleave-first-from-left
-   | Many    (GCore l a)
-   | Repeat  (GCore l a)
-   | Not     (GCore l a)
+   | GCore l a :@:  GCore l a -- alternate
    | Label l (GCore l a)
    | Atomic  (GCore l a)
    | Succeed
    | Fail
    | Rule a -- ^ Generalized constructor (not restricted to rules)
    | Var Int
-   | Rec Int (GCore l a)
+   | Let (CoreEnv l a) (GCore l a)
  deriving Show
+
+instance Sequential (GCore l) where
+   ok     = Succeed
+   stop   = Fail
+   single = Rule
+   (<|>)  = (:|:)
+   (<?>)  = (:|>:)
+   (<*>)  = (:*:)
 
 -----------------------------------------------------------------
 -- Useful instances
@@ -72,13 +78,12 @@ instance Uniplate (GCore l a) where
          a :|: b   -> plate (:|:)  |* a |* b
          a :|>: b  -> plate (:|>:) |* a |* b
          a :%: b   -> plate (:%:)  |* a |* b
-         a :!%: b  -> plate (:!%:) |* a |* b
-         Many a    -> plate Many   |* a
-         Repeat a  -> plate Repeat |* a
+         a :@: b   -> plate (:@:)  |* a |* b
          Label l a -> plate Label  |- l |* a
          Atomic a  -> plate Atomic |* a
-         Rec n a   -> plate Rec    |- n |* a
-         Not a     -> plate Not    |* a
+         Let ds a  -> let (ns, bs) = unzip ds
+                          make     = Let . zip ns 
+                      in plate make ||* bs |* a
          _         -> plate core
 
 instance BiFunctor GCore where
@@ -90,39 +95,14 @@ instance BiFunctor GCore where
             a :|: b   -> rec a :|:  rec b
             a :|>: b  -> rec a :|>: rec b
             a :%: b   -> rec a :%:  rec b
-            a :!%: b  -> rec a :!%: rec b
-            Many a    -> Many   (rec a)
-            Repeat a  -> Repeat (rec a)
-            Not a     -> Not    (rec a)
+            a :@: b   -> rec a :@:  rec b
             Atomic a  -> Atomic (rec a)
-            Rec n a   -> Rec n  (rec a)
+            Let ds a  -> Let (map (mapSecond rec) ds) (rec a)
             Label l a -> Label (f l) (rec a)
             Rule a    -> Rule (g a)
             Var n     -> Var n
             Succeed   -> Succeed
             Fail      -> Fail
-
-instance T.Traversable (GCore l) where
-   traverse f core =
-      case core of
-         a :*: b   -> (:*:)   <$> T.traverse f a <*> T.traverse f b
-         a :|: b   -> (:|:)   <$> T.traverse f a <*> T.traverse f b
-         a :|>: b  -> (:|>:)  <$> T.traverse f a <*> T.traverse f b
-         a :%: b   -> (:%:)   <$> T.traverse f a <*> T.traverse f b
-         a :!%: b  -> (:!%:)  <$> T.traverse f a <*> T.traverse f b
-         Many a    -> Many    <$> T.traverse f a
-         Repeat a  -> Repeat  <$> T.traverse f a
-         Label l a -> Label l <$> T.traverse f a
-         Atomic a  -> Atomic  <$> T.traverse f a
-         Rec n a   -> Rec n   <$> T.traverse f a
-         Not a     -> Not     <$> T.traverse f a
-         Rule r    -> Rule    <$> f r
-         Succeed   -> pure Succeed
-         Fail      -> pure Fail
-         Var n     -> pure $ Var n
-
-instance F.Foldable (GCore l) where
-   foldMap = T.foldMapDefault
 
 instance (Arbitrary l, Arbitrary a) => Arbitrary (GCore l a) where
    arbitrary = generators
@@ -132,44 +112,23 @@ instance (Arbitrary l, Arbitrary a) => Arbitrary (GCore l a) where
       ]
 
 -----------------------------------------------------------------
--- Smart constructors
-
-(.|.) :: GCore l a -> GCore l a -> GCore l a
-Fail .|. b    = b
-a    .|. Fail = a
-a    .|. b    = a :|: b
-
-(.*.) :: GCore l a -> GCore l a -> GCore l a
-Fail    .*. _       = Fail
-Succeed .*. b       = b
-_       .*. Fail    = Fail
-a       .*. Succeed = a
-a       .*. b       = a :*: b
-
-(.%.) :: GCore l a -> GCore l a -> GCore l a
-Fail    .%. _       = Fail
-Succeed .%. b       = b
-_       .%. Fail    = Fail
-a       .%. Succeed = a
-a       .%. b       = a :%: b
-
------------------------------------------------------------------
 -- Definitions
-
-coreMany :: GCore l a -> GCore l a
-coreMany a = Rec n (Succeed :|: (a :*: Var n))
- where n = nextVar a
-
-coreRepeat :: GCore l a -> GCore l a
-coreRepeat a = Many a :*: Not a
-
-coreOrElse :: GCore l a -> GCore l a -> GCore l a
-coreOrElse a b = a :|: (Not a :*: b)
 
 coreFix :: (GCore l a -> GCore l a) -> GCore l a
 coreFix f = -- disadvantage: function f is applied twice
    let i = nextVar (f (Var (-1)))
-   in Rec i (f (Var i))
+   in coreRec i (f (Var i))
+
+coreRec :: Int -> GCore l a -> GCore l a 
+coreRec n a = Let [(n, a)] (Var n)
+
+coreSubstAll :: GCore l a -> GCore l a
+coreSubstAll = rec []
+ where
+   rec xs (Var i)    = fromMaybe (error "coreInf") (lookup i xs)
+   rec xs (Let ds a) = let this = [ (n, rec this b) | (n, b) <- ds ] ++ xs
+                       in rec this a
+   rec xs core       = descend (rec xs) core 
 
 -----------------------------------------------------------------
 -- Utility functions
@@ -177,9 +136,9 @@ coreFix f = -- disadvantage: function f is applied twice
 substCoreVar :: Int -> GCore l a -> GCore l a -> GCore l a
 substCoreVar i a core =
    case core of
-      Var j   | i==j -> a
-      Rec j _ | i==j -> core
-      _              -> descend (substCoreVar i a) core
+      Var j    | i==j -> a
+      Let ds _ | i `elem` map fst ds -> core
+      _               -> descend (substCoreVar i a) core
 
 nextVar :: GCore l a -> Int
 nextVar p
@@ -190,9 +149,10 @@ nextVar p
 coreVars :: GCore l a -> [Int]
 coreVars core =
    case core of
-      Var n   -> [n]
-      Rec n a -> n : coreVars a
-      _       -> concatMap coreVars (children core)
+      Var n    -> [n]
+      Let ds a -> let (ns, bs) = unzip ds
+                  in ns ++ concatMap coreVars (bs ++ [a])
+      _        -> concatMap coreVars (children core)
 
 noLabels :: GCore l a -> GCore l a
 noLabels (Label _ a) = noLabels a
