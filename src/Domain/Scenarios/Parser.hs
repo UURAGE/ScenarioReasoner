@@ -13,7 +13,8 @@ To-do list:
 module Domain.Scenarios.Parser
     ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription
-    , getScriptDifficulty, getScriptStartId, getScriptParameters
+    , getScriptDifficulty, getScriptBannerImage, getScriptCharacterImage
+    , getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
     , getType, getMaybePrecondition, getMedia, getEffects, getIntents, getText, getNexts
     , findStatement
@@ -56,6 +57,14 @@ getScriptDifficulty :: Monad m => Script -> m Difficulty
 getScriptDifficulty script = do
     difficultyString <- getMetaDataString "difficulty" script
     maybe (fail $ "Could not read difficulty " ++ difficultyString) return $ readDifficulty difficultyString
+
+-- | Queries the given script for its banner image.
+getScriptBannerImage :: Monad m => Script -> m (Maybe String)
+getScriptBannerImage = return . getMetaDataString "bannerImage"
+
+-- | Queries the given script for its character image.
+getScriptCharacterImage :: Monad m => Script -> m (Maybe String)
+getScriptCharacterImage = return . getMetaDataString "characterImage"
 
 -- | Queries the given script for its startId.
 getScriptStartId :: Monad m => Script -> m String

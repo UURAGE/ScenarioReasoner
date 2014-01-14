@@ -14,20 +14,31 @@ import Domain.Scenarios.Parser
 
 customServices :: [Script] -> [Service]
 customServices scripts = map (flip ($) scripts)
-    [scenarioinfoS, statementsinfoS, scoreS]
+    [scenariolistS, scenarioinfoS, statementsinfoS, scoreS]
+    
+scenariolistS :: [Script] -> Service
+scenariolistS scripts = makeService "scenarios.scenariolist"
+    "Lists all available scenarios." $
+    (scenariolist scripts) ::: typed
+
+scenariolist :: [Script] -> [ScenarioInfo]
+scenariolist = map getScenarioInfoFor
 
 scenarioinfoS :: [Script] -> Service
 scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     (scenarioinfo scripts) ::: typed
 
-data ScenarioInfo = ScenarioInfo String String String [ParameterInfo]
+data ScenarioInfo = ScenarioInfo String String String Difficulty (Maybe String) (Maybe String) [ParameterInfo]
 instance Typed a ScenarioInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "name" typed)
                                 (Pair (Tag "description" typed)
-                                      (Tag "parameters" typed))))
-        where pairify (ScenarioInfo a b c d) = (a, (b, (c, d)))
+                                (Pair (Tag "difficulty" typed)
+                                (Pair (Tag "bannerImage" typed)
+                                (Pair (Tag "characterImage" typed)
+                                      (Tag "parameters" typed)))))))
+        where pairify (ScenarioInfo a b c d e f g) = (a, (b, (c, (d, (e, (f, g))))))
 
 data ParameterInfo = ParameterInfo String String (Maybe String)
 instance Typed a ParameterInfo where
@@ -37,15 +48,23 @@ instance Typed a ParameterInfo where
         where pairify (ParameterInfo a b c) = (a, (b, c))
 
 scenarioinfo :: [Script] -> Exercise a -> ScenarioInfo
-scenarioinfo scripts ex = ScenarioInfo
+scenarioinfo scripts ex = getScenarioInfoFor $ findScript "get info for" scripts ex
+
+getScenarioInfoFor :: Script -> ScenarioInfo
+getScenarioInfoFor script = ScenarioInfo
                 (scriptId)
                 (scriptName)
                 (scriptDescription)
+                (scriptDifficulty)
+                (scriptBannerImage)
+                (scriptCharacterImage)
                 (scriptParameters)
-    where script = findScript "get info for" scripts ex
-          scriptId = show $ getId script
+    where scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
           scriptDescription = errorOnFail $ getScriptDescription script
+          scriptDifficulty = errorOnFail $ getScriptDifficulty script
+          scriptBannerImage = errorOnFail $ getScriptBannerImage script
+          scriptCharacterImage = errorOnFail $ getScriptCharacterImage script
           scriptParameters = map describeParameter $ errorOnFail $ getScriptParameters script
           describeParameter param = ParameterInfo
                 (parameterId param)
