@@ -9,7 +9,10 @@ import Domain.Scenarios.Parser
 import Domain.Scenarios.Strategy
 
 getExercises :: IO ([Exercise State], [Script])
-getExercises = liftM unzip $ mapM getExercise [""]
+getExercises = do
+    exerciseScriptPairs <- mapM getExercise [""]
+    let (exercises, scripts) = unzip exerciseScriptPairs
+    return (dummyExercise : exercises, scripts)
 
 getExercise :: String -> IO (Exercise State, Script)
 getExercise path = do
@@ -41,3 +44,7 @@ exerciseFromScript script = do
        -- , randomExercise = undefined
        , examples = [(scriptDifficulty, initialState)]
        }
+
+-- A dummy exercise necessary for use with general services
+dummyExercise :: Exercise State
+dummyExercise = makeExercise { exerciseId = newId "scenarios-dummy" }
