@@ -16,7 +16,8 @@ module Domain.Scenarios.Parser
     , getScriptDifficulty, getScriptBannerImage, getScriptCharacterImage
     , getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
-    , getType, getMaybePrecondition, getMedia, getEffects, getIntents, getText, getNexts
+    , getType, getMaybePrecondition, getMedia, getEffects, getIntents
+    , getFeedback, getText, getNexts
     , findStatement
     , parseScript
     , createFullId
@@ -135,6 +136,11 @@ getText (Statement element) =
             return $ Left $ getData textElem
     where toConversationText textEl =
             (read $ applyToFirst toUpper $ name textEl, getData textEl)
+
+getFeedback :: Monad m => Statement -> m (Maybe String)
+getFeedback (Statement element) = return $
+    findChild "feedback" element >>=
+    return . getData
 
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]

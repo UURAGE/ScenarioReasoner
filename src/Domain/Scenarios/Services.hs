@@ -78,14 +78,16 @@ statementsinfoS scripts = makeService "scenarios.statementsinfo"
     "Returns information for all statements of the scenario." $
     (statementsinfo scripts) ::: typed
 
-data StatementInfo = StatementInfo String String (Either String [(String, String)]) [String] MediaInfo
+type StatementText = (Either String [(String, String)])
+data StatementInfo = StatementInfo String String StatementText [String] (Maybe String) MediaInfo
 instance Typed a StatementInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "type" typed)
                                 (Pair (Tag "text" typed)
                                 (Pair (Tag "intents" typed)
-                                      (Tag "media" typed)))))
-        where pairify (StatementInfo a b c d e) = (a, (b, (c, (d, e))))
+                                (Pair (Tag "feedback" typed)
+                                      (Tag "media" typed))))))
+        where pairify (StatementInfo a b c d e f) = (a, (b, (c, (d, (e, f)))))
 
 data MediaInfo = MediaInfo [String] [String] [String]
 instance Typed a MediaInfo where
@@ -103,6 +105,7 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                 (either Left (Right . map showConversationTextTypeStringTuple) $
                     errorOnFail $ getText statement)
                 (emptyOnFail $ getIntents statement)
+                (errorOnFail $ getFeedback statement)
                 (MediaInfo
                     (emptyOnFail $ getMedia "video" statement)
                     (emptyOnFail $ getMedia "image" statement)
