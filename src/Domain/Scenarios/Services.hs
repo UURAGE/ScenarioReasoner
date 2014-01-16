@@ -34,11 +34,13 @@ instance Typed a ScenarioInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "name" typed)
                                 (Pair (Tag "description" typed)
-                                (Pair (Tag "difficulty" typed)
+                                (Pair (tag "difficulty" typed)
                                 (Pair (Tag "bannerImage" typed)
                                 (Pair (Tag "characterImage" typed)
                                       (Tag "parameters" typed)))))))
         where pairify (ScenarioInfo a b c d e f g) = (a, (b, (c, (d, (e, (f, g))))))
+              tag s (Tag _ t) = Tag s t
+              tag s t         = Tag s t
 
 data ParameterInfo = ParameterInfo String String (Maybe String)
 instance Typed a ParameterInfo where
