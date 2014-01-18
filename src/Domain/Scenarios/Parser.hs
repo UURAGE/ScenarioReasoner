@@ -16,8 +16,8 @@ module Domain.Scenarios.Parser
     , getScriptDifficulty, getScriptBannerImage, getScriptCharacterImage
     , getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
-    , getType, getMaybePrecondition, getMedia, getEffects, getIntents
-    , getFeedback, getText, getNexts
+    , getType, getMaybePrecondition, getMediaVisuals, getMediaAudios
+    , getEffects, getIntents, getFeedback, getText, getNexts
     , findStatement
     , parseScript
     , createFullId
@@ -61,11 +61,17 @@ getScriptDifficulty script = do
 
 -- | Queries the given script for its banner image.
 getScriptBannerImage :: Monad m => Script -> m (Maybe String)
-getScriptBannerImage = return . getMetaDataString "bannerImage"
+getScriptBannerImage (Script scriptElem) = return $
+    findChild "metadata" scriptElem >>=
+    findChild "bannerImage" >>=
+    findAttribute "extid"
 
 -- | Queries the given script for its character image.
 getScriptCharacterImage :: Monad m => Script -> m (Maybe String)
-getScriptCharacterImage = return . getMetaDataString "characterImage"
+getScriptCharacterImage (Script scriptElem) = return $
+    findChild "metadata" scriptElem >>=
+    findChild "characterImage" >>=
+    findAttribute "extid"
 
 -- | Queries the given script for its startId.
 getScriptStartId :: Monad m => Script -> m String
@@ -103,12 +109,20 @@ getMaybePrecondition :: Monad m => Statement -> m (Maybe Condition)
 getMaybePrecondition (Statement element) =
     maybe (return Nothing) (liftM Just . parseConditionRoot) $ findChild "preconditions" element
 
--- | Takes a statement and a media type and returns the media of that type
--- associated with that element.
-getMedia :: Monad m => String -> Statement -> m [String]
-getMedia mediaType (Statement element) = return $
+-- | Takes a statement and returns its visual media.
+getMediaVisuals :: Monad m => Statement -> m [(String, String)]
+getMediaVisuals (Statement element) = return $
     childrenNamed "media" element >>=
-    childrenNamed mediaType >>=
+    findChild "visuals" >>=
+    children >>=
+    parseVisual
+
+-- | Takes a statement and returns its visual media.
+getMediaAudios :: Monad m => Statement -> m [String]
+getMediaAudios (Statement element) = return $
+    childrenNamed "media" element >>=
+    findChild "audios" >>=
+    children >>=
     findAttribute "extid"
 
 -- | Takes a statement and returns its effects.
@@ -184,6 +198,12 @@ parseScript filepath = do
 
 -- Functions to be used internally
 ------------------------------------------------------
+
+-- | Parses a visual (video or image).
+parseVisual :: Monad m => Element -> m (String, String)
+parseVisual element = do
+    extid <- findAttribute "extid" element
+    return (name element, extid)
 
 -- | Parses an effect.
 parseEffect :: Element -> Effect

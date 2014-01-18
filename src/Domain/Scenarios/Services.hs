@@ -89,12 +89,11 @@ instance Typed a StatementInfo where
                                       (Tag "media" typed))))))
         where pairify (StatementInfo a b c d e f) = (a, (b, (c, (d, (e, f)))))
 
-data MediaInfo = MediaInfo [String] [String] [String]
+data MediaInfo = MediaInfo [(String, String)] [String]
 instance Typed a MediaInfo where
-    typed = Iso ((<-!) pairify) (Pair (Tag "videos" typed)
-                                (Pair (Tag "images" typed)
-                                      (Tag "audios" typed)))
-        where pairify (MediaInfo a b c) = (a, (b, c))
+    typed = Iso ((<-!) pairify) (Pair (Tag "visuals" typed)
+                                      (Tag "audios" typed))
+        where pairify (MediaInfo a b) = (a, b)
 
 statementsinfo :: [Script] -> Exercise a -> [StatementInfo]
 statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
@@ -107,9 +106,8 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                 (emptyOnFail $ getIntents statement)
                 (errorOnFail $ getFeedback statement)
                 (MediaInfo
-                    (emptyOnFail $ getMedia "video" statement)
-                    (emptyOnFail $ getMedia "image" statement)
-                    (emptyOnFail $ getMedia "audio" statement)
+                    (emptyOnFail $ getMediaVisuals statement)
+                    (emptyOnFail $ getMediaAudios statement)
                 )
           emptyOnFail = fromMaybe []
           showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
