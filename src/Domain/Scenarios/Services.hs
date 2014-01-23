@@ -29,7 +29,14 @@ scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     (scenarioinfo scripts) ::: typed
 
-data ScenarioInfo = ScenarioInfo String String String Difficulty (Maybe String) (Maybe String) [ParameterInfo]
+data ScenarioInfo = ScenarioInfo String
+                                 String
+                                 String
+                                 Difficulty
+                                 (Maybe String)
+                                 (Maybe String)
+                                 (Maybe String)
+                                 [ParameterInfo]
 instance Typed a ScenarioInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "name" typed)
@@ -37,12 +44,15 @@ instance Typed a ScenarioInfo where
                                 (Pair (tag "difficulty" typed)
                                 (Pair (Tag "bannerImage" typed)
                                 (Pair (Tag "characterImage" typed)
-                                      (Tag "parameters" typed)))))))
-        where pairify (ScenarioInfo a b c d e f g) = (a, (b, (c, (d, (e, (f, g))))))
+                                (Pair (Tag "model" typed)
+                                      (Tag "parameters" typed))))))))
+        where pairify (ScenarioInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
               tag s (Tag _ t) = Tag s t
               tag s t         = Tag s t
 
-data ParameterInfo = ParameterInfo String String (Maybe String)
+data ParameterInfo = ParameterInfo String
+                                   String
+                                   (Maybe String)
 instance Typed a ParameterInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "name" typed)
@@ -60,6 +70,7 @@ getScenarioInfoFor script = ScenarioInfo
                 (scriptDifficulty)
                 (scriptBannerImage)
                 (scriptCharacterImage)
+                (scriptModel)
                 (scriptParameters)
     where scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
@@ -67,6 +78,7 @@ getScenarioInfoFor script = ScenarioInfo
           scriptDifficulty = errorOnFail $ getScriptDifficulty script
           scriptBannerImage = errorOnFail $ getScriptBannerImage script
           scriptCharacterImage = errorOnFail $ getScriptCharacterImage script
+          scriptModel = errorOnFail $ getScriptModel script
           scriptParameters = map describeParameter $ errorOnFail $ getScriptParameters script
           describeParameter param = ParameterInfo
                 (parameterId param)
@@ -79,7 +91,12 @@ statementsinfoS scripts = makeService "scenarios.statementsinfo"
     (statementsinfo scripts) ::: typed
 
 type StatementText = (Either String [(String, String)])
-data StatementInfo = StatementInfo String String StatementText [String] (Maybe String) MediaInfo
+data StatementInfo = StatementInfo String
+                                   String
+                                   StatementText
+                                   [String]
+                                   (Maybe String)
+                                   MediaInfo
 instance Typed a StatementInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "type" typed)

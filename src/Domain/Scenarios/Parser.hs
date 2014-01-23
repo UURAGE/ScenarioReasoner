@@ -1,19 +1,17 @@
 -----------------------------------------------------------------------------
 {- |
-Basic functions to query an XML script as specified by the Communicate!-team. Some things to note are:
+Basic functions to query a ScriptLanguage XML script as specified by the
+Communicate!-team.
 
-- This code doesn't do any error checking on the script. IO-exceptions and scripts deviating from the specifications
-will lead to unspecified behaviour (most likely a Haskell-exception).
-
-To-do list:
-
--add a "getScriptModel" function. Need more information about possible models for that.
+This code doesn't do any error checking on the script. Scripts deviating
+from the specifications may lead to unspecified behaviour (most likely
+a Haskell-exception).
 -}
 -----------------------------------------------------------------------------
 module Domain.Scenarios.Parser
     ( Script
-    , getScriptId, getScriptName, getScriptDate, getScriptDescription
-    , getScriptDifficulty, getScriptBannerImage, getScriptCharacterImage
+    , getScriptId, getScriptName, getScriptDate, getScriptDescription, getScriptDifficulty
+    , getScriptModel, getScriptBannerImage, getScriptCharacterImage
     , getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptStatements
     , getType, getMaybePrecondition, getMediaVisuals, getMediaAudios
@@ -71,6 +69,13 @@ getScriptCharacterImage :: Monad m => Script -> m (Maybe String)
 getScriptCharacterImage (Script scriptElem) = return $
     findChild "metadata" scriptElem >>=
     findChild "characterImage" >>=
+    findAttribute "extid"
+
+-- | Queries the given script for its model.
+getScriptModel :: Monad m => Script -> m (Maybe String)
+getScriptModel (Script scriptElem) = return $
+    findChild "metadata" scriptElem >>=
+    findChild "model" >>=
     findAttribute "extid"
 
 -- | Queries the given script for its startId.
