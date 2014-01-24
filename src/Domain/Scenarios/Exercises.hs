@@ -1,6 +1,8 @@
 module Domain.Scenarios.Exercises where
 
 import Control.Monad
+import Data.List
+import System.Directory
 
 import Ideas.Common.Library
 
@@ -10,9 +12,12 @@ import Domain.Scenarios.Strategy
 
 getExercises :: IO ([Exercise State], [Script])
 getExercises = do
-    exerciseScriptPairs <- mapM getExercise [""]
+    let directoryPath = "../../scenarios/scripts/"
+    directoryContents <- getDirectoryContents directoryPath
+    let scriptFiles = map (directoryPath++) $ filter (isSuffixOf ".xml") $ directoryContents
+    exerciseScriptPairs <- mapM getExercise scriptFiles
     let (exercises, scripts) = unzip exerciseScriptPairs
-    return (dummyExercise : exercises, scripts)
+    return $ (dummyExercise : exercises, scripts)
 
 getExercise :: String -> IO (Exercise State, Script)
 getExercise path = do
