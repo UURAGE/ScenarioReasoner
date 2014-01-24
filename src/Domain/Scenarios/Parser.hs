@@ -25,6 +25,7 @@ import Control.Monad
 import Data.Char
 import Data.List
 import Data.Maybe
+import System.IO (withBinaryFile, hGetContents, IOMode(..))
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
@@ -198,8 +199,8 @@ findTypedStatement (Script scriptElem) statementType idVar = head (filter
 -- | Parses the XML script at "filepath" to a Script.
 parseScript :: String -> IO Script
 parseScript filepath = do
-    text <- readFile filepath
-    either fail (return . Script) (parseXML text)
+    withBinaryFile filepath ReadMode $ \h ->
+      hGetContents h >>= either fail (return . Script) . parseXML
 
 -- Functions to be used internally
 ------------------------------------------------------
