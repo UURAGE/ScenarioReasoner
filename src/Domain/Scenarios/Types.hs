@@ -4,6 +4,7 @@ module Domain.Scenarios.Types where
 import Control.Monad
 import Data.Char
 import qualified Data.Map as M
+import Data.Maybe
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils
@@ -34,6 +35,10 @@ data Parameter = Parameter
         , parameterScored       :: Bool
         } deriving (Show, Eq)
 type Emotion = String
+
+-- | Returns the initial value of a parameter, or zero if it does not have one.
+parameterInitialValueOrZero :: Parameter -> ParameterValue
+parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
 
 -- | A value describing the type of a statement element 
 data StatementElementType = ComputerStatement | PlayerStatement | Conversation

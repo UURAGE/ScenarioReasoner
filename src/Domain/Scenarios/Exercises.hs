@@ -30,8 +30,8 @@ exerciseFromScript script = do
     scriptDifficulty <- getScriptDifficulty script
     scriptStrategy <- makeStrategy script
     scriptParameters <- getScriptParameters script
-    let initialState = fromList [(i, v) |
-            Parameter {parameterId = i, parameterInitialValue = Just v} <- scriptParameters]
+    let processParameter p = (parameterId p, parameterInitialValueOrZero p)
+        initialState = fromList $ map processParameter scriptParameters
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
