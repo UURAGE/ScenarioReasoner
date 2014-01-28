@@ -23,7 +23,13 @@ data ComparisonCondition = ComparisonsCondition
         , conditionTest  :: CompareOperator
         , conditionValue :: ParameterValue
         } deriving (Show, Eq)
-data CompareOperator = LessThan | LessThanEqualTo | EqualTo | GreaterThanEqualTo | GreaterThan deriving (Show, Eq, Read)
+data CompareOperator = LessThan
+                     | LessThanEqualTo
+                     | EqualTo
+                     | GreaterThanEqualTo
+                     | GreaterThan
+                     | NotEqualTo
+                     deriving (Show, Eq, Read)
 type ParameterValue = Int
 
 -- | A parameter
@@ -101,6 +107,7 @@ calculateCompareOperator operator = case operator of
             EqualTo -> (==)
             GreaterThanEqualTo -> (>=)
             GreaterThan -> (>)
+            NotEqualTo -> (/=)
 
 -- | Calculates the value of a scoring function based on the given state.
 calculateScore :: ScoringFunction -> State -> Int
