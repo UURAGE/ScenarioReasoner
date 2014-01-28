@@ -13,7 +13,7 @@ module Domain.Scenarios.Parser
     , getScriptId, getScriptName, getScriptDate, getScriptDescription, getScriptDifficulty
     , getScriptModel, getScriptBannerImage, getScriptCharacterImage
     , getScriptStartId, getScriptParameters
-    , getScriptScoringFunction, getScriptStatements
+    , getScriptScoringFunction, getScriptScoreExtremes, getScriptStatements
     , getType, getMaybePrecondition, getMediaVisuals, getMediaAudios
     , getEffects, getIntents, getFeedback, getText, getNexts
     , findStatement
@@ -100,6 +100,14 @@ getScriptScoringFunction (Script scriptElem) =
     findChild "scoringFunction" >>=
     getExactlyOne "scoring function" . children >>=
     parseScoringFunction
+
+getScriptScoreExtremes :: Monad m => Script -> m (Int, Int)
+getScriptScoreExtremes (Script scriptElem) =
+    findChild "metadata" scriptElem >>=
+    findChild "scoreExtremes" >>= \scoreExtremesElem -> do
+    minimumValue <- findAttribute "minimum" scoreExtremesElem
+    maximumValue <- findAttribute "maximum" scoreExtremesElem
+    return (read minimumValue, read maximumValue)
 
 -- | Extracts all statements from the given script.
 getScriptStatements :: Monad m => Script -> m [Statement]

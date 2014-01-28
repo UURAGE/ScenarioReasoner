@@ -134,8 +134,11 @@ scoreS scripts = makeService "scenarios.score"
     "Calculates the score of a given state." $
     (score scripts) ::: typed
 
-score :: [Script] -> State a -> (Int, [(String, String, Int)])
-score scripts fstate = (mainScore, subScores)
+-- Legacy (non-Typed-customised) result structure because of existing usage.
+-- Maybe [Int] instead of Maybe (Int, Int) because the latter is merged into
+-- the main structure by EncoderJSON.
+score :: [Script] -> State a -> (Int, [(String, String, Int)], Maybe [Int])
+score scripts fstate = (mainScore, subScores, mainScoreExtremes)
     where script = findScript "score" scripts $ exercise fstate
           state = (fromMaybe (error "Cannot score exercise: casting failed.") $
                       castFrom (exercise fstate) (stateTerm fstate))
@@ -144,6 +147,8 @@ score scripts fstate = (mainScore, subScores)
                   getScriptScoringFunction script)
               (state)
           subScores = calculateSubScores (fromMaybe [] $ getScriptParameters script) state
+          mainScoreExtremes = getScriptScoreExtremes script >>= return . tupleToList
+          tupleToList (a, b) = [a, b]
 
 findScript :: String -> [Script] -> Exercise a -> Script
 findScript usage scripts ex =
