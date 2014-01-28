@@ -101,8 +101,9 @@ getScriptScoringFunction (Script scriptElem) =
     getExactlyOne "scoring function" . children >>=
     parseScoringFunction
 
-getScriptScoreExtremes :: Monad m => Script -> m (Int, Int)
-getScriptScoreExtremes (Script scriptElem) =
+-- | Queries the given script for its score extremes.
+getScriptScoreExtremes :: Monad m => Script -> m (Maybe (Int, Int))
+getScriptScoreExtremes (Script scriptElem) = return $
     findChild "metadata" scriptElem >>=
     findChild "scoreExtremes" >>= \scoreExtremesElem -> do
     minimumValue <- findAttribute "minimum" scoreExtremesElem

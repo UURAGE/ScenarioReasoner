@@ -147,7 +147,7 @@ score scripts fstate = (mainScore, subScores, mainScoreExtremes)
                   getScriptScoringFunction script)
               (state)
           subScores = calculateSubScores (fromMaybe [] $ getScriptParameters script) state
-          mainScoreExtremes = getScriptScoreExtremes script >>= return . tupleToList
+          mainScoreExtremes = (errorOnFail $ getScriptScoreExtremes script) >>= return . tupleToList
           tupleToList (a, b) = [a, b]
 
 findScript :: String -> [Script] -> Exercise a -> Script
