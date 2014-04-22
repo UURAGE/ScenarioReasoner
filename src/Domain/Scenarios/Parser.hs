@@ -187,6 +187,10 @@ getNexts (Statement element) = do
                   Just nCSElem -> return $ children nCSElem
                   Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
 
+--| returns the start nodes of al trees in a script grouped by interleave level.
+getTrees :: Monad m => Script -> m [[String]]
+getTrees = undefined
+
 -- | Takes a script and a statement or conversation ID and 
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
@@ -205,7 +209,7 @@ findTypedStatement (Script scriptElem) statementType idVar = head (filter
     where elementName = applyToFirst toLower $ show statementType
           idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
 
--- | Parses the XML script at "filepath" to a Script.
+-- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
 parseScript :: String -> IO Script
 parseScript filepath = do
     withBinaryFile filepath ReadMode $ \h ->
