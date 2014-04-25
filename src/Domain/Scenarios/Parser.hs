@@ -80,11 +80,20 @@ getScriptModel (Script scriptElem) = return $
     findAttribute "extid"
 
 -- | Queries the given script for its startId.
+--getScriptStartId :: Monad m => Script -> m String
+--getScriptStartId (Script scriptElem) = do
+--    metadata          <- findChild "metadata" scriptElem
+--    dataElem          <- findChild "start" metadata
+--    findAttribute "idref" dataElem
+
+-- | gets the start of the first tree (EXPERIMENTAL)
 getScriptStartId :: Monad m => Script -> m String
 getScriptStartId (Script scriptElem) = do
-    metadata          <- findChild "metadata" scriptElem
-    dataElem          <- findChild "start" metadata
-    findAttribute "idref" dataElem
+        topSequence <- findChild "sequence" scriptElem
+        firstInterleave <- findChild "interleave" topSequence
+        firstTree <- findChild "tree" firstInterleave
+        let parsedTree = parseTree firstTree
+        return (startID parsedTree)
 
 -- | Queries the given script for its parameters.
 getScriptParameters :: Monad m => Script -> m [Parameter]
@@ -187,7 +196,7 @@ getNexts (Statement element) = do
                   Just nCSElem -> return $ children nCSElem
                   Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
 
---| returns the start nodes of al trees in a script grouped by interleave level.
+-- | returns the start nodes of al trees in a script grouped by interleave level.
 getTrees :: Monad m => Script -> m [[String]]
 getTrees = undefined
 
@@ -217,6 +226,12 @@ parseScript filepath = do
 
 -- Functions to be used internally
 ------------------------------------------------------
+
+parseTree :: Element -> Tree
+parseTree element = Tree 
+                { treeID = (head (findAttribute "id" element))  
+                , startID = (head (findAttribute "idref" (head ((findChild "start" element)))))
+                }
 
 -- | Parses a visual (video or image).
 parseVisual :: Monad m => Element -> m (String, String)
@@ -333,6 +348,7 @@ instance HasId Statement where
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementId
     changeId _ _ = error "The ID of a Statement is determined externally."
+
 
 -- | Creates the full ID for the given statement in the context of the given script.
 createFullId :: Script -> Statement -> Id

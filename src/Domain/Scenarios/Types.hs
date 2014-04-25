@@ -71,6 +71,16 @@ data ScoringFunction = Constant Int
                      | ParamRef String
                      | IntegeredCondition Condition
 
+-- | Holds all the trees contained in an interleave
+data Interleave = Interleave [Tree] [Sequence] --current model does not allow sequences within interleave. But might be necessary later
+        
+data Sequence = Sequence [Tree] [Interleave] --current model has one top level sequencce that contains only interleaves
+        
+data Tree = Tree
+        { treeID    :: String
+        , startID   :: String
+        }
+
 -- | Applies an effect to a state.
 applyEffect :: Effect -> State -> State
 applyEffect effect state = case effectChangeType effect of
