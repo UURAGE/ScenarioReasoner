@@ -187,7 +187,7 @@ getNexts (Statement element) = do
                   Just nCSElem -> return $ children nCSElem
                   Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
 
---| returns the start nodes of al trees in a script grouped by interleave level.
+-- | returns the start nodes of al trees in a script grouped by interleave level.
 getTrees :: Monad m => Script -> m [[String]]
 getTrees = undefined
 
