@@ -9,7 +9,7 @@ a Haskell-exception).
 -}
 -----------------------------------------------------------------------------
 module Domain.Scenarios.Parser
-    ( Script
+{-   ( Script
     , getScriptId, getScriptName, getScriptDate, getScriptDescription, getScriptDifficulty
     , getScriptModel, getScriptBannerImage, getScriptCharacterImage
     , getScriptStartId, getScriptParameters
@@ -19,7 +19,7 @@ module Domain.Scenarios.Parser
     , findStatement
     , parseScript
     , createFullId
-    ) where
+    ) -} where
 
 import Control.Monad
 import Data.Char
@@ -168,7 +168,7 @@ getText :: Monad m => Statement -> m (Either String [(ConversationTextType, Stri
 getText (Statement element) =
     case name element of
         "conversation" -> return $ Right $
-            map toConversationText $ filter (isSuffixOf "Text" . name) $ children element 
+            map toConversationText $ filter (isSuffixOf "Text" . name) $ children element
         _              -> do
             textElem <- findChild "text" element
             return $ Left $ getData textElem
@@ -200,7 +200,7 @@ getNexts (Statement element) = do
 getTrees :: Monad m => Script -> m [[String]]
 getTrees = undefined
 
--- | Takes a script and a statement or conversation ID and 
+-- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
 findStatement (Script scriptElem) idVar = if null foundElems
@@ -223,6 +223,7 @@ parseScript :: String -> IO Script
 parseScript filepath = do
     withBinaryFile filepath ReadMode $ \h ->
       hGetContents h >>= either fail (return . Script) . parseXML
+                        -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 
 -- Functions to be used internally
 ------------------------------------------------------
