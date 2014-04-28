@@ -205,10 +205,28 @@ getTrees (Script element) = do
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
 findStatement (Script scriptElem) idVar = if null foundElems
+                                            then fail $ "Cannot find statement with ID " ++ idVar
+                                            else return $ Statement (head foundElems)
+                                          where
+                                            foundElems = concat [findStatementAt x idVar idAttributeIs | x <- children scriptElem]
+                                            idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+
+    {-if null foundElems
         then fail $ "Cannot find statement with ID " ++ idVar
         else return $ Statement (head foundElems)
-    where foundElems = filter (idAttributeIs idVar) (children scriptElem)
-          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+    where foundElems = filter (idAttributeIs idVar) childElems
+          childElems = children scriptElem
+          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
+
+findStatementAt :: Element -> String -> (String -> Element -> Bool) -> [Element]
+findStatementAt scriptElem idVar comp = if comp idVar scriptElem
+                                            then (scriptElem : filteredChildren)
+                                            else filteredChildren
+                                        where
+                                            childElems = children scriptElem
+                                            filteredChildren = if null childElems
+                                                                  then []
+                                                                  else concat [findStatementAt x idVar comp | x <- children scriptElem]
 
 -- | Takes a script, a statement element type and a statement or conversation ID and
 -- returns the corresponding element.
