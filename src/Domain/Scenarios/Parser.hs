@@ -20,6 +20,7 @@ module Domain.Scenarios.Parser
     , parseScript
     , createFullId
     ) -} where
+import GHC.Exts (sortWith)
 
 import Control.Monad
 import Data.Char
@@ -80,20 +81,11 @@ getScriptModel (Script scriptElem) = return $
     findAttribute "extid"
 
 -- | Queries the given script for its startId.
---getScriptStartId :: Monad m => Script -> m String
---getScriptStartId (Script scriptElem) = do
---    metadata          <- findChild "metadata" scriptElem
---    dataElem          <- findChild "start" metadata
---    findAttribute "idref" dataElem
-
--- | gets the start of the first tree (EXPERIMENTAL)
 getScriptStartId :: Monad m => Script -> m String
 getScriptStartId (Script scriptElem) = do
-        topSequence <- findChild "sequence" scriptElem
-        firstInterleave <- findChild "interleave" topSequence
-        firstTree <- findChild "tree" firstInterleave
-        let parsedTree = parseTree firstTree
-        return (startID parsedTree)
+    metadata          <- findChild "metadata" scriptElem
+    dataElem          <- findChild "start" metadata
+    findAttribute "idref" dataElem
 
 -- | Queries the given script for its parameters.
 getScriptParameters :: Monad m => Script -> m [Parameter]
@@ -197,8 +189,17 @@ getNexts (Statement element) = do
                   Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
 
 -- | returns the start nodes of al trees in a script grouped by interleave level.
-getTrees :: Monad m => Script -> m [[String]]
-getTrees = undefined
+getTrees :: Monad m => Script -> m [[Tree]]
+getTrees (Script element) = do
+   firstSequence <- findChild "sequence" element
+   interleaves <- findChildren "interleave" firstSequence
+   levels <- mapM (\el ->findAttribute "level" el) interleaves
+   let intLevels = map (\x -> read x ::Int) levels
+   let zipped = zip intLevels interleaves
+   let sorted = sortWith (\(a,_)->a) zipped
+   return $ map ((\(_,b)->map parseTree (children b))) sorted
+   
+
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
