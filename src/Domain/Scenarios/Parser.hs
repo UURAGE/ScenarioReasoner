@@ -80,20 +80,20 @@ getScriptModel (Script scriptElem) = return $
     findAttribute "extid"
 
 -- | Queries the given script for its startId.
---getScriptStartId :: Monad m => Script -> m String
---getScriptStartId (Script scriptElem) = do
---    metadata          <- findChild "metadata" scriptElem
---    dataElem          <- findChild "start" metadata
---    findAttribute "idref" dataElem
-
--- | gets the start of the first tree (EXPERIMENTAL)
 getScriptStartId :: Monad m => Script -> m String
 getScriptStartId (Script scriptElem) = do
-        topSequence <- findChild "sequence" scriptElem
-        firstInterleave <- findChild "interleave" topSequence
-        firstTree <- findChild "tree" firstInterleave
-        let parsedTree = parseTree firstTree
-        return (startID parsedTree)
+    metadata          <- findChild "metadata" scriptElem
+    dataElem          <- findChild "start" metadata
+    findAttribute "idref" dataElem
+
+-- | gets the start of the first tree (EXPERIMENTAL)
+--getScriptStartId :: Monad m => Script -> m String
+--getScriptStartId (Script scriptElem) = do
+--        topSequence <- findChild "sequence" scriptElem
+--        firstInterleave <- findChild "interleave" topSequence
+--        firstTree <- findChild "tree" firstInterleave
+--        let parsedTree = parseTree firstTree
+--        return (startID parsedTree)
 
 -- | Queries the given script for its parameters.
 getScriptParameters :: Monad m => Script -> m [Parameter]
@@ -204,10 +204,28 @@ getTrees = undefined
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
 findStatement (Script scriptElem) idVar = if null foundElems
+                                            then fail $ "Cannot find statement with ID " ++ idVar
+                                            else return $ Statement (head foundElems)
+                                          where
+                                            foundElems = concat [findStatementAt x idVar idAttributeIs | x <- children scriptElem]
+                                            idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+
+    {-if null foundElems
         then fail $ "Cannot find statement with ID " ++ idVar
         else return $ Statement (head foundElems)
-    where foundElems = filter (idAttributeIs idVar) (children scriptElem)
-          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+    where foundElems = filter (idAttributeIs idVar) childElems
+          childElems = children scriptElem
+          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
+
+findStatementAt :: Element -> String -> (String -> Element -> Bool) -> [Element]
+findStatementAt scriptElem idVar comp = if comp idVar scriptElem
+                                            then (scriptElem : filteredChildren)
+                                            else filteredChildren
+                                        where
+                                            childElems = children scriptElem
+                                            filteredChildren = if null childElems
+                                                                  then []
+                                                                  else concat [findStatementAt x idVar comp | x <- children scriptElem]
 
 -- | Takes a script, a statement element type and a statement or conversation ID and
 -- returns the corresponding element.
