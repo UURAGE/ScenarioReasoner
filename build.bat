@@ -15,3 +15,4 @@ ghc %ghcFlags% -o ../_output/scriptman/Main.cgi "./Main.hs"
 cd ../src
 ghc %ghcFlags% -o ../_output/ideas/Main.cgi "./Main.hs"
 cd ../
+pause

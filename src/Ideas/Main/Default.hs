@@ -12,7 +12,7 @@
 -- Main module for feedback services
 --
 -----------------------------------------------------------------------------
-module Ideas.Main.Default 
+module Ideas.Main.Default
    ( defaultMain, newDomainReasoner
      -- extra exports
    , Some(..), serviceList, metaServiceList, Service

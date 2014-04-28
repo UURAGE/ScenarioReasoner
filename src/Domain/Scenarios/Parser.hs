@@ -229,8 +229,8 @@ parseScript filepath = do
 ------------------------------------------------------
 
 parseTree :: Element -> Tree
-parseTree element = Tree 
-                { treeID = (head (findAttribute "id" element))  
+parseTree element = Tree
+                { treeID = (head (findAttribute "id" element))
                 , startID = (head (findAttribute "idref" (head ((findChild "start" element)))))
                 }
 
