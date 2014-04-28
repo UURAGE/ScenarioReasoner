@@ -15,7 +15,7 @@ import Domain.Scenarios.Parser
 customServices :: [Script] -> [Service]
 customServices scripts = map (flip ($) scripts)
     [scenariolistS, scenarioinfoS, statementsinfoS, scoreS]
-    
+
 scenariolistS :: [Script] -> Service
 scenariolistS scripts = makeService "scenarios.scenariolist"
     "Lists all available scenarios." $
@@ -49,6 +49,8 @@ instance Typed a ScenarioInfo where
         where pairify (ScenarioInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
               tag s (Tag _ t) = Tag s t
               tag s t         = Tag s t
+instance Show ScenarioInfo where
+  show (ScenarioInfo a b c d e f g h) = show a ++ "\n" ++ show b ++ "\n" ++ show c ++ "\n" ++ show d ++ "\n" ++ show e ++ "\n" ++ show f ++ "\n" ++ show g ++ "\n" ++ show h
 
 data ParameterInfo = ParameterInfo String
                                    String
@@ -58,6 +60,8 @@ instance Typed a ParameterInfo where
                                 (Pair (Tag "name" typed)
                                       (Tag "emotion" typed)))
         where pairify (ParameterInfo a b c) = (a, (b, c))
+instance Show ParameterInfo where
+  show (ParameterInfo a b c) = show a ++ ", " ++ show b ++ ", " ++ show c
 
 scenarioinfo :: [Script] -> Exercise a -> ScenarioInfo
 scenarioinfo scripts ex = getScenarioInfoFor $ findScript "get info for" scripts ex

@@ -115,7 +115,7 @@ parseXML xs = do
 
 findAttribute :: Monad m => String -> Element -> m String
 findAttribute s (Element _ as _) =
-   case [ t | n := t <- as, s==n ] of
+   case [ t | n := t <- as, s==n ] of -- build a list of all attribute values that match the given name
       [hd] -> return hd
       _    -> fail $ "Invalid attribute: " ++ show s
 
