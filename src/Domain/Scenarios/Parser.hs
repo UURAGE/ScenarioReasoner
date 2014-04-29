@@ -200,15 +200,13 @@ getTrees (Script element) = do
    let sorted = sortWith (\(a,_)->a) zipped
    return $ map ((\(_,b)->map createTuple (children b))) sorted
         where createTuple treeElem = (parseTree treeElem, treeElem)
-   
-
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
 findStatement (Script scriptElem) idVar = if null foundElems
                                             then fail $ "Cannot find statement with ID " ++ idVar
-                                            else return $ Statement (head foundElems)
+                                            else return $ head foundElems
                                           where
                                             foundElems = concat [findStatementAt x idVar | x <- children scriptElem]
 
@@ -219,9 +217,9 @@ findStatement (Script scriptElem) idVar = if null foundElems
           childElems = children scriptElem
           idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
 
-findStatementAt :: Element -> String -> [Element]
+findStatementAt :: Element -> String -> [Statement]
 findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "id" scriptElem)
-                                        then (scriptElem : filteredChildren)
+                                        then (Statement scriptElem : filteredChildren)
                                         else filteredChildren
                                     where
                                         childElems = children scriptElem
