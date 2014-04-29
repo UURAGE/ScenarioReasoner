@@ -207,8 +207,7 @@ findStatement (Script scriptElem) idVar = if null foundElems
                                             then fail $ "Cannot find statement with ID " ++ idVar
                                             else return $ Statement (head foundElems)
                                           where
-                                            foundElems = concat [findStatementAt x idVar idAttributeIs | x <- children scriptElem]
-                                            idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+                                            foundElems = concat [findStatementAt x idVar | x <- children scriptElem]
 
     {-if null foundElems
         then fail $ "Cannot find statement with ID " ++ idVar
@@ -217,15 +216,15 @@ findStatement (Script scriptElem) idVar = if null foundElems
           childElems = children scriptElem
           idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
 
-findStatementAt :: Element -> String -> (String -> Element -> Bool) -> [Element]
-findStatementAt scriptElem idVar comp = if comp idVar scriptElem
-                                            then (scriptElem : filteredChildren)
-                                            else filteredChildren
-                                        where
-                                            childElems = children scriptElem
-                                            filteredChildren = if null childElems
-                                                                  then []
-                                                                  else concat [findStatementAt x idVar comp | x <- children scriptElem]
+findStatementAt :: Element -> String -> [Element]
+findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "id" scriptElem)
+                                        then (scriptElem : filteredChildren)
+                                        else filteredChildren
+                                    where
+                                        childElems = children scriptElem
+                                        filteredChildren = if null childElems
+                                                              then []
+                                                              else concat [findStatementAt x idVar | x <- children scriptElem]
 
 -- | Takes a script, a statement element type and a statement or conversation ID and
 -- returns the corresponding element.
