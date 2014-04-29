@@ -188,8 +188,9 @@ getNexts (Statement element) = do
                   Just nCSElem -> return $ children nCSElem
                   Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
 
--- | returns the start nodes of al trees in a script grouped by interleave level.
-getTrees :: Monad m => Script -> m [[Tree]]
+-- | returns tree id, start node id and tree element, grouped by interleave level
+-- parsed tree provides easy access to id information. tree element is to build a strategy with
+getTrees :: Monad m => Script -> m [[(Tree, Element)]]
 getTrees (Script element) = do
    firstSequence <- findChild "sequence" element
    interleaves <- findChildren "interleave" firstSequence
@@ -197,7 +198,8 @@ getTrees (Script element) = do
    let intLevels = map (\x -> read x ::Int) levels
    let zipped = zip intLevels interleaves
    let sorted = sortWith (\(a,_)->a) zipped
-   return $ map ((\(_,b)->map parseTree (children b))) sorted
+   return $ map ((\(_,b)->map createTuple (children b))) sorted
+        where createTuple treeElem = (parseTree treeElem, treeElem)
    
 
 
@@ -368,7 +370,6 @@ instance HasId Statement where
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementId
     changeId _ _ = error "The ID of a Statement is determined externally."
-
 
 -- | Creates the full ID for the given statement in the context of the given script.
 createFullId :: Script -> Statement -> Id
