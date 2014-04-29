@@ -81,6 +81,9 @@ data Tree = Tree
         , startID   :: String
         }
 
+instance Show Tree where
+    show (Tree a b) = "tree: " ++ show a ++ " start: " ++ show b
+
 -- | Applies an effect to a state.
 applyEffect :: Effect -> State -> State
 applyEffect effect state = case effectChangeType effect of
