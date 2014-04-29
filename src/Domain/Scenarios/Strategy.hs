@@ -20,9 +20,11 @@ guardedRule identifier description check update =
 makeStrategy :: Monad m => Script -> m (Strategy State)
 makeStrategy script = do
     startId <- getScriptStartId script
-    trees <- getTrees script
+    treeElemTuples <- getTrees script
     scriptId <- getScriptId script
-    (fullStrategy, _) <- makeSubStrategy (head (head trees)) scriptId M.empty startId
+    tupleStrategies <- mapM (mapM (\tuple -> makeSubStrategy tuple scriptId M.empty (startID $ fst tuple))) treeElemTuples
+    let fullStrategy = foldr (<*>) (succeed) (map (foldr (\a b -> (fst a) <%>  b) (succeed)) tupleStrategies)
+    --(fullStrategy, _) <- makeSubStrategy (head (head treeElemTuples)) scriptId M.empty startId
     return fullStrategy
 
 --sub strats make a strat for one tree, so it should not be to hard to expand it once we know the starting statements of each tree.
