@@ -23,7 +23,7 @@ makeStrategy script = do
     treeElemTuples <- getTrees script
     scriptId <- getScriptId script
     tupleStrategies <- mapM (mapM (\tuple -> makeSubStrategy tuple scriptId M.empty (startID $ fst tuple))) treeElemTuples
-    let fullStrategy = foldr (<*>) (succeed) (map (foldr (\a b -> (fst a) <%>  b) (succeed)) tupleStrategies)
+    let fullStrategy = foldr (<*>) succeed (map (foldr ((<%>).fst) succeed) tupleStrategies)
     --(fullStrategy, _) <- makeSubStrategy (head (head treeElemTuples)) scriptId M.empty startId
     return fullStrategy
 

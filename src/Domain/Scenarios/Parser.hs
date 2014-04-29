@@ -111,9 +111,16 @@ getScriptScoreExtremes (Script scriptElem) = return $
     maximumValue <- findAttribute "maximum" scoreExtremesElem
     return (read minimumValue, read maximumValue)
 
+getScriptStatements :: Monad m => Script => m [Statement]
+getScriptStatements script = do
+    treeTuples <- getTrees script
+    treeStatements <- (mapM (\tuple -> getTreeStatements (snd tuple)) (concat treeTuples))
+    return $ concat treeStatements
+
+
 -- | Extracts all statements from the given script.
-getScriptStatements :: Monad m => Script -> m [Statement]
-getScriptStatements (Script scriptElem) = return $ catMaybes $ map getIfStatement $ children scriptElem
+getTreeStatements :: Monad m => TreeElement -> m [Statement]
+getTreeStatements (TreeElement treeElem) = return $ catMaybes $ map getIfStatement $ children treeElem
     where getIfStatement statement = getType (Statement statement) >> (Just $ Statement statement)
 
 -- | Takes a statement and returns its type.
