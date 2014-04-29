@@ -22,14 +22,14 @@ makeStrategy script = do
     startId <- getScriptStartId script
     trees <- getTrees script
     scriptId <- getScriptId script
-    (fullStrategy, _) <- makeSubStrategy head (head trees) M.empty startId
+    (fullStrategy, _) <- makeSubStrategy (head (head trees)) scriptId M.empty startId
     return fullStrategy
 
 --sub strats make a strat for one tree, so it should not be to hard to expand it once we know the starting statements of each tree.
-makeSubStrategy :: Monad m => (Tree, Element) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
-makeSubStrategy (tree, treeElement) scriptId strategyMap statementId = do
+makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
+makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = do
 
-    statement <- findStatement treeElement statementId
+    let statement = head $ findStatementAt el statementId
     statementType <- getType statement
     statementDescription <- getText statement
     statementPrecondition <- getMaybePrecondition statement
@@ -54,11 +54,11 @@ makeSubStrategy (tree, treeElement) scriptId strategyMap statementId = do
                     return (statementStrategy, M.insert statementId statementStrategy strategyMap)
 
                 firstNextId : restNextIds -> do
-                    firstStrategyTuple <- makeSubStrategy (tree, treeElement) scriptId strategyMap firstNextId
+                    firstStrategyTuple <- makeSubStrategy (tree, t) scriptId strategyMap firstNextId
                     (foldedStrategy, nextsStrategyMap) <- foldM folder firstStrategyTuple restNextIds
                     let statementStrategy = rule <*> foldedStrategy
                     return (statementStrategy, M.insert statementId statementStrategy nextsStrategyMap)
 
     where folder (stratSoFar, rulesSoFar) nextId = do
-            (newStrat, newRules) <- makeSubStrategy (tree, treeElement) scriptId rulesSoFar nextId
+            (newStrat, newRules) <- makeSubStrategy (tree, t) scriptId rulesSoFar nextId
             return (stratSoFar <|> newStrat, newRules) 

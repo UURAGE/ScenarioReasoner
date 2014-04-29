@@ -190,7 +190,7 @@ getNexts (Statement element) = do
 
 -- | returns tree id, start node id and tree element, grouped by interleave level
 -- parsed tree provides easy access to id information. tree element is to build a strategy with
-getTrees :: Monad m => Script -> m [[(Tree, Element)]]
+getTrees :: Monad m => Script -> m [[(Tree, TreeElement)]]
 getTrees (Script element) = do
    firstSequence <- findChild "sequence" element
    interleaves <- findChildren "interleave" firstSequence
@@ -199,7 +199,8 @@ getTrees (Script element) = do
    let zipped = zip intLevels interleaves
    let sorted = sortWith (\(a,_)->a) zipped
    return $ map ((\(_,b)->map createTuple (children b))) sorted
-        where createTuple treeElem = (parseTree treeElem, treeElem)
+        where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
+   
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
@@ -350,6 +351,8 @@ childrenNamed s e = filter ((==s) . name) (children e)
 
 -- Definitions of data structures and related functions
 ---------------------------------------------------------
+
+newtype TreeElement = TreeElement Element
 
 newtype Script = Script Element
 instance HasId Script where
