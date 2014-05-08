@@ -55,8 +55,10 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
 
                 []                        -> do
                     let statementStrategy = atomic rule
-                    return (statementStrategy, M.insert statementId statementStrategy strategyMap)
-
+                    if(treeAtomic tree == "true")
+                        then return (atomic statementStrategy, M.insert statementId statementStrategy strategyMap)
+                        else return (statementStrategy, M.insert statementId statementStrategy strategyMap)
+                        
                 firstNextId : restNextIds -> do
                     firstStrategyTuple <- makeSubStrategy (tree, t) scriptId strategyMap firstNextId
                     (foldedStrategy, nextsStrategyMap) <- foldM folder firstStrategyTuple restNextIds

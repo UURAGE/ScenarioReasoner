@@ -261,6 +261,7 @@ parseTree :: Element -> Tree
 parseTree element = Tree
                 { treeID = head $ findAttribute "id" element
                 , startID = head $ findAttribute "idref" $ head $ findChild "start" element
+                , treeAtomic = head $ findAttribute "atomic" element
                 }
 
 -- | Parses a visual (video or image).
