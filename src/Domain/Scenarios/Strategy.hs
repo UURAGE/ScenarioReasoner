@@ -23,11 +23,20 @@ makeStrategy script = do
     startId <- getScriptStartId script
     treeElemTuples <- getTrees script
     scriptId <- getScriptId script
-    tupleStrategies <- mapM (mapM (\tuple -> makeSubStrategy tuple scriptId M.empty (startID $ fst tuple))) treeElemTuples -- one strategy per tree
+    tupleStrategies <- mapM (mapM (\tuple -> makeTreeStrategy tuple scriptId (startID $ fst tuple))) treeElemTuples -- one strategy per tree
     let strategies = map (map fst) tupleStrategies -- only first of tuples
     return $ sequence' (map interleave strategies) -- transform nested list into sequence of interleaves
     where
         sequence' = Ideas.Common.Strategy.Combinators.sequence
+
+makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy State, StrategyMap State)
+makeTreeStrategy tuple@(tree,  t@(TreeElement el)) scriptId statementId = do
+
+    (strategy, strategyMap) <- makeSubStrategy tuple scriptId M.empty statementId
+    if(treeAtomic tree == "true")
+        then return (atomic strategy, strategyMap)
+        else return (strategy, strategyMap)
+
 
 --sub strats make a strat for one tree, so it should not be to hard to expand it once we know the starting statements of each tree.
 makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
@@ -55,10 +64,8 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
 
                 []                        -> do
                     let statementStrategy = atomic rule
-                    if(treeAtomic tree == "true")
-                        then return (atomic statementStrategy, M.insert statementId statementStrategy strategyMap)
-                        else return (statementStrategy, M.insert statementId statementStrategy strategyMap)
-                        
+                    return (statementStrategy, M.insert statementId statementStrategy strategyMap)
+
                 firstNextId : restNextIds -> do
                     firstStrategyTuple <- makeSubStrategy (tree, t) scriptId strategyMap firstNextId
                     (foldedStrategy, nextsStrategyMap) <- foldM folder firstStrategyTuple restNextIds
