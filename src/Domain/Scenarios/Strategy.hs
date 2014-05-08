@@ -1,10 +1,11 @@
-module Domain.Scenarios.Strategy where 
+module Domain.Scenarios.Strategy where
 
-import Control.Monad
+import Control.Monad hiding (sequence)
 import Data.List
 import qualified Data.Map as M
 
 import Ideas.Common.Library
+import Ideas.Common.Strategy.Combinators
 
 import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
@@ -22,10 +23,11 @@ makeStrategy script = do
     startId <- getScriptStartId script
     treeElemTuples <- getTrees script
     scriptId <- getScriptId script
-    tupleStrategies <- mapM (mapM (\tuple -> makeSubStrategy tuple scriptId M.empty (startID $ fst tuple))) treeElemTuples
-    let fullStrategy = foldr (<*>) succeed (map (foldr ((<%>).fst) succeed) tupleStrategies)
-    --(fullStrategy, _) <- makeSubStrategy (head (head treeElemTuples)) scriptId M.empty startId
-    return fullStrategy
+    tupleStrategies <- mapM (mapM (\tuple -> makeSubStrategy tuple scriptId M.empty (startID $ fst tuple))) treeElemTuples -- one strategy per tree
+    let strategies = map (map fst) tupleStrategies -- only first of tuples
+    return $ sequence' (map interleave strategies) -- transform nested list into sequence of interleaves
+    where
+        sequence' = Ideas.Common.Strategy.Combinators.sequence
 
 --sub strats make a strat for one tree, so it should not be to hard to expand it once we know the starting statements of each tree.
 makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
@@ -38,7 +40,7 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
     statementEffects <- getEffects statement
 
     case M.lookup statementId strategyMap of --check if statment is already in the strategy
-        
+
         Just statementStrategy -> return (statementStrategy, strategyMap) --if it is already in the strategy do nothing and just return the strategy
 
         Nothing -> do
@@ -63,4 +65,4 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
 
     where folder (stratSoFar, rulesSoFar) nextId = do
             (newStrat, newRules) <- makeSubStrategy (tree, t) scriptId rulesSoFar nextId
-            return (stratSoFar <|> newStrat, newRules) 
+            return (stratSoFar <|> newStrat, newRules)

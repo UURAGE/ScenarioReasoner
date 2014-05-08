@@ -210,7 +210,7 @@ getTrees (Script element) = do
    let sorted = sortWith (\(a,_)->a) zipped
    return $ map ((\(_,b)->map createTuple (children b))) sorted
         where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
-   
+
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
@@ -259,8 +259,8 @@ parseScript filepath = do
 
 parseTree :: Element -> Tree
 parseTree element = Tree
-                { treeID = (head (findAttribute "id" element))
-                , startID = (head (findAttribute "idref" (head ((findChild "start" element)))))
+                { treeID = head $ findAttribute "id" element
+                , startID = head $ findAttribute "idref" $ head $ findChild "start" element
                 }
 
 -- | Parses a visual (video or image).
