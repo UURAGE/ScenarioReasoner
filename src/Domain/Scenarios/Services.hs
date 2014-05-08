@@ -101,14 +101,16 @@ data StatementInfo = StatementInfo String
                                    [String]
                                    (Maybe String)
                                    MediaInfo
+                                   String --ending
 instance Typed a StatementInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "type" typed)
                                 (Pair (Tag "text" typed)
                                 (Pair (Tag "intents" typed)
                                 (Pair (Tag "feedback" typed)
-                                      (Tag "media" typed))))))
-        where pairify (StatementInfo a b c d e f) = (a, (b, (c, (d, (e, f)))))
+                                (Pair (Tag "media" typed)
+                                      (Tag "end" typed)))))))
+        where pairify (StatementInfo a b c d e f g) = (a, (b, (c, (d, (e, (f, g))))))
 
 data MediaInfo = MediaInfo [(String, String)] [String]
 instance Typed a MediaInfo where
@@ -130,6 +132,7 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                     (emptyOnFail $ getMediaVisuals statement)
                     (emptyOnFail $ getMediaAudios statement)
                 )
+                (head $ getEnd statement)--because monad
           emptyOnFail = fromMaybe []
           showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
 

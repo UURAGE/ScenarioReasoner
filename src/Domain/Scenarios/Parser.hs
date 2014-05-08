@@ -118,7 +118,7 @@ getScriptStatements script = do
     return $ concat treeStatements
 
 
--- | Extracts all statements from the given script.
+-- | Extracts all statements from the given tree.
 getTreeStatements :: Monad m => TreeElement -> m [Statement]
 getTreeStatements (TreeElement treeElem) = return $ catMaybes $ map getIfStatement $ children treeElem
     where getIfStatement statement = getType (Statement statement) >> (Just $ Statement statement)
@@ -178,6 +178,9 @@ getFeedback :: Monad m => Statement -> m (Maybe String)
 getFeedback (Statement element) = return $
     findChild "feedback" element >>=
     return . getData
+
+getEnd :: Monad m => Statement -> m String
+getEnd (Statement element) = return $ head $ findAttribute "possibleEnd" element
 
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
