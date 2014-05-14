@@ -15,7 +15,7 @@ module Domain.Scenarios.Parser
     , getScriptStartId, getScriptParameters
     , getScriptScoringFunction, getScriptScoreExtremes, getScriptStatements
     , getType, getMaybePrecondition, getMediaVisuals, getMediaAudios
-    , getEffects, getIntents, getFeedback, getText, getNexts
+    , getEffects, getIntents, getFeedback, getText, getNexts, getJumpPoint
     , findStatement
     , parseScript
     , createFullId
@@ -208,6 +208,9 @@ getTrees (Script element) = do
    return $ map ((\(_,b)->map createTuple (children b))) sorted
         where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
 
+-- | returns whether the statement is a jump point
+getJumpPoint :: Statement -> String
+getJumpPoint (Statement element) = head $ findAttribute "jumpPoint" element
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
