@@ -79,10 +79,11 @@ data Sequence = Sequence [Tree] [Interleave] --current model has one top level s
 data Tree = Tree
         { treeID    :: String
         , startID   :: String
+        , treeAtomic :: String
         }
 
 instance Show Tree where
-    show (Tree a b) = "tree: " ++ show a ++ " start: " ++ show b
+    show (Tree a b c) = "tree: " ++ show a ++ " start: " ++ show b ++ " atomic: " ++ show c
 
 -- | Applies an effect to a state.
 applyEffect :: Effect -> State -> State

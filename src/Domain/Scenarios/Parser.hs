@@ -118,7 +118,7 @@ getScriptStatements script = do
     return $ concat treeStatements
 
 
--- | Extracts all statements from the given script.
+-- | Extracts all statements from the given tree.
 getTreeStatements :: Monad m => TreeElement -> m [Statement]
 getTreeStatements (TreeElement treeElem) = return $ catMaybes $ map getIfStatement $ children treeElem
     where getIfStatement statement = getType (Statement statement) >> (Just $ Statement statement)
@@ -179,6 +179,9 @@ getFeedback (Statement element) = return $
     findChild "feedback" element >>=
     return . getData
 
+getEnd :: Monad m => Statement -> m String
+getEnd (Statement element) = return $ head $ findAttribute "possibleEnd" element
+
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement element) = do
@@ -209,8 +212,8 @@ getTrees (Script element) = do
         where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
 
 -- | returns whether the statement is a jump point
-getJumpPoint :: Statement -> String
-getJumpPoint (Statement element) = head $ findAttribute "jumpPoint" element
+getJumpPoint :: Monad m => Statement -> m String
+getJumpPoint (Statement element) = return $ head $ findAttribute "jumpPoint" element
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
@@ -261,6 +264,7 @@ parseTree :: Element -> Tree
 parseTree element = Tree
                 { treeID = head $ findAttribute "id" element
                 , startID = head $ findAttribute "idref" $ head $ findChild "start" element
+                , treeAtomic = head $ findAttribute "atomic" element
                 }
 
 -- | Parses a visual (video or image).
