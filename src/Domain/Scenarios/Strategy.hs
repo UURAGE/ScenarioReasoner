@@ -48,7 +48,7 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
     statementPrecondition <- getMaybePrecondition statement
     statementEffects <- getEffects statement
 
-    case M.lookup statementId strategyMap of --check if statment is already in the strategy
+    case M.lookup statementId strategyMap of --check if statement is already in the strategy
 
         Just statementStrategy -> return (statementStrategy, strategyMap) --if it is already in the strategy do nothing and just return the strategy
 

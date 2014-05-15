@@ -103,6 +103,7 @@ data StatementInfo = StatementInfo String
                                    MediaInfo
                                    String --ending
                                    String --jump
+
 instance Typed a StatementInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "type" typed)
@@ -112,6 +113,7 @@ instance Typed a StatementInfo where
                                 (Pair (Tag "media" typed)
                                 (Pair (Tag "end" typed)
                                       (Tag "jump" typed))))))))
+
         where pairify (StatementInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
 
 data MediaInfo = MediaInfo [(String, String)] [String]
