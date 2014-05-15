@@ -182,6 +182,9 @@ getFeedback (Statement element) = return $
 getEnd :: Monad m => Statement -> m String
 getEnd (Statement element) = return $ head $ findAttribute "possibleEnd" element
 
+getJump :: Monad m => Statement -> m String
+getJump (Statement element) = return $ head $ findAttribute "jumpPoint" element
+
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement element) = do
