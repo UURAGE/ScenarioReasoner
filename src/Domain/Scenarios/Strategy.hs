@@ -57,7 +57,7 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
                     (["scenarios", scriptId, toIdTypeSegment statementType, statementId])
                     (either id (intercalate " // " . map snd) statementDescription)
                     (calculateMaybeCondition statementPrecondition)
-                    (\state -> foldr applyEffect state statementEffects)
+                    (\state -> foldr applyEffect (fst state, treeID tree) statementEffects)
             nextIds <- getNexts statement
 
             case nextIds of
