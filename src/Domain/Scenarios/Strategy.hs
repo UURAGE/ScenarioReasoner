@@ -16,7 +16,7 @@ type StrategyMap a = M.Map String (Strategy a)
 guardedRule :: IsId b => b -> String -> (a -> Bool) -> (a -> a) -> Rule a
 guardedRule identifier description check update =
     describe description $ makeRule identifier (\x -> do guard $ check x; Just $ update x)
-    --make description and ad it to the rule $ make the rule
+    --make description and add it to the rule $ make the rule
 
 makeStrategy :: Monad m => Script -> m (Strategy State)
 makeStrategy script = do
@@ -38,7 +38,7 @@ makeTreeStrategy tuple@(tree,  t@(TreeElement el)) scriptId statementId = do
         else return (strategy, strategyMap)
 
 
---sub strats make a strat for one tree, so it should not be to hard to expand it once we know the starting statements of each tree.
+--sub strats make a strat for one tree, so it should not be too hard to expand it once we know the starting statements of each tree.
 makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
 makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = do
 
@@ -56,17 +56,17 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
             let rule = guardedRule
                     (["scenarios", scriptId, toIdTypeSegment statementType, statementId])
                     (either id (intercalate " // " . map snd) statementDescription)
-                    (calculateMaybeCondition statementPrecondition)
-                    (\state -> foldr applyEffect state statementEffects)
+                    (calculateMaybeCondition statementPrecondition) -- check if precondition is fulfilled
+                    (\state -> foldr applyEffect state statementEffects) -- apply effects of node
             nextIds <- getNexts statement
 
             case nextIds of
 
-                []                        -> do
+                []                        -> do -- end of conversation path, return substrategy so far
                     let statementStrategy = atomic rule
                     return (statementStrategy, M.insert statementId statementStrategy strategyMap)
 
-                firstNextId : restNextIds -> do
+                firstNextId : restNextIds -> do -- process all possible choices
                     firstStrategyTuple <- makeSubStrategy (tree, t) scriptId strategyMap firstNextId
                     (foldedStrategy, nextsStrategyMap) <- foldM folder firstStrategyTuple restNextIds
                     let statementStrategy = rule <*> foldedStrategy
