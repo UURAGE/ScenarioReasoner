@@ -154,7 +154,7 @@ applyToFirst _ [] = []
 -- | State
 -- The state is affected by every step in a strategy.
 
-type State = M.Map String Int
+type State = (M.Map String Int, String)
 
 -- State to JSON
 
@@ -184,31 +184,31 @@ instance IsTerm (M.Map String Int) where
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
 
 getParamOrZero :: String -> State -> Int
-getParamOrZero = M.findWithDefault 0
+getParamOrZero name state = M.findWithDefault 0 name (fst state)
 
 setZero, setOne :: String -> State -> State
-setZero = flip M.insert 1
-setOne = flip M.insert 1
+setZero name state = (flip M.insert 1 name (fst state), snd state)
+setOne name state = (flip M.insert 1 name (fst state), snd state)
 
 setParam :: String -> Int -> State -> State
-setParam = M.insert
+setParam name value state = (M.insert name value (fst state), snd state)
 
 onlyOne :: String -> State -> State
-onlyOne s = (flip M.insert 1 s).(M.map (\_-> 0))
+onlyOne name state = ((flip M.insert 1 name).(M.map (\_-> 0)) $ (fst state), snd state)
 
 isZero, isOne :: String -> State -> Bool
 isZero s cf = isVal 0 True s (cf)
 isOne s cf = isVal 1 False s (cf)
 
 isEmpty :: State -> Bool
-isEmpty cf = M.null (cf)
+isEmpty cf = M.null (fst cf)
 
 eitherIsOne :: [String] -> State -> Bool
 eitherIsOne [] _      = False
 eitherIsOne (x:xs) ck = (isOne x ck) || (eitherIsOne xs ck)
 
 isVal :: Int -> Bool -> String -> State -> Bool
-isVal v d s m = case M.lookup s m of
+isVal v d s m = case M.lookup s (fst m) of
  Nothing -> d
  Just x -> (x == v)
  
@@ -219,7 +219,7 @@ orF :: (a->Bool) -> (a->Bool) -> a -> Bool
 orF f g a = (f a) || (g a)
 
 emptyState :: State
-emptyState = M.empty
+emptyState = (M.empty, "")
 
 fromList :: [(String, Int)] -> State
-fromList = M.fromList
+fromList list = (M.fromList list, "")

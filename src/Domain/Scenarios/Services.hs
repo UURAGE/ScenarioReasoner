@@ -101,8 +101,8 @@ data StatementInfo = StatementInfo String
                                    [String]
                                    (Maybe String)
                                    MediaInfo
-                                   String
                                    String --ending
+                                   String --jump
 
 instance Typed a StatementInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
@@ -111,8 +111,9 @@ instance Typed a StatementInfo where
                                 (Pair (Tag "intents" typed)
                                 (Pair (Tag "feedback" typed)
                                 (Pair (Tag "media" typed)
-                                (Pair (Tag "jumpPoint" typed)
-                                      (Tag "end" typed))))))))
+                                (Pair (Tag "end" typed)
+                                      (Tag "jump" typed))))))))
+
         where pairify (StatementInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
 
 data MediaInfo = MediaInfo [(String, String)] [String]
@@ -135,8 +136,8 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                     (emptyOnFail $ getMediaVisuals statement)
                     (emptyOnFail $ getMediaAudios statement)
                 )
-                (head $ getJumpPoint statement)
                 (head $ getEnd statement)--because monad
+                (head $ getJump statement)
           emptyOnFail = fromMaybe []
           showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
 

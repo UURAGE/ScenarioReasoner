@@ -182,6 +182,9 @@ getFeedback (Statement element) = return $
 getEnd :: Monad m => Statement -> m String
 getEnd (Statement element) = return $ head $ findAttribute "possibleEnd" element
 
+getJump :: Monad m => Statement -> m String
+getJump (Statement element) = return $ head $ findAttribute "jumpPoint" element
+
 -- | Takes a statement and returns the IDs of the statements following it.
 getNexts :: Monad m => Statement -> m [String]
 getNexts (Statement element) = do
@@ -210,10 +213,6 @@ getTrees (Script element) = do
    let sorted = sortWith (\(a,_)->a) zipped
    return $ map ((\(_,b)->map createTuple (children b))) sorted
         where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
-
--- | returns whether the statement is a jump point
-getJumpPoint :: Monad m => Statement -> m String
-getJumpPoint (Statement element) = return $ head $ findAttribute "jumpPoint" element
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
