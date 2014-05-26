@@ -31,7 +31,7 @@ exerciseFromScript script = do
     scriptStrategy <- makeStrategy script
     scriptParameters <- getScriptParameters script
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = fromList $ map processParameter scriptParameters
+        initialState = fromList $ map processParameter scriptParameters --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha

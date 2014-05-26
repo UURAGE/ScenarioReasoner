@@ -218,8 +218,8 @@ andF f g a = (f a) && (g a)
 orF :: (a->Bool) -> (a->Bool) -> a -> Bool
 orF f g a = (f a) || (g a)
 
-emptyState :: State
-emptyState = (M.empty, "")
+--emptyState :: State
+--emptyState = (M.empty, "")
 
 fromList :: [(String, Int)] -> State
 fromList list = (M.fromList list, "")

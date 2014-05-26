@@ -57,7 +57,7 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
                     (["scenarios", scriptId, toIdTypeSegment statementType, statementId])
                     (either id (intercalate " // " . map snd) statementDescription)
                     (calculateMaybeCondition statementPrecondition)
-                    (\state -> foldr applyEffect (fst state, treeID tree) statementEffects)
+                    (\state -> foldr applyEffect (fst state, "") statementEffects)--the initial state is not generated here. It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             nextIds <- getNexts statement
 
             case nextIds of
