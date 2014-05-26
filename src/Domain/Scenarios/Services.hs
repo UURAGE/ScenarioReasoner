@@ -37,20 +37,22 @@ data ScenarioInfo = ScenarioInfo String
                                  (Maybe String)
                                  (Maybe String)
                                  [ParameterInfo]
+                                 String
 instance Typed a ScenarioInfo where
     typed = Iso ((<-!) pairify) (Pair (Tag "id" typed)
                                 (Pair (Tag "name" typed)
                                 (Pair (Tag "description" typed)
-                                (Pair (tag "difficulty" typed)
+                                (Pair (Tag "difficulty" typed)
                                 (Pair (Tag "bannerImage" typed)
                                 (Pair (Tag "characterImage" typed)
                                 (Pair (Tag "model" typed)
-                                      (Tag "parameters" typed))))))))
-        where pairify (ScenarioInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
+                                (Pair (Tag "parameters" typed)   
+                                      (Tag "feedback" typed)))))))))
+        where pairify (ScenarioInfo a b c d e f g h i) = (a, (b, (c, (d, (e, (f, (g, (h, i))))))))
               tag s (Tag _ t) = Tag s t
               tag s t         = Tag s t
 instance Show ScenarioInfo where
-  show (ScenarioInfo a b c d e f g h) = show a ++ "\n" ++ show b ++ "\n" ++ show c ++ "\n" ++ show d ++ "\n" ++ show e ++ "\n" ++ show f ++ "\n" ++ show g ++ "\n" ++ show h
+  show (ScenarioInfo a b c d e f g h i) = show a ++ "\n" ++ show b ++ "\n" ++ show c ++ "\n" ++ show d ++ "\n" ++ show e ++ "\n" ++ show f ++ "\n" ++ show g ++ "\n" ++ show h ++ "\n" ++ show i
 
 data ParameterInfo = ParameterInfo String
                                    String
@@ -76,6 +78,7 @@ getScenarioInfoFor script = ScenarioInfo
                 (scriptCharacterImage)
                 (scriptModel)
                 (scriptParameters)
+                (scriptFeedback)--true: feedback in game and at the end, false: only at the end
     where scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
           scriptDescription = errorOnFail $ getScriptDescription script
@@ -84,6 +87,7 @@ getScenarioInfoFor script = ScenarioInfo
           scriptCharacterImage = errorOnFail $ getScriptCharacterImage script
           scriptModel = errorOnFail $ getScriptModel script
           scriptParameters = map describeParameter $ errorOnFail $ getScriptParameters script
+          scriptFeedback = errorOnFail $ getScriptFeedback script
           describeParameter param = ParameterInfo
                 (parameterId param)
                 (parameterName param)

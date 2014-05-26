@@ -53,6 +53,10 @@ getScriptDate = getMetaDataString "date"
 getScriptDescription :: Monad m => Script -> m String
 getScriptDescription = getMetaDataString "description"
 
+-- | Queries the given script for when it should display feedback
+getScriptFeedback :: Monad m => Script -> m String
+getScriptFeedback = getMetaDataString "feedback"
+
 -- | Queries the given script for its difficulty.
 getScriptDifficulty :: Monad m => Script -> m Difficulty
 getScriptDifficulty script = do
