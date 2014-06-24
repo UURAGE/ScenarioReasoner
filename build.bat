@@ -1,6 +1,6 @@
 set outputfileA="../_output/ideas/"
 set outputfileB="../_output/scriptman/"
-set ghcFlags=--make -static -optl-static -O2 -fforce-recomp -hidir "../_output/intermediate" -odir "../_output/intermediate" -stubdir ../_output/intermediate
+set ghcFlags=--make -static -optl-static -O2 -H14m -hidir "../_output/intermediate" -odir "../_output/intermediate" -stubdir "../_output/intermediate"
 
 if EXIST "./_output" rmdir /s/q "./_output"
 

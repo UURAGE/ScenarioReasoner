@@ -10,14 +10,11 @@ import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Strategy
 
-getExercises :: IO ([Exercise State], [Script])
-getExercises = do
-    let directoryPath = "../../scenarios/scripts/" -- : The script directory.
-    directoryContents <- getDirectoryContents directoryPath -- : Get the list of files in the directory.
-    let scriptFiles = map (directoryPath++) $ filter (isSuffixOf ".xml") $ directoryContents -- : Get the list of paths to only XML files.
-    exerciseScriptPairs <- mapM getExercise scriptFiles -- : Create an (Exercise State, Script) tuple for each path.
-    let (exercises, scripts) = unzip exerciseScriptPairs -- : unzip :: [(a, b)] -> ([a], [b])
-    return $ (dummyExercise : exercises, scripts)
+getExercises :: String ->  IO ([Exercise State], [Script])
+getExercises scenarioId = do
+    let scriptPath = "../../scenarios/scripts/" ++ (tail $ dropWhile (\x -> x/= '.') scenarioId) ++ ".xml" -- : The script directory.
+    exercisePair <- getExercise scriptPath
+    return $ (dummyExercise : [fst exercisePair], [snd exercisePair])
 
 getExercise :: String -> IO (Exercise State, Script)
 getExercise path = do

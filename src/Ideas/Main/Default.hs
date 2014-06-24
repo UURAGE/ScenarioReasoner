@@ -24,6 +24,7 @@ import Control.Monad
 import Data.IORef
 import Data.Maybe
 import Data.Time
+import Data.List
 import Ideas.Common.Id
 import Ideas.Common.Utils (useFixedStdGen, Some(..))
 import Ideas.Common.Utils.TestSuite
@@ -44,16 +45,16 @@ import System.IO
 import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Main.Options as Options
 
-defaultMain :: DomainReasoner -> IO ()
+defaultMain :: (String -> IO DomainReasoner) -> IO ()
 defaultMain dr = do
    startTime <- getCurrentTime
    flags     <- getFlags
    if null flags
       then defaultCGI dr startTime
-      else defaultCommandLine dr flags
+      else error("not supported anymore") --defaultCommandLine dr flags
 
 -- Invoked as a cgi binary
-defaultCGI :: DomainReasoner -> UTCTime -> IO ()
+defaultCGI :: (String -> IO DomainReasoner) -> UTCTime -> IO ()
 defaultCGI dr startTime = do
    logRef <- newIORef (return ())
    runCGI $ do
@@ -63,7 +64,11 @@ defaultCGI dr startTime = do
       input  <- case raw of
                    Nothing -> fail "Invalid request: environment variable \"input\" is empty"
                    Just s  -> return s
-      (req, txt, ctp) <- liftIO $ process dr (Just cgiBin) input
+
+      let scenId = getScenarioId input
+      reasoner <- liftIO $ dr (fromJust scenId)
+      (req, txt, ctp) <- liftIO $ process reasoner (Just cgiBin) input
+
       -- save logging action for later
       when (useLogging req) $
          liftIO $ writeIORef logRef $
@@ -80,9 +85,9 @@ defaultCGI dr startTime = do
    setHeader "Content-type" "text/plain"
    setHeader "Access-Control-Allow-Origin" "*"
    output ("Invalid request\n" ++ ioeGetErrorString ioe)
-
+{--
 -- Invoked from command-line with flags
-defaultCommandLine :: DomainReasoner -> [Flag] -> IO ()
+defaultCommandLine :: (String -> IO DomainReasoner) -> [Flag] -> IO ()
 defaultCommandLine dr flags = do
    hSetBinaryMode stdout True
    useFixedStdGen -- always use a predictable "random" number generator
@@ -109,6 +114,7 @@ defaultCommandLine dr flags = do
          -- feedback scripts
          MakeScriptFor s    -> makeScriptFor dr s
          AnalyzeScript file -> parseAndAnalyzeScript dr file
+         --}
 
 process :: DomainReasoner -> Maybe String -> String -> IO (Request, String, String)
 process dr cgiBin input =
@@ -123,3 +129,21 @@ newDomainReasoner a = mempty
    , version     = shortVersion
    , fullVersion = Options.fullVersion
    }
+
+-- | this method gets the scenario id from the cgi input string. necessary to prevent parsing every scenario for every request
+getScenarioId :: String -> Maybe String
+getScenarioId input = case index of
+                  Just foundIndex -> Just $ takeWhile (\x -> x /= '\"') $ drop (foundIndex+11) input --10 is length of hardcoded string the precedes the scenrio id
+                  Nothing -> Nothing
+                  where index = subStringIndex "params\":[[\"" input
+
+subStringIndex :: String -> String -> Maybe Int
+subStringIndex part whole = elemIndex True $ map (subStrIndHelper part) (tails whole)
+
+subStrIndHelper :: String -> String -> Bool
+subStrIndHelper [] [] = True
+subStrIndHelper [] whole = True
+subStrIndHelper part [] = False
+subStrIndHelper (y:ys) (x:xs)
+                  | y == x = subStrIndHelper ys xs
+                  | otherwise = False

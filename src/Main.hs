@@ -16,14 +16,14 @@ import qualified Domain.Scenarios.Services as S
 import qualified Domain.Scenarios.Exercises as E
 
 main :: IO ()
-main = createDomainReasoner >>= defaultMain
+main = defaultMain createDomainReasoner
 
 maindoc :: IO ()
-maindoc = createDomainReasoner >>= flip makeDocumentation "doc"
+maindoc = (createDomainReasoner "") >>= flip makeDocumentation "doc"
 
-createDomainReasoner :: IO DomainReasoner
-createDomainReasoner = do
-    (flatExercises, scripts) <- E.getExercises
+createDomainReasoner :: String -> IO DomainReasoner
+createDomainReasoner scenarioId = do
+    (flatExercises, scripts) <- E.getExercises scenarioId
     let myExercises = map Some flatExercises
     let ideasScenarios  = (newDomainReasoner "ideas.scenarios")
             { exercises = myExercises
