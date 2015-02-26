@@ -49,8 +49,8 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
     statementDescription  <- getText statement
     statementPrecondition <- getMaybePrecondition statement
     statementEffects      <- getEffects statement
-	statEnd               <- getEnd  statement == "true"
-	statJump              <- getJump statement == "true"
+    statEnd               <- getEnd  statement == "true"
+    statJump              <- getJump statement == "true"
 
     case M.lookup statementId strategyMap of --check if statement is already in the strategy
 
