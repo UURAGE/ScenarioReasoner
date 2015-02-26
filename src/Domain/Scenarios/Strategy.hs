@@ -12,6 +12,8 @@ import Domain.Scenarios.Parser
 
 type StrategyMap a = M.Map String (Strategy a)
 
+-- add some comment to test the push of git!!
+
 --framework code, try not to break your head.
 guardedRule :: IsId b => b -> String -> (a -> Bool) -> (a -> a) -> Rule a
 guardedRule identifier description check update =
@@ -43,10 +45,12 @@ makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State
 makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = do
 
     let statement = head $ findStatementAt el statementId
-    statementType <- getType statement
-    statementDescription <- getText statement
+    statementType         <- getType statement
+    statementDescription  <- getText statement
     statementPrecondition <- getMaybePrecondition statement
-    statementEffects <- getEffects statement
+    statementEffects      <- getEffects statement
+	statEnd               <- getEnd  statement == "true"
+	statJump              <- getJump statement == "true"
 
     case M.lookup statementId strategyMap of --check if statement is already in the strategy
 
