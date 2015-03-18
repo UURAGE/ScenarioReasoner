@@ -12,7 +12,7 @@ import Ideas.Main.Documentation
 import Ideas.Service.DomainReasoner
 import Ideas.Service.ServiceList
 import Ideas.Service.Types (Service)
-import qualified Domain.Scenarios.Services as S
+import qualified Domain.Scenarios.Services.ServiceList as S
 import qualified Domain.Scenarios.Exercises as E
 
 main :: IO ()

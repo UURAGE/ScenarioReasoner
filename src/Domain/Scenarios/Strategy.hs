@@ -20,7 +20,7 @@ guardedRule identifier description check update =
     describe description $ makeRule identifier (\x -> do guard $ check x; Just $ update x)
     --make description and add it to the rule $ make the rule
 
-makeStrategy :: Monad m => Script -> m (Strategy State)
+makeStrategy :: Monad m => Script -> m (Strategy EmotionalState)
 makeStrategy script = do
     treeElemTuples <- getTrees script
     scriptId <- getScriptId script
@@ -29,7 +29,7 @@ makeStrategy script = do
     where
         sequence' = Ideas.Common.Strategy.Combinators.sequence
 
-makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy State)
+makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy EmotionalState)
 makeTreeStrategy tuple@(tree,_) scriptId statementId = do
     strategyTuple <- makeSubStrategy tuple scriptId M.empty statementId
     let strategy = fst strategyTuple
@@ -39,7 +39,7 @@ makeTreeStrategy tuple@(tree,_) scriptId statementId = do
 
 
 --sub strats make a strat for one tree, so it should not be too hard to expand it once we know the starting statements of each tree.
-makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap State -> String -> m (Strategy State, StrategyMap State)
+makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap EmotionalState -> String -> m (Strategy EmotionalState, StrategyMap EmotionalState)
 makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = do
 
     let statement = head $ findStatementAt el statementId
@@ -60,7 +60,7 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
                     (["scenarios", scriptId, toIdTypeSegment statementType, statementId])
                     (either id (intercalate " // " . map snd) statementDescription)
 
-                    (calculateMaybeCondition statementPrecondition) -- check if precondition is fulfilled
+                    (evaluateMaybeCondition statementPrecondition) -- check if precondition is fulfilled
                     (\state -> foldr applyEffect (fst state, treeID tree) statementEffects) -- apply effects of node
                     --the initial state is not generated here. It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             nextIds <- getNexts statement

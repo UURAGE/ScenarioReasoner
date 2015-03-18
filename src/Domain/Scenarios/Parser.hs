@@ -267,6 +267,13 @@ findTypedStatement (Script scriptElem) statementType idVar = head (filter
         (childrenNamed elementName scriptElem))
     where elementName = applyToFirst toLower $ show statementType
           idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
+          
+findScript :: String -> [Script] -> Exercise a -> Script
+findScript usage scripts ex =
+    case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
+            [foundScript] -> foundScript
+            _             ->
+                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."
 
 -- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
 parseScript :: String -> IO Script
