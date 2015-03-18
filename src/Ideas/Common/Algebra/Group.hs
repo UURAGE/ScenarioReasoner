@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: Group.hs 7135 2014-11-03 12:40:28Z bastiaan $
+
 module Ideas.Common.Algebra.Group
    ( -- * Monoids
      Monoid(..), (<>)
@@ -27,7 +29,7 @@ import Control.Monad (liftM2)
 import Data.Foldable (Foldable)
 import Data.Maybe
 import Data.Monoid
-import Data.Traversable (Traversable)
+import Data.Traversable (Traversable, traverse)
 import Ideas.Common.Classes
 import qualified Data.Set as S
 
@@ -57,14 +59,17 @@ class Monoid a => MonoidZero a where
 
 -- Type that adds a zero element
 newtype WithZero a = WZ { fromWithZero :: Maybe a }
-   deriving (Eq, Ord, Functor, Foldable, Traversable, Applicative)
+   deriving (Eq, Ord, Functor, Foldable, Applicative)
 
 instance Monoid a => Monoid (WithZero a) where
    mempty = WZ (Just mempty)
    mappend x y = WZ (liftM2 mappend (fromWithZero x) (fromWithZero y))
-
+   
 instance Monoid a => MonoidZero (WithZero a) where
    mzero = WZ Nothing
+ 
+instance Traversable WithZero where
+   traverse f = liftA WZ . traverse f . fromWithZero
 
 --------------------------------------------------------
 -- Groups

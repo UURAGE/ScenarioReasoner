@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,26 +10,28 @@
 -- Portability :  portable (depends on ghc)
 --
 -- Many entities of the Ideas framework carry an 'Id' for identification.
--- Identifiers have a hierarchical structure of an arbitrary depth (e.g. 
+-- Identifiers have a hierarchical structure of an arbitrary depth (e.g.
 -- @algebra.equation@ or @a.b.c@). Valid symbols for identifiers are the
 -- alpha-numerical characters, together with @-@ and @_@. Each identifier
 -- carries a description and a hash value for fast comparison.
 --
 -- Functionality for identifiers is provided by means of three type classes:
--- 
+--
 -- * Type class 'IsId' for constructing identifiers
 --
--- * Type class 'HasId' for accessing (and changing) the identifier of an 
+-- * Type class 'HasId' for accessing (and changing) the identifier of an
 --   entity. Instances of this type class must always have exactly one
 --   identifier (although this identifier can be empty).
 --
 -- * Type class 'Identify' for labeling entities with an identifier. Instances
--- of this type class typically allow labels to appear at multiple locations 
+-- of this type class typically allow labels to appear at multiple locations
 -- within their structure.
 --
 -- The 'Id' datatype implements and re-exports the Monoid interface.
 --
 -----------------------------------------------------------------------------
+--  $Id: Id.hs 6818 2014-08-25 13:10:25Z bastiaan $
+
 module Ideas.Common.Id
    ( -- * Constructing identifiers
      Id, IsId(..), ( # )
@@ -56,7 +58,7 @@ import Test.QuickCheck
 ---------------------------------------------------------------------
 -- Abstract data type and its instances
 
--- | Abstract data type for identifiers with a hierarchical name, carrying 
+-- | Abstract data type for identifiers with a hierarchical name, carrying
 -- a description. The data type provides a fast comparison implementation.
 data Id = Id
    { idList        :: [String]
@@ -90,7 +92,7 @@ instance Arbitrary Id where
       , (1, liftM2 mappend arbitrary arbitrary)
       ]
 
--- | Type class 'IsId' for constructing identifiers. Examples are 
+-- | Type class 'IsId' for constructing identifiers. Examples are
 -- @newId \"algebra.equation\"@, @newId (\"a\", \"b\", \"c\")@, and @newId ()@
 -- for the empty identifier.
 class IsId a where
@@ -150,7 +152,7 @@ instance HasId Id where
 instance (HasId a, HasId b) => HasId (Either a b) where
    getId      = either getId getId
    changeId f = biMap (changeId f) (changeId f)
-   
+
 ---------------------------------------------------------------------
 -- Private constructors
 
@@ -162,7 +164,7 @@ appendId a b
  where
    ref = stringRef (show a ++ "." ++ show b)
 
--- Only allow alphanum and '-' ('.' has a special meaning)
+-- Only allow alphanum and '-' and '_' ('.' has a special meaning)
 stringId :: String -> Id
 stringId txt = Id (make s) "" (stringRef s)
  where
@@ -196,7 +198,7 @@ qualifiers a
  where
    xs = idList (getId a)
 
--- | Get the qualified part of the identifier. If the identifier consists of 
+-- | Get the qualified part of the identifier. If the identifier consists of
 -- more than one part, the parts are separated by a period (@'.'@).
 qualification :: HasId a => a -> String
 qualification = intercalate "." . qualifiers
@@ -205,7 +207,7 @@ qualification = intercalate "." . qualifiers
 description :: HasId a => a -> String
 description = idDescription . getId
 
--- | Give a description for the current entity. If there already is a 
+-- | Give a description for the current entity. If there already is a
 -- description, both strings are combined.
 describe :: HasId a => String -> a -> a
 describe = changeId . describeId
@@ -220,7 +222,7 @@ describe = changeId . describeId
 showId :: HasId a => a -> String
 showId = show . getId
 
--- | Compare two identifiers based on their names. Use @compare@ for a fast 
+-- | Compare two identifiers based on their names. Use @compare@ for a fast
 -- ordering based on hash values.
 compareId :: HasId a => a -> a -> Ordering
 compareId = comparing showId

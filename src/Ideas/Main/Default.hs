@@ -1,6 +1,5 @@
-{-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,8 +11,10 @@
 -- Main module for feedback services
 --
 -----------------------------------------------------------------------------
+--  $Id: Default.hs 6992 2014-10-08 14:58:58Z bastiaan $
+
 module Ideas.Main.Default
-   ( defaultMain, newDomainReasoner
+   ( defaultMain, defaultCGI
      -- extra exports
    , Some(..), serviceList, metaServiceList, Service
    , module Ideas.Service.DomainReasoner
@@ -21,11 +22,9 @@ module Ideas.Main.Default
 
 import Control.Exception
 import Control.Monad
-import Data.IORef
 import Data.Maybe
 import Data.Time
-import Data.List
-import Ideas.Common.Id
+import Data.List(elemIndex, tails)
 import Ideas.Common.Utils (useFixedStdGen, Some(..))
 import Ideas.Common.Utils.TestSuite
 import Ideas.Encoding.ModeJSON (processJSON)
@@ -35,108 +34,121 @@ import Ideas.Main.Documentation
 import Ideas.Main.LoggingDatabase
 import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
-import Ideas.Service.ServiceList
-import Ideas.Service.Types (Service)
 import Ideas.Service.FeedbackScript.Analysis
 import Ideas.Service.Request
+import Ideas.Service.ServiceList
+import Ideas.Service.Types (Service)
 import Network.CGI
 import Prelude hiding (catch)
 import System.IO
 import System.IO.Error (ioeGetErrorString)
-import qualified Ideas.Main.Options as Options
 
 defaultMain :: (String -> IO DomainReasoner) -> IO ()
 defaultMain dr = do
-   startTime <- getCurrentTime
-   flags     <- getFlags
+   flags <- getFlags
    if null flags
-      then defaultCGI dr startTime
-      else error("not supported anymore") --defaultCommandLine dr flags
+      then defaultCGI dr
+      else defaultCommandLine dr flags
 
 -- Invoked as a cgi binary
-defaultCGI :: (String -> IO DomainReasoner) -> UTCTime -> IO ()
-defaultCGI dr startTime = do
-   logRef <- newIORef (return ())
-   runCGI $ do
-      addr   <- remoteAddr       -- the IP address of the remote host making the request
-      cgiBin <- scriptName       -- get name of binary
-      raw    <- getInput "input" -- read input
-      input  <- case raw of
-                   Nothing -> fail "Invalid request: environment variable \"input\" is empty"
-                   Just s  -> return s
-
-      let scenId = getScenarioId input
-      reasoner <- liftIO $ dr (fromJust scenId)
-      (req, txt, ctp) <- liftIO $ process reasoner (Just cgiBin) input
-
-      -- save logging action for later
-      when (useLogging req) $
-         liftIO $ writeIORef logRef $
-            logMessage req input txt addr startTime
-      setHeader "Content-type" ctp
-      -- Cross-Origin Resource Sharing (CORS) prevents browser warnings
-      -- about cross-site scripting
-      setHeader "Access-Control-Allow-Origin" "*"
-      output txt
+defaultCGI :: (String -> IO DomainReasoner) -> IO ()
+defaultCGI dr = runCGI $ handleErrors $ do
+   -- query environment
+   startTime <- liftIO getCurrentTime
+   addr      <- remoteAddr       -- the IP address of the remote host
+   cgiBin    <- scriptName       -- get name of binary
+   input     <- inputOrDefault
+   
+   -- retrieve domain reasoner for the chosen scenario 
+   let scenarioID = getScenarioId input
+   domainReasoner <- liftIO $ dr (fromMaybe (error "domain reasoner not found") scenarioID)
+   
+   -- process request
+   (req, txt, ctp) <- liftIO $ 
+      process domainReasoner (Just cgiBin) input
    -- log request to database
-   join (readIORef logRef)
-   -- if something goes wrong
- `catch` \ioe -> runCGI $ do
-   setHeader "Content-type" "text/plain"
+   when (useLogging req) $
+      liftIO $ logMessage req input txt addr startTime
+   -- write header and output
+   setHeader "Content-type" ctp
+   -- Cross-Origin Resource Sharing (CORS) prevents browser warnings
+   -- about cross-site scripting
    setHeader "Access-Control-Allow-Origin" "*"
-   output ("Invalid request\n" ++ ioeGetErrorString ioe)
-{--
+   output txt     
+   
+
+inputOrDefault :: CGI String
+inputOrDefault = do
+   inHtml <- acceptsHTML
+   ms     <- getInput "input" -- read variable 'input'
+   case ms of
+      Just s -> return s
+      Nothing 
+         | inHtml    -> return defaultBrowser 
+         | otherwise -> fail "environment variable 'input' is empty"
+ where      
+   -- Invoked from browser
+   defaultBrowser :: String
+   defaultBrowser = "<request service='index' encoding='html'/>"
+ 
+   acceptsHTML :: CGI Bool
+   acceptsHTML = do
+      maybeAcceptCT <- requestAccept
+      let htmlCT = ContentType "text" "html" []
+          xs = negotiate [htmlCT] maybeAcceptCT
+      return (isJust maybeAcceptCT && not (null xs))
+
 -- Invoked from command-line with flags
 defaultCommandLine :: (String -> IO DomainReasoner) -> [Flag] -> IO ()
 defaultCommandLine dr flags = do
+   -- default domain reasoner
+   domainReasoner <- liftIO $ dr ""   
    hSetBinaryMode stdout True
    useFixedStdGen -- always use a predictable "random" number generator
-   mapM_ doAction flags
- where
-   doAction flag =
+   mapM_ (doAction domainReasoner) flags   
+  where    
+   doAction domainReasoner flag =
       case flag of
          -- information
          Version -> putStrLn ("IDEAS, " ++ versionText)
          Help    -> putStrLn helpText
          -- process input file
-         InputFile file -> do
-            input <- readFile file
-            (_, txt, _) <- process dr Nothing input
-            putStrLn txt
+         InputFile file ->
+            withBinaryFile file ReadMode $ \h -> do
+               input <- hGetContents h
+               (_, txt, _) <- process domainReasoner Nothing input
+               putStrLn txt
          -- blackbox tests
          Test dir -> do
-            tests  <- blackBoxTests dr dir
+            tests  <- blackBoxTests domainReasoner dir
             result <- runTestSuiteResult True tests
             printSummary result
          -- generate documentation pages
          MakePages dir ->
-            makeDocumentation dr dir
+            makeDocumentation domainReasoner dir
          -- feedback scripts
-         MakeScriptFor s    -> makeScriptFor dr s
-         AnalyzeScript file -> parseAndAnalyzeScript dr file
-         --}
+         MakeScriptFor s    -> makeScriptFor domainReasoner s
+         AnalyzeScript file -> parseAndAnalyzeScript domainReasoner file
 
 process :: DomainReasoner -> Maybe String -> String -> IO (Request, String, String)
-process dr cgiBin input =
-   case discoverDataFormat input of
-      Just XML  -> processXML (Just 5) dr cgiBin input
-      Just JSON -> processJSON (Just 5) (isJust cgiBin) dr input
-      _ -> fail "Invalid input"
-
-newDomainReasoner :: IsId a => a -> DomainReasoner
-newDomainReasoner a = mempty
-   { reasonerId  = newId a
-   , version     = shortVersion
-   , fullVersion = Options.fullVersion
-   }
-
+process dr cgiBin input = do
+   format <- discoverDataFormat input
+   run format (Just 5) cgiBin dr input
+ `catch` \ioe -> 
+   let msg = "Error: " ++ ioeGetErrorString ioe
+   in return (emptyRequest, msg, "text/plain")
+ where
+   run XML  = processXML
+   run JSON = processJSON
+   
+ 
 -- | this method gets the scenario id from the cgi input string. necessary to prevent parsing every scenario for every request
 getScenarioId :: String -> Maybe String
 getScenarioId input = case index of
                   Just foundIndex -> Just $ takeWhile (\x -> x /= '\"') $ drop (foundIndex+11) input --10 is length of hardcoded string the precedes the scenrio id
                   Nothing -> Nothing
                   where index = subStringIndex "params\":[[\"" input
-
+                  
 subStringIndex :: String -> String -> Maybe Int
 subStringIndex part whole = elemIndex True $ map (subStrIndHelper part) (tails whole)
 

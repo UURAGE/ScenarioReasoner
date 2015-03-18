@@ -1,6 +1,6 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,170 +12,200 @@
 -- Testing strategy combinator properties
 --
 -----------------------------------------------------------------------------
-module Ideas.Common.Strategy.Tests (tests) where
+--  $Id: Tests.hs 6893 2014-09-04 12:35:49Z bastiaan $
 
+module Ideas.Common.Strategy.Tests (main) where
+
+import Control.Monad
 import Data.Function
-import Data.List
-import Data.Ord
-import Ideas.Common.Algebra.Group
-import Ideas.Common.Algebra.GroupLaws
-import Ideas.Common.Algebra.Law
-import Ideas.Common.Classes
-import Ideas.Common.Strategy
-import Ideas.Common.Strategy.Abstract
-import Ideas.Common.Strategy.Parsing
-import Ideas.Common.Utils.QuickCheck hiding (label, Result)
-import Ideas.Common.Utils.TestSuite
-import Prelude hiding (fail)
-import qualified Ideas.Common.Algebra.Field as F
-import qualified Ideas.Common.Algebra.FieldLaws as F
+import Ideas.Common.Library hiding (ready)
+import Ideas.Common.Strategy.Sequence (Firsts(..), firstsOrdered)
+import Ideas.Common.Strategy.Core (Core, GCore(..))
+import Ideas.Common.Strategy.Abstract (toCore, fromCore)
+import Ideas.Common.Utils.Uniplate
+import Test.QuickCheck
 
----------------------------------------------------------
--- Properties
+-- s |> t = s <|> (notS s <*> t)
 
-tests :: TestSuite
-tests = suite "Strategy combinator properties"
-   [ -- monoids and semi-rings
-     fs (commutative : idempotent : monoidLaws :: [Law Choice])
-   , fs (monoidZeroLaws :: [Law Sequence])
-   , fs (commutative : monoidZeroLaws :: [Law Interleave])
-   , fs (F.distributiveLaws :: [Law Sequence])
-   , fs (F.distributiveLaws :: [Law Interleave])
+(~>) :: IsStrategy f => Rule a -> f a -> Strategy a
+a ~> s = toStrategy a <*> s
 
-   -- properties of atomic
-   , useProperty "atomic-twice" $ \a ->
-        atomic (atomic a) === atomic (idS a)
-   , assertTrue  "atomic-succeed" $
-        atomic succeed === succeed
-   , assertTrue  "atomic-fail" $
-        atomic fail === fail
-   , useProperty "atomic-choice" $ \a b ->
-        atomic (idS a <|> idS b) === atomic a <|> atomic b
+infix 0 ===
 
-   -- splits theorm parallel/atomic
-   , useProperty "atomic-split"  $ \x y a b ->
-        (atomic x <*> a) <%> (atomic y <*> b)
-        ===
-        (idS x <*> (a <%> (atomic y <*> b)))
-          <|>
-        (idS y <*> ((atomic x <*> idS a) <%> idS b))
+(===) :: Strategy Int -> Strategy Int -> Property
+s === t = forAll arbitrary $ \i -> 
+   eqPrefix (emptyPrefix s i) (emptyPrefix t i)
+
+eqPrefix :: Eq a => Prefix a -> Prefix a -> Bool
+eqPrefix a b = rec 1000 [] [(majorPrefix a, majorPrefix b)]
+ where
+   rec :: Eq a => Int -> [(Prefix a, Prefix a)] ->  [(Prefix a, Prefix a)] -> Bool
+   rec 0 _   _  = True
+   rec _ []  [] = True
+   rec n acc [] = rec n [] (reverse acc)
+   rec n acc ((p, q):rest) = 
+      let (xs1, xs2) = unzip $ merge $ firstsOrdered cmp p
+          (ys1, ys2) = unzip $ merge $ firstsOrdered cmp q
+      in ready (majorPrefix p) == ready (majorPrefix q) 
+      && xs1 == ys1
+      && rec (n-1) (zip xs2 ys2 ++ acc) rest
+
+   cmp :: (Step a, a) -> (Step a, a) -> Ordering
+   cmp = compareId `on` fst
+      
+   merge :: Eq a => [((Step a, a), Prefix a)] -> [((Step a, a), Prefix a)]
+   merge ((p, x):(q, y):zs) | p == q = merge $ (p, x <> y) : zs
+   merge (x:xs) = x:merge xs
+   merge [] = []
+
+main :: IO ()
+main = mapM_ runLaw
+   [ associative (<|>)
+   , commutative (<|>) 
+   , idempotent  (<|>)
+   , leftUnit failS  (<|>)
+   , rightUnit failS (<|>)
+   , useGen arbRule $ \a -> law2 "merge" $ \x y -> ((a ~> x) <|> (a ~> y), a ~> (x <|> y)) 
+   , leftUnit succeed (<*>)
+   , rightUnit succeed (<*>)
+   , leftZero failS (<*>)
+   , rightDistributive (<*>) (<|>)
+   , useGen arbRule $ \a -> law2 "prefix" $ \x y -> ((a ~> x) <*> y, a ~> (x <*> y)) 
+   , associative (<*>)
+   -- , rightZero failS (<*>)
+   , leftDistributive (<*>) (<|>)
+   
+   -----------------------------------------------
+   , associative (|>)
+   , idempotent  (|>)
+   , leftUnit failS  (|>)
+   , rightUnit failS (|>)
+   , leftZero succeed (|>)
+   
+   , rightDistributive (<*>) (|>) -- ???
+   
+   {-
+   
+   , leftDistributive (<*>) (|>) -- ???
+   
+   , leftDistributive (|>) (<|>)
+   , law2 "abs1" $ \x y -> ((x <|> y) |> x, x <|> y) 
+   , law2 "abs2" $ \x y -> (x |> (x <|> y), x |> y) 
+   , law2 "abs3" $ \x y -> ((x |> y) <|> x, x |> y) 
+   , law2 "abs4" $ \x y -> (x <|> (x |> y), x |> y) 
+   -}
    ]
+
+-----------------
+
+forAllShrink2 :: (Show a, Testable prop) => Gen a -> (a -> [a]) -> (a -> a -> prop) -> Property
+forAllShrink2 gen sh f = forAllShrink gen2 sh2 f2
  where
-   fs :: (Arbitrary a, Show a, Eq a) => [Law a] -> TestSuite
-   fs ps = mconcat [ useProperty (show p) p | p <- ps ]
+  gen2 = liftM2 (,) gen gen
+  sh2 (x, y) = [ (a, y) | a <- sh x ] ++ [ (x, a) | a <- sh y ]
+  f2  (x, y) = f x y
 
----------------------------------------------------------
--- Algebraic instances
 
-newtype Choice     = Choice     (Strategy Int) deriving (Show, Arbitrary)
-newtype Sequence   = Sequence   (Strategy Int) deriving (Show, Arbitrary)
-newtype Interleave = Interleave (Strategy Int) deriving (Show, Arbitrary)
-
-instance Eq Choice     where     Choice a == Choice b     = a === b
-instance Eq Sequence   where   Sequence a == Sequence b   = a === b
-instance Eq Interleave where Interleave a == Interleave b = a === b
-
-instance Monoid Choice where
-   mempty = Choice fail
-   mappend (Choice a) (Choice b) = Choice (a <|> b)
-
-instance Monoid Sequence where
-   mempty = Sequence succeed
-   mappend (Sequence a) (Sequence b) = Sequence (a <*> b)
-
-instance MonoidZero Sequence where
-   mzero = Sequence fail
-
-instance Monoid Interleave where
-   mempty = Interleave succeed
-   mappend (Interleave a) (Interleave b) = Interleave (a <%> b)
-
-instance MonoidZero Interleave where
-   mzero = Interleave fail
-
-instance F.SemiRing Sequence where
-   Sequence a <+> Sequence b = Sequence (a <|> b)
-   zero  = Sequence fail
-   (<*>) = mappend
-   one   = mempty
-
-instance F.SemiRing Interleave where
-   Interleave a <+> Interleave b = Interleave (a <|> b)
-   zero  = Interleave fail
-   (<*>) = mappend
-   one   = mempty
-
----------------------------------------------------------
--- Helper functions for equality
-
-idS :: Strategy Int -> Strategy Int
-idS = id
-
-infix 1 ===
-
-(===) :: Strategy Int -> Strategy Int -> Bool
-s1 === s2 = rec 100 [(start s1, start s2)]
+forAllShrink3 :: (Show a, Testable prop) => Gen a -> (a -> [a]) -> (a -> a -> a -> prop) -> Property
+forAllShrink3 gen sh f = forAllShrink gen3 sh3 f3
  where
-   start = return . makeState 0 . toCore
+  gen3 = liftM3 (,,) gen gen gen
+  sh3 (x, y, z) = [ (a, y, z) | a <- sh x ] ++ 
+                  [ (x, a, z) | a <- sh y ] ++
+                  [ (x, y, a) | a <- sh z ]
+  f3  (x, y, z) = f x y z
 
-   rec :: Int -> [([ParseState LabelInfo Int], [ParseState LabelInfo Int])] -> Bool
-   rec _ [] = True
-   rec n (pair:rest)
-      | n == 0    = True
-      | otherwise = testReady xs ys
-                 && testFirsts gxs gys
-                 && rec (n-1) (rest ++ new)
+runLaw :: Law (Strategy Int) -> IO ()
+runLaw (Law s f) = do
+   putStr $ take 30 $ "  "  ++ s ++ repeat ' '
+   quickCheck $ f arbitrary shrink (===) 
 
+data Law a = Law 
+   { lawName :: String
+   , lawProp ::  Gen a -> (a -> [a]) -> (a -> a -> Property) -> Property
+   }
+
+useGen :: Show a => Gen a -> (a -> Law b) -> Law b
+useGen ga f = Law (lawName $ f undefined) $ \gen sh eq -> 
+   forAll ga $ \a -> lawProp (f a) gen sh eq
+
+law :: Show a => String -> (a -> (a, a)) -> Law a
+law s f = Law s $ \gen sh eq -> forAllShrink gen sh $ \x ->
+   uncurry eq (f x)
+
+law2 :: Show a => String -> (a -> a -> (a, a)) -> Law a
+law2 s f = Law s $ \gen sh eq -> forAllShrink2 gen sh $ \x y -> uncurry eq (f x y)
+   
+law3 :: Show a => String -> (a -> a -> a -> (a, a)) -> Law a
+law3 s f = Law s $ \gen sh eq -> forAllShrink3 gen sh $ \x y z -> 
+   uncurry eq (f x y z)
+
+associative :: Show a => (a -> a -> a) -> Law a
+associative op = law3 "associative" $ \x y z -> (op x (op y z),  op (op x y) z)
+
+commutative :: Show a => (a -> a -> a) -> Law a
+commutative op = law2 "commutative" $ \x y -> (op x y, op y x)
+
+idempotent :: Show a => (a -> a -> a) -> Law a
+idempotent op = law "idempotent" $ \x -> (op x x, x)
+
+leftUnit :: Show a => a -> (a -> a -> a) -> Law a
+leftUnit e op = law (show e ++ " left-unit") $ \x -> (op e x, x)
+
+rightUnit :: Show a => a -> (a -> a -> a) -> Law a
+rightUnit e op = law (show e ++ " right-unit") $ \x -> (op x e, x)
+
+leftZero :: Show a => a -> (a -> a -> a) -> Law a
+leftZero z op = law (show z ++ " left-zero") $ \x -> (op z x, z)
+
+rightZero :: Show a => a -> (a -> a -> a) -> Law a
+rightZero z op = law (show z ++ " right-zero") $ \x -> (op x z, z)
+
+leftDistributive :: Show a => (a -> a -> a) -> (a -> a -> a) -> Law a
+leftDistributive f op = law3 "left distributive" $ \x y z -> 
+   (f x (op y z), op (f x y) (f x z))
+
+rightDistributive :: Show a => (a -> a -> a) -> (a -> a -> a) -> Law a
+rightDistributive f op = law3 "right distributive" $ \x y z -> 
+   (f (op x y) z, op (f x z) (f y z))
+
+-------------------
+
+instance Arbitrary (Strategy Int) where
+   arbitrary = arbRules >>= arbWith
+   shrink = map fromCore . shrinkCore . toCore
+
+shrinkCore :: Core a -> [Core a]
+shrinkCore Fail    = []
+shrinkCore Succeed = [Fail]
+shrinkCore core = do
+   (a, f) <- holes core
+   Fail : Succeed : a : map f (shrinkCore a)
+      
+arbWith :: [Rule Int] -> Gen (Strategy Int)
+arbWith rs = sized f
+ where
+   f n 
+      | n == 0    = elements (failS : succeed : map toStrategy rs)
+      | otherwise = oneof
+           [ f 0
+           , liftM2 (<|>) rec rec
+           , liftM2 (<*>) rec rec
+           -- , liftM2 (|>) rec rec
+           , liftM2 (~>) (elements rs) rec
+           ]
     where
-      p@(xs, ys)    = mapBoth (concatMap myFirsts) pair
-      gp@(gxs, gys) = mapBoth f p
-      new           = uncurry zip (mapBoth (map snd) gp)
-
-      testReady  = (==) `on` any (isReady . fst)
-      testFirsts = (==) `on` map fst
-
-      f          = map merge . groupBy eqFst . sortBy cmpFst . results
-      merge   as = (fst (head as), map snd as)
-      results as = [ (a, b) | (a, b) <- as ]
-
-      cmpFst = comparing (show . fst)
-      eqFst  = (==) `on` fst
-
-firsts :: Bool -> ParseState l a -> [(Step l a, ParseState l a)]
-firsts = undefined -- fix me
-
-isReady :: Step l a -> Bool
-isReady = undefined -- fix me
-
-myFirsts :: ParseState l a -> [(Step l a, ParseState l a)]
-myFirsts = concatMap f . firsts False
- where
-   f pair@(result, a) =
-      case result of
-         Enter _ -> myFirsts a
-         Exit _  -> myFirsts a
-         _       -> [pair]
-
-{-
-debug :: Show a => Strategy a -> a -> IO ()
-debug s = rec . makeState (toCore s)
- where
-   rec st = do
-      print st
-      putStrLn $ "\nReady: " ++ show (any (isReady . fst) xs)
-      putStrLn $ unlines $
-         zipWith (\i y -> show i ++ ". " ++ show (fst y)) [1::Int ..] ys
-      if (null xs) then print "(no choices)" else do
-      n <- ask
-      rec (snd (ys !! n))
-    where
-      xs = firsts st
-      ys = [ (a, b) | (Result a, b) <- xs ]
-
-      ask = do
-         putStr "? "
-         input <- getLine
-         case readInt input of
-            Just n | n > 0 && n <= length ys ->
-               return (n-1)
-            _ -> if input == "q" then error "QUIT" else ask -}
+      rec = f (n `div` 2)
+      
+arbRule :: Gen (Rule Int)
+arbRule = elements [ra, rb, rc]
+      
+arbRules :: Gen [Rule Int]
+arbRules = return [ra, rb, rc] {- do
+   fs <- vector 3
+   return $ zipWith (\c f -> makeRule [c] (f :: Int -> Maybe Int)) ['A' .. ] fs
+      -}
+ra, rb, rc :: Rule Int
+ra = makeRule "a" Just
+rb = makeRule "b" $ \i -> if even i then Just (i `div` 2) else Nothing
+rc = makeRule "c" $ \i -> if i `mod` 3 == 0 then Just (i-1) else Nothing

@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -14,12 +14,14 @@
 -- functions yourself.
 --
 -----------------------------------------------------------------------------
+--  $Id: Strategy.hs 6778 2014-08-05 11:32:23Z bastiaan $
+
 module Ideas.Common.Strategy
    ( -- * Data types and type classes
      Strategy, LabeledStrategy
    , IsStrategy(..)
      -- * Running strategies
-   , fullDerivationTree, derivationTree
+   , derivationList
      -- * Strategy combinators
      -- ** Basic combinators
    , (<*>), (<|>), (<%>), succeed, fail, atomic, label
@@ -27,18 +29,24 @@ module Ideas.Common.Strategy
      -- ** EBNF combinators
    , many, many1, replicate, option
      -- ** Negation and greedy combinators
-   , check, not, repeat, repeat1, try, (|>), exhaustive
+   , check, not, repeat, repeat1, try, (|>), (>|>), exhaustive
    , while, until, multi
+     -- ** Graph
+   , DependencyGraph, dependencyGraph
      -- ** Traversal combinators
    , module Ideas.Common.Strategy.Traversal
      -- * Configuration combinators
    , module Ideas.Common.Strategy.Configuration
+   , remove, collapse, hide
      -- * Strategy locations
-   , strategyLocations, subStrategy
+   , strategyLocations, checkLocation
    , subTaskLocation, nextTaskLocation
      -- * Prefixes
-   , Prefix, showPrefix, emptyPrefix, makePrefix, prefixTree, Step(..), Path, emptyPath
-   , prefixToSteps, stepsToRules, lastStepInPrefix, activeLabels
+   , Prefix, emptyPrefix, noPrefix
+   , replayPath, replayPaths, replayStrategy
+   , Step(..), stepRule, stepEnvironment
+   , Path, emptyPath, readPath, readPaths
+   , prefixPaths, majorPrefix, isEmptyPrefix
      -- * Misc
    , cleanUpStrategy, cleanUpStrategyAfter
    , rulesInStrategy
@@ -49,7 +57,5 @@ import Ideas.Common.Strategy.Combinators
 import Ideas.Common.Strategy.Configuration
 import Ideas.Common.Strategy.Location
 import Ideas.Common.Strategy.Parsing
-import Ideas.Common.Strategy.Prefix
-import Ideas.Common.Strategy.Path
 import Ideas.Common.Strategy.Traversal hiding (full, spine, stop, once)
 import Prelude ()

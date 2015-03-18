@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,8 +12,10 @@
 -- Diagnose a term submitted by a student. Deprecated (see diagnose service).
 --
 -----------------------------------------------------------------------------
+--  $Id: Submit.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.Submit
-   ( submit, Result(..)
+   ( submit, Result(..), tResult
    ) where
 
 import Data.Maybe
@@ -47,9 +49,12 @@ fromDiagnose diagnosis =
 submit :: State a -> Context a -> Result a
 submit state ctx = fromDiagnose (diagnose state ctx Nothing)
 
-instance Typed a (Result a) where
-   typed = Tag "Result" (Iso (f <-> g) typed)
+tResult :: Type a (Result a)
+tResult = Tag "Result" (Iso (f <-> g) tp)
     where
+      tp = tList tRule :|: tString :|: tPair (tList tRule) tState 
+           :|: tPair (tList tRule) tState :|: tState
+    
       f (Left rs) = Buggy rs
       f (Right (Left s)) = NotEquivalent s
       f (Right (Right (Left (rs, s)))) = Ok rs s

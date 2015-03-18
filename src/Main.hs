@@ -19,7 +19,7 @@ main :: IO ()
 main = defaultMain createDomainReasoner
 
 maindoc :: IO ()
-maindoc = (createDomainReasoner "") >>= flip makeDocumentation "doc"
+maindoc = createDomainReasoner "" >>= flip makeDocumentation "doc"
 
 createDomainReasoner :: String -> IO DomainReasoner
 createDomainReasoner scenarioId = do

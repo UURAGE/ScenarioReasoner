@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -14,6 +14,8 @@
 -- can be lifted with a view using the LiftView type class.
 --
 -----------------------------------------------------------------------------
+--  $Id: Abstract.hs 6761 2014-07-30 12:16:50Z bastiaan $
+
 module Ideas.Common.Rule.Abstract
    ( -- * Rule data type and accessors
      Rule, transformation, recognizer, checkReferences
@@ -41,7 +43,6 @@ import Ideas.Common.Rule.EnvironmentMonad
 import Ideas.Common.Rule.Recognizer
 import Ideas.Common.Rule.Transformation
 import Ideas.Common.View
-import Test.QuickCheck
 
 -----------------------------------------------------------
 --- Rule data type and accessors
@@ -88,12 +89,6 @@ instance Buggy (Rule a) where
 instance Minor (Rule a) where
    setMinor b r = r {isMinorRule = b}
    isMinor = isMinorRule
-
-instance (Arbitrary a, CoArbitrary a) => Arbitrary (Rule a) where
-   arbitrary = liftM3 make arbitrary arbitrary arbitrary
-    where
-      make :: Bool -> Id -> (a -> Maybe a) -> Rule a
-      make b n f = setMinor b $ makeRule n f
 
 instance HasRefs (Rule a) where
    allRefs r = allRefs (transformation r) ++ allRefs (recognizer r)

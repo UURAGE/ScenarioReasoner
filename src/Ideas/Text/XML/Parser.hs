@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,10 +9,12 @@
 -- Portability :  portable (depends on ghc)
 --
 -- A parser for XML documents, directly derived from the specification:
-
+--
 --    http://www.w3.org/TR/2006/REC-xml-20060816
-
+--
 -----------------------------------------------------------------------------
+--  $Id: Parser.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Text.XML.Parser (document, extParsedEnt, extSubset) where
 
 import Control.Monad

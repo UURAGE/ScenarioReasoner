@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,12 +11,14 @@
 -- Simple parser for feedback scripts
 --
 -----------------------------------------------------------------------------
+--  $Id: Parser.hs 6664 2014-06-30 14:25:20Z bastiaan $
+
 module Ideas.Service.FeedbackScript.Parser
    ( parseScript, parseScriptSafe, Script
    ) where
 
 import Control.Exception hiding (try)
-import Control.Monad.Error
+import Control.Monad
 import Data.Char
 import Data.List
 import Data.Monoid
@@ -29,7 +31,10 @@ import System.FilePath
 
 -- returns the empty script if something goes wrong
 parseScriptSafe :: FilePath -> IO Script
-parseScriptSafe file = parseScript file `mplus` return mempty
+parseScriptSafe file = parseScript file `catch` handler
+ where
+   handler :: SomeException -> IO Script
+   handler _ = return mempty
 
 -- chases all included script files
 parseScript :: FilePath -> IO Script
@@ -97,6 +102,7 @@ condition :: Parser Condition
 condition = choice
    [ CondRef         <$> lexeme attribute
    , RecognizedIs    <$  lexString "recognize" <*> identifier
+   , MotivationIs    <$  lexString "motivation" <*> identifier
    , CondConst True  <$  lexString "true"
    , CondConst False <$  lexString "false"
    , CondNot         <$  lexString "not" <*> condition
@@ -148,7 +154,7 @@ lexString :: String -> Parser ()
 lexString s = skip (lexeme (try (string s))) <?> "string " ++ show s
 
 comment :: Parser ()
-comment = skip (char '#' <* manyTill (noneOf "\n") (skip newline <|> eof))
+comment = char '#' *> many (satisfy (/= '\n')) *> (skip newline <|> eof)
 
 -- parse white space and comments afterwards
 lexeme :: Parser a -> Parser a

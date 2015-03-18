@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,13 +9,15 @@
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- 
--- The 'Context' datatype places a value in a context consisting of an 
+--
+-- The 'Context' datatype places a value in a context consisting of an
 -- environment with bindings and a point of focus. The datatype is an instance
 -- of the 'HasEnvironment' type class (for accessing the environment) and
--- the 'Navigator' type class (for traversing the term). 
+-- the 'Navigator' type class (for traversing the term).
 --
 -----------------------------------------------------------------------------
+--  $Id: Context.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Common.Context
    ( -- * Abstract data type
      Context, newContext

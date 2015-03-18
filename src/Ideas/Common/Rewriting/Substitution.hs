@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Substitutions on terms. Substitutions are idempotent, and non-cyclic.
 --
 -----------------------------------------------------------------------------
+--  $Id: Substitution.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Common.Rewriting.Substitution
    ( Substitution, emptySubst, singletonSubst, dom, lookupVar
    , (@@), (|->), listToSubst, composable, (@+@)

@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Datatype for representing XML documents
 --
 -----------------------------------------------------------------------------
+--  $Id: Document.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Text.XML.Document
    ( Name, Attributes, Attribute(..), Reference(..), Parameter(..)
    , XMLDoc(..), XML(..), Element(..), Content, DTD(..), DocTypeDecl(..)
@@ -134,7 +136,6 @@ prettyElement compact (Element n as c)
    make op = let body  = foldr1 op (map (prettyXML compact) c)
                  ibody = (if compact then id else indent 2) body
              in openTag n as `op` ibody `op` closeTag n
-
 
 {-
 instance Show XMLDoc where

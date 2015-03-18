@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
+--  $Id: ModeJSON.hs 7050 2014-10-21 12:54:27Z bastiaan $
+
 module Ideas.Encoding.ModeJSON (processJSON) where
 
 import Data.Char
@@ -19,19 +21,18 @@ import Ideas.Common.Utils (Some(..), timedSeconds)
 import Ideas.Encoding.DecoderJSON
 import Ideas.Encoding.EncoderJSON
 import Ideas.Encoding.Evaluator
+import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Service.DomainReasoner
-import Ideas.Service.FeedbackScript.Syntax (Script)
 import Ideas.Service.Request
 import Ideas.Text.JSON
-import System.Random hiding (getStdGen)
 
-processJSON :: Maybe Int -> Bool -> DomainReasoner -> String -> IO (Request, String, String)
-processJSON maxTime cgiMode dr input = do
+processJSON :: Maybe Int -> Maybe String -> DomainReasoner -> String -> IO (Request, String, String)
+processJSON maxTime cgiBin dr input = do
    json <- either fail return (parseJSON input)
-   req  <- jsonRequest json
-   resp <- jsonRPC json $ \fun arg -> 
-              maybe id timedSeconds maxTime (myHandler dr fun arg)
-   let f   = if compactOutputDefault cgiMode req then compactJSON else show
+   req  <- jsonRequest cgiBin json
+   resp <- jsonRPC json $ \fun arg ->
+              maybe id timedSeconds maxTime (myHandler dr req fun arg)
+   let f   = if compactOutput req then compactJSON else show
        out = addVersion (version dr) (toJSON resp)
    return (req, f out, "application/json")
 
@@ -56,12 +57,13 @@ addVersion str json =
  where
    info = ("version", String str)
 
-jsonRequest :: Monad m => JSON -> m Request
-jsonRequest json = do
+jsonRequest :: Monad m => Maybe String -> JSON -> m Request
+jsonRequest cgiBin json = do
    srv  <- case lookupM "method" json of
-              Just (String s) -> return s
+              Just (String s) -> return (Just (newId s))
+              Nothing         -> return Nothing
               _               -> fail "Invalid method"
-   let a = lookupM "params" json >>= extractExerciseId
+   let exId = lookupM "params" json >>= extractExerciseId
    enc  <- case lookupM "encoding" json of
               Nothing         -> return []
               Just (String s) -> readEncoding s
@@ -70,28 +72,25 @@ jsonRequest json = do
               Nothing         -> return Nothing
               Just (String s) -> return (Just s)
               _               -> fail "Invalid source"
-   return Request
-      { service    = srv
-      , exerciseId = a
+   let uid = case lookupM "id" json of
+                Just (String s)     -> Just s
+                Just (Number (I n)) -> Just (show n)
+                _                   -> Nothing
+   return emptyRequest
+      { serviceId  = srv
+      , exerciseId = exId
+      , user       = uid
       , source     = src
+      , cgiBinary  = cgiBin
       , dataformat = JSON
       , encoding   = enc
       }
 
-myHandler :: DomainReasoner -> RPCHandler IO
-myHandler dr fun json = do
+myHandler :: DomainReasoner -> Request -> RPCHandler
+myHandler dr request fun json = do
    srv <- findService dr (newId fun)
-   Some ex <-
-      if fun == "exerciselist"
-      then return (Some emptyExercise)
-      else extractExerciseId json >>= findExercise dr
-   script <- defaultScript dr (getId ex)
-   stdgen <- newStdGen
-   evalService (jsonConverter script ex stdgen json) srv
+   Some options <- makeOptions dr request
+   evalService options jsonEvaluator srv json
 
-jsonConverter :: Script -> Exercise a -> StdGen -> JSON -> Evaluator a JSON
-jsonConverter script ex stdgen json = Evaluator 
-   (runEncoderStateM jsonEncoder (String . prettyPrinter ex))  
-   (\tp -> runEncoderStateM (jsonDecoder tp) jds json)
- where
-   jds = JSONDecoderState ex script stdgen
+jsonEvaluator :: Evaluator a JSON JSON
+jsonEvaluator = Evaluator jsonDecoder jsonEncoder

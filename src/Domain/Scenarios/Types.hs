@@ -77,9 +77,9 @@ data Interleave = Interleave [Tree] [Sequence] --current model does not allow se
 data Sequence = Sequence [Tree] [Interleave] --current model has one top level sequencce that contains only interleaves
         
 data Tree = Tree
-        { treeID    :: String
-        , startID   :: String
-        , treeAtomic :: String
+        { treeID        :: String
+        , treeStartID   :: String
+        , treeAtomic    :: String
         }
 
 instance Show Tree where
@@ -223,3 +223,5 @@ orF f g a = (f a) || (g a)
 
 fromList :: [(String, Int)] -> State
 fromList list = (M.fromList list, "")
+
+----------------------------------------------------------------------------------------------------------------

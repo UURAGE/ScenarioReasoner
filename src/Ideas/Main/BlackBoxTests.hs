@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,10 +9,14 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: BlackBoxTests.hs 6992 2014-10-08 14:58:58Z bastiaan $
+
 module Ideas.Main.BlackBoxTests (blackBoxTests) where
 
 import Control.Exception
 import Control.Monad
+import qualified Data.Algorithm.Diff as Diff
+import Data.Char
 import Data.List
 import Ideas.Common.Utils (useFixedStdGen, snd3)
 import Ideas.Common.Utils.TestSuite
@@ -21,7 +25,7 @@ import Ideas.Encoding.ModeXML
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import System.Directory
-import System.IO hiding (readFile)
+import System.IO
 
 -- Returns the number of tests performed
 blackBoxTests :: DomainReasoner -> String -> IO TestSuite
@@ -52,23 +56,43 @@ doBlackBoxTest dr format path =
          hSetBinaryMode h1 True
          txt <- hGetContents h1
          out  <- case format of
-                    JSON -> liftM snd3 (processJSON Nothing False dr txt)
-                    XML  -> liftM snd3 (processXML Nothing dr Nothing txt)
+                    JSON -> liftM snd3 (processJSON Nothing Nothing dr txt)
+                    XML  -> liftM snd3 (processXML  Nothing Nothing dr txt)
          withFile expPath ReadMode $ \h2 -> do
             hSetBinaryMode h2 True
             expt <- hGetContents h2
             -- Force evaluation of the result, to make sure that
             -- all file handles are closed afterwards.
-            if out ~= expt then return mempty else return (message path)
+            let list1 = prepare expt
+                list2 = prepare out
+                msg   = unlines (path : diffs list1 list2)
+            if list1 == list2 then return mempty else do
+               force msg -- force evaluation of message before closing files
+               return (message msg)
  where
    expPath = baseOf path ++ ".exp"
    baseOf  = reverse . drop 1 . dropWhile (/= '.') . reverse
-   x ~= y  = filterVersion x == filterVersion y -- compare line-based
 
-filterVersion :: String -> [String]
-filterVersion =
-   let p s = not (null s || "version" `isInfixOf` s)
-   in filter p . lines . filter (/= '\r')
+force :: String -> IO ()
+force s | sum (map ord s) >= 0 = return ()
+        | otherwise = error "force"
+
+prepare :: String -> [String]
+prepare = filter (not . null) . lines . filter (/= '\r') . noVersion
+ where  
+   noVersion s | "version\": \"" `isPrefixOf` s =
+      "version\": \"X" ++ dropWhile (/='"') (drop 11 s)
+   noVersion s | "version=\"" `isPrefixOf` s =
+      "version=\"X" ++ dropWhile (/='"') (drop 9 s)
+   noVersion (x:xs) = x:noVersion xs
+   noVersion [] = []
+
+diffs :: [String] -> [String] -> [String]
+diffs xs ys = concatMap f $ Diff.getDiff xs ys
+ where
+   f (Diff.First a)  = ["- " ++ a]
+   f (Diff.Second a) = ["+ " ++ a]
+   f _ = []
 
 simplerDirectory :: String -> String
 simplerDirectory s

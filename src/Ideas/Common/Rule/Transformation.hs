@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, Rank2Types #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -13,6 +13,8 @@
 -- a list of results (often a singleton list or the empty list).
 --
 -----------------------------------------------------------------------------
+--  $Id: Transformation.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Common.Rule.Transformation
    ( -- * Trans data type
      Transformation, Trans

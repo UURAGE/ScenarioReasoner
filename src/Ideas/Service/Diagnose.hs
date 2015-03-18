@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,12 +12,13 @@
 -- Diagnose a term submitted by a student
 --
 -----------------------------------------------------------------------------
+--  $Id: Diagnose.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.Diagnose
-   ( Diagnosis(..), diagnose, restartIfNeeded, newState
+   ( Diagnosis(..), tDiagnosis, diagnose, restartIfNeeded, newState
    , difference, differenceEqual
    ) where
 
-import Control.Monad
 import Data.Function
 import Data.List (sortBy)
 import Data.Maybe
@@ -78,7 +79,7 @@ newState diagnosis =
 -- The diagnose service
 
 diagnose :: State a -> Context a -> Maybe Id -> Diagnosis a
-diagnose state new ruleUsed
+diagnose state new motivationId
    -- Is the submitted term equivalent?
    | not (equivalence ex (stateContext state) new) =
         -- Is the rule used discoverable by trying all known buggy rules?
@@ -87,29 +88,34 @@ diagnose state new ruleUsed
            Nothing      -> NotEquivalent "" -- compareParts state new
 
    -- Is the used rule that is submitted applied correctly?
-   | isJust ruleUsed && isNothing (discovered False ruleUsed) =
-        let mr = fmap fst $ discovered False Nothing
-                  `mplus`   discovered True  Nothing
-        in WrongRule (ready state) state mr
+   | isJust motivationId && isNothing (discovered False motivationId) =
+        case discovered False Nothing of -- search for a "sound" rule
+           Just (r, _) -> WrongRule (finished state) state (Just r)
+           Nothing ->
+              case discovered True  Nothing of -- search for buggy rule
+                 Just (r, as) ->
+                    Buggy as r -- report the buggy rule
+                 Nothing ->
+                    WrongRule (finished state) state Nothing
 
    -- Was the submitted term expected by the strategy?
    | isJust expected =
         -- If yes, return new state and rule
         let ((r, _, _), ns) = fromJust expected
-        in Expected (ready ns) ns r
+        in Expected (finished ns) ns r
 
    -- Is the submitted term (very) similar to the previous one?
    -- (this check is performed after "expected by strategy". TODO: fix
    -- granularity of some math rules)
-   | similar = Similar (ready state) state
+   | similar = Similar (finished state) state
 
    -- Is the rule used discoverable by trying all known rules?
    | otherwise =
         case discovered False Nothing of
            Just (r, as) ->  -- If yes, report the found rule as a detour
-              Detour (ready restarted) restarted as r
+              Detour (finished restarted) restarted as r
            Nothing -> -- If not, we give up
-              Correct (ready restarted) restarted
+              Correct (finished restarted) restarted
  where
    ex        = exercise state
    restarted = restartIfNeeded (makeNoState ex new)
@@ -142,15 +148,19 @@ diagnose state new ruleUsed
 -- When resetting the prefix, also make sure that the context is refreshed
 restartIfNeeded :: State a -> State a
 restartIfNeeded state
-   | null (statePrefixes state) && canBeRestarted ex =
+   | withoutPrefix state && canBeRestarted ex =
         emptyState ex (stateTerm state)
    | otherwise = state
  where
    ex = exercise state
 
-instance Typed a (Diagnosis a) where
-   typed = Tag "Diagnosis" $ Iso (f <-> g) typed
+tDiagnosis :: Type a (Diagnosis a)
+tDiagnosis = Tag "Diagnosis" $ Iso (f <-> g) tp
     where
+      tp = (tPair tEnvironment tRule :|: (tString :|: tTuple3 tBool tState (tMaybe tRule))) 
+         :|: tPair tBool tState :|: tTuple3 tBool tState tRule 
+         :|: tTuple4 tBool tState tEnvironment tRule :|: tPair tBool tState :|: tPair tBool tState
+    
       f (Left (Left (as, r))) = Buggy as r
    --   f (Left (Right (Left ()))) = Missing
    --   f (Left (Right (Right (Left xs)))) = IncorrectPart xs
@@ -161,7 +171,7 @@ instance Typed a (Diagnosis a) where
       f (Right (Right (Right (Left (b, s, as, r))))) = Detour b s as r
       f (Right (Right (Right (Right (Left (b, s)))))) = Correct b s
       f (Right (Right (Right (Right (Right (b, s)))))) = Unknown b s
-                         
+
       g (Buggy as r)       = Left (Left (as, r))
    --   g Missing            = Left (Right (Left ()))
    --   g (IncorrectPart xs) = Left (Right (Right (Left xs)))

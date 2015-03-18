@@ -22,22 +22,20 @@ guardedRule identifier description check update =
 
 makeStrategy :: Monad m => Script -> m (Strategy State)
 makeStrategy script = do
-    startId <- getScriptStartId script
     treeElemTuples <- getTrees script
     scriptId <- getScriptId script
-    tupleStrategies <- mapM (mapM (\tuple -> makeTreeStrategy tuple scriptId (startID $ fst tuple))) treeElemTuples -- one strategy per tree
-    let strategies = map (map fst) tupleStrategies -- only first of tuples
+    strategies <- mapM (mapM (\treeElemTuple -> makeTreeStrategy treeElemTuple scriptId (treeStartID $ fst treeElemTuple))) treeElemTuples -- one strategy per tree
     return $ sequence' (map interleave strategies) -- transform nested list into sequence of interleaves
     where
         sequence' = Ideas.Common.Strategy.Combinators.sequence
 
-makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy State, StrategyMap State)
-makeTreeStrategy tuple@(tree,  t@(TreeElement el)) scriptId statementId = do
-
-    (strategy, strategyMap) <- makeSubStrategy tuple scriptId M.empty statementId
+makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy State)
+makeTreeStrategy tuple@(tree,_) scriptId statementId = do
+    strategyTuple <- makeSubStrategy tuple scriptId M.empty statementId
+    let strategy = fst strategyTuple
     if(treeAtomic tree == "true")
-        then return (atomic strategy, strategyMap)
-        else return (strategy, strategyMap)
+        then return (atomic strategy)
+        else return strategy
 
 
 --sub strats make a strat for one tree, so it should not be too hard to expand it once we know the starting statements of each tree.
@@ -49,11 +47,9 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
     statementDescription  <- getText statement
     statementPrecondition <- getMaybePrecondition statement
     statementEffects      <- getEffects statement
-    statEnd               <- getEnd  statement
     statJump              <- getJump statement
 	
     let isJump = statJump == "true"
-    let isEnd  = statEnd  == "true"
 
     case M.lookup statementId strategyMap of --check if statement is already in the strategy
 

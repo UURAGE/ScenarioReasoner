@@ -30,7 +30,7 @@ import System.IO (withBinaryFile, hGetContents, IOMode(..))
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
-import Ideas.Text.XML.Interface
+import Ideas.Text.XML.Interface(parseXML, findChildren, findChild, findAttribute, children, name, getData, Element)
 
 import Domain.Scenarios.Types
 
@@ -52,6 +52,14 @@ getScriptDate = getMetaDataString "date"
 -- | Queries the given script for its description.
 getScriptDescription :: Monad m => Script -> m String
 getScriptDescription = getMetaDataString "description"
+
+-- Deze code = experiment om nieuwe variablen uit xml te halen.
+getScriptShowScore :: Monad m => Script -> m String
+getScriptShowScore = getMetaDataString "showscore"
+
+-- Deze code = experiment om nieuwe variablen uit xml te halen.
+getScriptShowFeedback :: Monad m => Script -> m String
+getScriptShowFeedback = getMetaDataString "showfeedback"
 
 -- | Queries the given script for when it should display feedback
 getScriptFeedback :: Monad m => Script -> m String
@@ -115,10 +123,10 @@ getScriptScoreExtremes (Script scriptElem) = return $
     maximumValue <- findAttribute "maximum" scoreExtremesElem
     return (read minimumValue, read maximumValue)
 
-getScriptStatements :: Monad m => Script => m [Statement]
+getScriptStatements :: Monad m => Script -> m [Statement]
 getScriptStatements script = do
-    treeTuples <- getTrees script
-    treeStatements <- (mapM (\tuple -> getTreeStatements (snd tuple)) (concat treeTuples))
+    trees <- getTreesElements script
+    treeStatements <- mapM getTreeStatements trees
     return $ concat treeStatements
 
 
@@ -210,14 +218,21 @@ getNexts (Statement element) = do
 getTrees :: Monad m => Script -> m [[(Tree, TreeElement)]]
 getTrees (Script element) = do
    firstSequence <- findChild "sequence" element
-   interleaves <- findChildren "interleave" firstSequence
+   let interleaves = findChildren "interleave" firstSequence
    levels <- mapM (\el ->findAttribute "level" el) interleaves
    let intLevels = map (\x -> read x ::Int) levels
    let zipped = zip intLevels interleaves
-   let sorted = sortWith (\(a,_)->a) zipped
-   return $ map ((\(_,b)->map createTuple (children b))) sorted
+   let sorted = sortWith (\(level,_)->level) zipped
+   return $ map ((\(_,interleaveElem)->map createTuple (children interleaveElem))) sorted
         where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
 
+-- returns all elements of all trees
+getTreesElements :: Monad m => Script -> m [TreeElement]
+getTreesElements (Script element) = do
+   firstSequence <- findChild "sequence" element
+   let interleaves = findChildren "interleave" firstSequence
+   return $ concatMap (\interleaveElem -> map (\e -> TreeElement e) (children interleaveElem)) interleaves
+		
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
 findStatement :: Monad m => Script -> String -> m Statement
@@ -266,7 +281,7 @@ parseScript filepath = do
 parseTree :: Element -> Tree
 parseTree element = Tree
                 { treeID = head $ findAttribute "id" element
-                , startID = head $ findAttribute "idref" $ head $ findChild "start" element
+                , treeStartID = head $ findAttribute "idref" $ head $ findChild "start" element
                 , treeAtomic = head $ findAttribute "atomic" element
                 }
 

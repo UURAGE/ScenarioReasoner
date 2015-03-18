@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,12 +10,14 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: FeedbackText.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.FeedbackText
-   ( Message, accept, text
+   ( Message, tMessage, accept, text
    , onefirsttext, submittext, derivationtext, feedbacktext
    ) where
 
-import Ideas.Common.Library hiding (derivation)
+import Ideas.Common.Library
 import Ideas.Service.BasicServices
 import Ideas.Service.Diagnose
 import Ideas.Service.FeedbackScript.Run
@@ -25,19 +27,20 @@ import Ideas.Service.Types
 
 data Message = M { accept :: Maybe Bool, text :: Text }
 
-instance Typed a Message where
-   typed = Tag "Message" $ Iso (f <-> g) typed
-    where
-      f   = either (\(b, t) -> M (Just b) t) (M Nothing)
-      g m = maybe (Right (text m)) (\b -> Left (b, text m)) (accept m)
+tMessage :: Type a Message
+tMessage = Tag "Message" $ Iso (f <-> g) tp
+ where
+   tp  = tPair tBool tText :|: tText
+   f   = either (\(b, t) -> M (Just b) t) (M Nothing)
+   g m = maybe (Right (text m)) (\b -> Left (b, text m)) (accept m)
 
 ------------------------------------------------------------
 -- Services
 
 derivationtext :: Script -> State a -> Either String (Derivation String (Context a))
 derivationtext script state =
-   let f = ruleToString (newEnvironment state) script . fst
-   in right (mapFirst f) (derivation Nothing state)
+   let f = ruleToString (newEnvironment state Nothing) script . fst
+   in right (mapFirst f) (solution Nothing state)
 
 onefirsttext :: Script -> State a -> Maybe String -> (Message, Maybe (State a))
 onefirsttext script old event =
@@ -50,7 +53,7 @@ onefirsttext script old event =
                         else "step"
    ex   = exercise old
    next = either (const Nothing) Just (onefirst old)
-   env  = (newEnvironment old)
+   env  = (newEnvironment old Nothing)
       { diffPair = do
           new      <- fmap snd next
           oldC     <- fromContext (stateContext old)
@@ -71,7 +74,7 @@ submittext script old input =
    ex = exercise old
 
 feedbacktext :: Script -> State a -> Context a -> Maybe Id -> (Message, State a)
-feedbacktext script old new ruleUsed =
+feedbacktext script old new motivationId =
    case diagnosis of
       Buggy _ _       -> (msg False, old)
       NotEquivalent _ -> (msg False, old)
@@ -82,11 +85,12 @@ feedbacktext script old new ruleUsed =
       Correct _ s     -> (msg False, s)
       Unknown _ s     -> (msg False, s)
  where
-   diagnosis = diagnose old new ruleUsed
+   diagnosis = diagnose old new motivationId
    output    = feedbackDiagnosis diagnosis env script
    msg b     = M (Just b) output
-   ex  = exercise old
-   env = (newEnvironment old)
+   ex        = exercise old
+   motivationRule = motivationId >>= getRule ex
+   env = (newEnvironment old motivationRule)
             { diffPair = do
                  oldTerm  <- fromContext (stateContext old)
                  newTerm  <- fromContext new

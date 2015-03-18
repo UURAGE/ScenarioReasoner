@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,6 +9,8 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: RulesInfo.hs 6672 2014-07-03 19:00:52Z bastiaan $
+
 module Ideas.Encoding.RulesInfo
    ( rulesInfoXML, rewriteRuleToFMP, collectExamples, ExampleMap
    ) where
@@ -66,11 +68,9 @@ type ExampleMap a = M.Map Id [(a, a)]
 collectExamples :: Exercise a -> ExampleMap a
 collectExamples ex = foldr (add . snd) M.empty (examples ex)
  where
-   add a m = let tree = derivationTree (strategy ex) (inContext ex a)
-                 f Nothing = m
-                 f (Just d) = foldr g m (triples d)
+   add a m = let f = foldr g m . maybe [] triples
                  g (x, (r, _), y) =
                     case fromContextWith2 (,) x y of
                        Just p  -> M.insertWith (++) (getId r) [p]
                        Nothing -> id
-             in f (derivation tree)
+             in f (defaultDerivation ex a)

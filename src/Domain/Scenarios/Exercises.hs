@@ -2,6 +2,7 @@ module Domain.Scenarios.Exercises where
 
 import Control.Monad
 import Data.List
+import Data.Map(findWithDefault)
 import System.Directory
 
 import Ideas.Common.Library
@@ -47,6 +48,7 @@ exerciseFromScript script = do
        , examples = [(scriptDifficulty, initialState)]
        }
 
+       
 -- A dummy exercise necessary for use with general services
 dummyExercise :: Exercise State
 dummyExercise = makeExercise { exerciseId = newId "scenarios-dummy" }

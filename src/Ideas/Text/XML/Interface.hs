@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,10 +11,12 @@
 -- Collection of common operation on XML documents
 --
 -----------------------------------------------------------------------------
+--  $Id: Interface.hs 7022 2014-10-16 07:52:09Z bastiaan $
+
 module Ideas.Text.XML.Interface
    ( Element(..), Content, Attribute(..), Attributes
    , normalize, parseXML, compactXML
-   , children, findAttribute, findChild, findChildren, getData
+   , children, findAttribute, findChildren, findChild, getData
    ) where
 
 import Control.Arrow
@@ -115,21 +117,20 @@ parseXML xs = do
 
 findAttribute :: Monad m => String -> Element -> m String
 findAttribute s (Element _ as _) =
-   case [ t | n := t <- as, s==n ] of -- build a list of all attribute values that match the given name
+   case [ t | n := t <- as, s==n ] of
       [hd] -> return hd
       _    -> fail $ "Invalid attribute: " ++ show s
 
+findChildren :: String -> Element -> [Element]
+findChildren s = filter ((==s) . name) . children
+      
 findChild :: Monad m => String -> Element -> m Element
 findChild s e =
-   case filter ((==s) . name) (children e) of
+   case findChildren s e of
+      []  -> fail $ "Child not found: " ++ show s
       [a] -> return a
-      _   -> fail $ "Child not found: " ++ show s
-
-findChildren :: Monad m => String -> Element -> m [Element]
-findChildren s e =
-   case filter ((==s) . name) (children e) of
-      [] -> fail $ "No children found: " ++ show s
-      xs -> return xs
+      _   -> fail $ "Multiple children found: " ++ show s
+      
 
 children :: Element -> [Element]
 children e = [ c | Right c <- content e ]

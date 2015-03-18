@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Exports most from package Common
 --
 -----------------------------------------------------------------------------
+--  $Id: Library.hs 6672 2014-07-03 19:00:52Z bastiaan $
+
 module Ideas.Common.Library
    ( module Export
    , failS, notS, repeatS, replicateS, sequenceS, untilS
@@ -19,7 +21,6 @@ module Ideas.Common.Library
 import Ideas.Common.Classes as Export
 import Ideas.Common.Context as Export
 import Ideas.Common.Derivation as Export
-import Ideas.Common.DerivationTree as Export
 import Ideas.Common.Environment as Export
 import Ideas.Common.Exercise as Export
 import Ideas.Common.Id as Export

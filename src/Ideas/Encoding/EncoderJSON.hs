@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,13 +12,13 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
+--  $Id: EncoderJSON.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Encoding.EncoderJSON (jsonEncoder) where
 
-import Control.Monad
-import Data.List (intercalate)
-import Ideas.Common.Library hiding (exerciseId)
+import Ideas.Common.Library hiding (exerciseId, (<|>), (<*>))
 import Ideas.Common.Utils (Some(..), distinct)
-import Ideas.Encoding.Evaluator
+import Ideas.Encoding.Encoder
 import Ideas.Service.State
 import Ideas.Service.Types hiding (String)
 import Ideas.Text.JSON
@@ -26,9 +26,9 @@ import qualified Ideas.Service.Diagnose as Diagnose
 import qualified Ideas.Service.Submit as Submit
 import qualified Ideas.Service.Types as Tp
 
-type JSONEncoder a t = EncoderState (a -> JSON) t JSON
+type JSONEncoder a t = Encoder a t JSON
 
-jsonEncoder :: JSONEncoder a (TypedValue (Type a))
+jsonEncoder :: TypedEncoder a JSON
 jsonEncoder = encoderFor $ \tv@(val ::: tp) ->
    case tp of
       _ | length (tupleList tv) > 1 ->
@@ -44,10 +44,10 @@ jsonEncoder = encoderFor $ \tv@(val ::: tp) ->
       List (Const Rule) ->
          pure $ Array $ map ruleShortInfo val
       Tp.Tag s t
-         | s == "Result"     -> encodeTyped encodeResult
-         | s == "Diagnosis"  -> encodeTyped encodeDiagnosis
-         | s == "Derivation" -> encodeTyped encodeDerivation <+>
-                                encodeTyped encodeDerivationText
+         | s == "Result"     -> encodeTyped encodeResult Submit.tResult
+         | s == "Diagnosis"  -> encodeTyped encodeDiagnosis Diagnose.tDiagnosis
+         | s == "Derivation" -> (encodeDerivation, tDerivation (tPair tRule tEnvironment) tContext) <?>
+                                encodeTyped encodeDerivationText (tDerivation tString tContext)
          | s == "elem"       -> jsonEncoder // (val ::: t)
          | otherwise -> (\b -> Object [(s, b)]) <$> jsonEncoder // (val ::: t)
       Tp.Unit   -> pure Null
@@ -67,13 +67,13 @@ jsonEncoder = encoderFor $ \tv@(val ::: tp) ->
    tupleList tv = [tv]
 
 jsonEncodeConst :: JSONEncoder a (TypedValue (Const a))
-jsonEncodeConst = encoderStateFor $ \encTerm (val ::: tp) ->
+jsonEncodeConst = encoderFor $ \(val ::: tp) ->
    case tp of
       SomeExercise -> case val of
                          Some ex -> pure (exerciseInfo ex)
       State        -> encodeState // val
       Rule         -> pure (toJSON (showId val))
-      Context      -> maybe zeroArrow (pure . encTerm) (fromContext val)
+      Context      -> encodeContext // val
       Location     -> pure (toJSON (show val))
       Environment  -> encodeEnvironment // val
       Text         -> pure (toJSON (show val))
@@ -86,34 +86,43 @@ jsonEncodeConst = encoderStateFor $ \encTerm (val ::: tp) ->
 
 -- legacy representation
 encodeEnvironment :: JSONEncoder a Environment
-encodeEnvironment = encoderFor $ \env ->
+encodeEnvironment = makeEncoder $ \env ->
    let f a = Object [(showId a, String (showValue a))]
-   in pure $ Array [ f a | a <- bindings env ]
-
-encodeState :: JSONEncoder a (State a)
-encodeState = encoderStateFor $ \encTerm st ->
-   let f x = [ String (showId (exercise st))
-             , String $ case statePrefixes st of
-                           [] -> "NoPrefix"
-                           ps -> intercalate ";" $ map showPrefix ps
-             , encTerm (stateTerm st)
-             , x
-             ]
-   in Array . f <$> encodeContext // stateContext st
+   in Array [ f a | a <- bindings env ]
 
 encodeContext :: JSONEncoder a (Context a)
-encodeContext = encoderFor $ \ctx ->
-   pure $ Object [ (showId a, String $ showValue a) | a <- bindings ctx ]
+encodeContext = exerciseEncoder $ \ex ctx -> 
+   String $ prettyPrinterContext ex ctx
+
+encodeState :: JSONEncoder a (State a)
+encodeState = encoderFor $ \st ->
+   let ctx = stateContext st
+       make pp env = Array 
+          [ String $ showId (exercise st)
+          , String $ if withoutPrefix st 
+                     then "NoPrefix" 
+                     else show (statePrefix st)
+          , pp
+          , env
+          ]
+   in make <$> (encodeContext // ctx) <*> (encodeStateEnvironment // ctx)
+
+encodeStateEnvironment :: JSONEncoder a (Context a)
+encodeStateEnvironment = makeEncoder $ \ctx ->
+   let loc = fromLocation (location ctx)
+       env = (if null loc then id else insertRef (makeRef "location") loc)
+           $ environment ctx
+   in Object [ (showId a, String $ showValue a) | a <- bindings env ]
 
 encodeDerivation :: JSONEncoder a (Derivation (Rule (Context a), Environment) (Context a))
 encodeDerivation = encoderFor $ \d ->
    let xs = [ (s, a) | (_, s, a) <- triples d ]
-   in jsonEncoder // (xs ::: typed)
+   in jsonEncoder // (xs ::: tList (tPair (tPair tRule tEnvironment) tContext))
 
 encodeDerivationText :: JSONEncoder a (Derivation String (Context a))
 encodeDerivationText = encoderFor $ \d ->
    let xs = [ (s, a) | (_, s, a) <- triples d ]
-   in jsonEncoder // (xs ::: typed)
+   in jsonEncoder // (xs ::: tList (tPair tString tContext))
 
 encodeResult :: JSONEncoder a (Submit.Result a)
 encodeResult = encoderFor $ \result -> Object <$>
@@ -123,7 +132,7 @@ encodeResult = encoderFor $ \result -> Object <$>
          , ("rules", Array $ map (String . showId) rs)
          ]
       Submit.NotEquivalent s -> pure $
-         [ ("result", String "NotEquivalent") ] ++
+         ("result", String "NotEquivalent") :
          [ ("reason", String s) | not (null s)]
       Submit.Ok rs st ->
          let f x =
@@ -131,20 +140,20 @@ encodeResult = encoderFor $ \result -> Object <$>
                 , ("rules", Array $ map (String . showId) rs)
                 , ("state", x)
                 ]
-         in f <$> jsonEncoder // (st ::: typed)
+         in f <$> jsonEncoder // (st ::: tState)
       Submit.Detour rs st ->
          let f x =
                 [ ("result", String "Detour")
                 , ("rules", Array $ map (String . showId) rs)
                 , ("state", x)
                 ]
-         in f <$> jsonEncoder // (st ::: typed)
+         in f <$> jsonEncoder // (st ::: tState)
       Submit.Unknown st ->
          let f x =
                 [ ("result", String "Unknown")
                 , ("state", x)
                 ]
-         in f <$> jsonEncoder // (st ::: typed)
+         in f <$> jsonEncoder // (st ::: tState)
 
 encodeDiagnosis :: JSONEncoder a (Diagnose.Diagnosis a)
 encodeDiagnosis = encoderFor $ \diagnosis ->
@@ -156,7 +165,7 @@ encodeDiagnosis = encoderFor $ \diagnosis ->
          make "buggy" [fromEnv env, fromRule r]
       Diagnose.Similar b st ->
          make "similar" [fromReady b, fromState st]
-      Diagnose.WrongRule b st mr -> 
+      Diagnose.WrongRule b st mr ->
          make "wrongrule" [fromReady b, fromState st, fromMaybeRule mr]
       Diagnose.Expected b st r ->
          make "expected" [fromReady b, fromState st, fromRule r]
@@ -167,13 +176,13 @@ encodeDiagnosis = encoderFor $ \diagnosis ->
       Diagnose.Unknown b st ->
          make "unknown" [fromReady b, fromState st]
  where
-   make s = liftM (\xs -> Object [(s, Array xs)]) . sequence
-   fromEnv env      = jsonEncoder // (env ::: typed)
-   fromRule r       = return (toJSON (showId r))
-   fromMaybeRule mr = return (maybe Null (toJSON . showId) mr)
-   fromReady b      = return (Object [("ready", toJSON b)])
-   fromState st     = jsonEncoder // (st ::: typed)
-   fromReason s     = return (Object [("reason", toJSON s)])
+   make s = liftA (\xs -> Object [(s, Array xs)]) . sequence
+   fromEnv env      = jsonEncoder // (env ::: tEnvironment)
+   fromRule r       = pure (toJSON (showId r))
+   fromMaybeRule mr = pure (maybe Null (toJSON . showId) mr)
+   fromReady b      = pure (Object [("ready", toJSON b)])
+   fromState st     = jsonEncoder // (st ::: tState)
+   fromReason s     = pure (Object [("reason", toJSON s)])
 
 {-
 encodeTree :: Tree JSON -> JSON

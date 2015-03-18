@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Abstract syntax for feedback scripts, and pretty-printer (Show instance)
 --
 -----------------------------------------------------------------------------
+--  $Id: Syntax.hs 6535 2014-05-14 11:05:06Z bastiaan $
+
 module Ideas.Service.FeedbackScript.Syntax
    ( Script, makeScript, scriptDecls, makeText, textItems
    , Decl(..), DeclType(..), Text(..), Condition(..), includes
@@ -47,6 +49,7 @@ data Text
 
 data Condition
    = RecognizedIs Id
+   | MotivationIs Id
    | CondNot   Condition
    | CondConst Bool
    | CondRef Id
@@ -54,7 +57,7 @@ data Condition
 makeText :: String -> Text
 makeText s = case words s of
                 [] -> TextEmpty
-                xs -> TextString (combineList xs)
+                xs -> TextString (unwords xs)
 
 feedbackDecl, textForIdDecl :: HasId a => a -> Text -> Decl
 feedbackDecl  a = Simple Feedback  [getId a]
@@ -86,6 +89,7 @@ instance Show DeclType where
 
 instance Show Condition where
    show (RecognizedIs a) = "recognize " ++ show a
+   show (MotivationIs a) = "motivation " ++ show a
    show (CondNot c)      = "not " ++ show c
    show (CondConst b)    = map toLower (show b)
    show (CondRef a)      = '@' : show a
@@ -123,9 +127,9 @@ textItems t = rec t []
    rec TextEmpty  = id
    rec a          = (a:)
 
-combineList :: [String] -> String
-combineList = foldr combine []
-
+-- Combine two strings by inserting a space in between (unless one of the
+-- strings is empty, or when the second string starts with an interpunction
+-- symbol).
 combine :: String -> String -> String
 combine a b
    | null a    = b

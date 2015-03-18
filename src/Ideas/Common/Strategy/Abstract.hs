@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,76 +10,45 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: Abstract.hs 6992 2014-10-08 14:58:58Z bastiaan $
+
 module Ideas.Common.Strategy.Abstract
    ( Strategy, IsStrategy(..)
    , LabeledStrategy, label, unlabel
-   , fullDerivationTree, derivationTree, rulesInStrategy
+   , derivationList
+   , emptyPrefix, replayPath, replayPaths, replayStrategy
+   , rulesInStrategy
    , mapRules, mapRulesS
    , cleanUpStrategy, cleanUpStrategyAfter
      -- Accessors to the underlying representation
-   , toCore, fromCore, liftCore, liftCore2, makeLabeledStrategy
-   , toLabeledStrategy
-   , LabelInfo, processLabelInfo, changeInfo, makeInfo
-   , removed, collapsed, hidden, IsLabeled(..), noInterleaving
+   , toCore, fromCore, liftCore, liftCore2
+   , noInterleaving
    ) where
 
-import Control.Monad
-import Data.List
+import Data.Function
 import Ideas.Common.Classes
-import Ideas.Common.DerivationTree
+import Ideas.Common.Derivation
 import Ideas.Common.Environment
 import Ideas.Common.Id
 import Ideas.Common.Rewriting (RewriteRule)
 import Ideas.Common.Rule
 import Ideas.Common.Strategy.Core
+import Ideas.Common.Strategy.Sequence (Firsts(..), firstsOrdered)
 import Ideas.Common.Strategy.Parsing
 import Ideas.Common.Utils.Uniplate hiding (rewriteM)
 import Ideas.Common.View
-import Test.QuickCheck hiding (label)
 
 -----------------------------------------------------------
 --- Strategy data-type
 
 -- | Abstract data type for strategies
-newtype Strategy a = S { toCore :: Core LabelInfo a }
+newtype Strategy a = S (Core a)
 
 instance Show (Strategy a) where
    show = show . toCore
 
 instance Apply Strategy where
    applyAll = runCore . toCore
-
-instance (Arbitrary a, CoArbitrary a) => Arbitrary (Strategy a) where
-   arbitrary = liftM fromCore arbitrary
-
------------------------------------------------------------
---- The information used as label in a strategy
-
-data LabelInfo = Info
-   { labelId   :: Id
-   , removed   :: Bool
-   , collapsed :: Bool
-   , hidden    :: Bool
-   }
- deriving (Eq, Ord)
-
-instance Show LabelInfo where
-   show info =
-      let ps = ["removed"   | removed   info] ++
-               ["collapsed" | collapsed info] ++
-               ["hidden"    | hidden    info]
-          extra = " (" ++ intercalate ", " ps ++ ")"
-      in showId info ++ if null ps then "" else extra
-
-instance HasId LabelInfo where
-   getId = labelId
-   changeId f info = info { labelId = f (labelId info) }
-
-instance Arbitrary LabelInfo where
-   arbitrary = liftM (makeInfo :: Id -> LabelInfo) arbitrary
-
-makeInfo :: IsId a => a -> LabelInfo
-makeInfo s = Info (newId s) False False False
 
 -----------------------------------------------------------
 --- Type class
@@ -95,9 +64,7 @@ instance IsStrategy (LabeledStrategy) where
   toStrategy (LS info (S core)) = S (Label info core)
 
 instance IsStrategy Rule where
-   toStrategy r
-      | isMajor r = toStrategy (toLabeled r)
-      | otherwise = S (Rule r)
+   toStrategy = S . Rule
 
 instance IsStrategy RewriteRule where
    toStrategy = toStrategy . ruleRewrite
@@ -105,95 +72,78 @@ instance IsStrategy RewriteRule where
 -----------------------------------------------------------
 --- Labeled Strategy data-type
 
--- | A strategy which is labeled with a string
-data LabeledStrategy a = LS
-   { labelInfo :: LabelInfo  -- ^ Returns information associated with this label
-   , unlabel   :: Strategy a -- ^ Removes the label from a strategy
-   }
-
-makeLabeledStrategy :: IsStrategy f => LabelInfo -> f a -> LabeledStrategy a
-makeLabeledStrategy info = LS info . toStrategy
-
-toLabeledStrategy :: Monad m => Strategy a -> m (LabeledStrategy a)
-toLabeledStrategy s =
-   case toCore s of
-      Label l c -> return (makeLabeledStrategy l (fromCore c))
-      _         -> fail "Strategy without label"
+-- | A strategy which is labeled with an identifier
+data LabeledStrategy a = LS Id (Strategy a)
 
 instance Show (LabeledStrategy a) where
-   show s = show (labelInfo s) ++ ": " ++ show (unlabel s)
+   show s = showId s ++ ": " ++ show (unlabel s)
 
 instance Apply LabeledStrategy where
    applyAll = applyAll . toStrategy
 
 instance HasId (LabeledStrategy a) where
-   getId = getId . labelInfo
-   changeId = changeInfo . changeId
+   getId (LS l _)      = l
+   changeId f (LS l s) = LS (changeId f l) s
 
-class IsLabeled f where
-   toLabeled :: f a -> LabeledStrategy a
-
-instance IsLabeled LabeledStrategy where
-   toLabeled = id
-
-instance IsLabeled Rule where
-   toLabeled r = LS (makeInfo (getId r)) (S (Rule r))
-
-instance IsLabeled RewriteRule where
-   toLabeled = toLabeled . ruleRewrite
-
--- | Labels a strategy with a string
+-- | Labels a strategy with an identifier. Labels are used to identify
+-- substrategies and to specialize feedback messages. The first argument of
+-- 'label' can be of type 'String', in which case the string is used as
+-- identifier (and not as description).
 label :: (IsId l, IsStrategy f) => l -> f a -> LabeledStrategy a
-label l = LS (makeInfo l) . toStrategy
+label l = LS (newId l) . toStrategy
 
-changeInfo :: IsLabeled f => (LabelInfo -> LabelInfo) -> f a -> LabeledStrategy a
-changeInfo f a = LS (f info) s
- where LS info s = toLabeled a
+-- | Removes the label from a strategy
+unlabel :: LabeledStrategy a -> Strategy a
+unlabel (LS _ s) = s
 
------------------------------------------------------------
---- Process Label Information
+-- | Construct the empty prefix for a labeled strategy
+emptyPrefix :: IsStrategy f => f a -> a -> Prefix a
+emptyPrefix = makePrefix . toCore
 
-processLabelInfo :: (l -> LabelInfo) -> Core l a -> Core l a
-processLabelInfo getInfo = rec []
- where
-   rec env core =
-      case core of
-         -- Rec n a   -> Rec n (rec ((n, core):env) a) 
-         -- Let ??
-         Label l a -> forLabel env l (rec env a)
-         _ -> descend (rec env) core
+-- | Construct a prefix for a path and a labeled strategy. The third argument
+-- is the current term.
+replayPath :: IsStrategy f => Path -> f a -> a -> ([Step a], Prefix a)
+replayPath path s a =
+   let (xs, f) = replayCore path (toCore s)
+   in (xs, f a)
 
-   forLabel env l c
-      | removed info   = Fail
-      | collapsed info = Label l (Rule asRule) -- !!
-      | otherwise      = new
-    where
-      new | hidden info = fmap minor (Label l c)
-          | otherwise   = Label l c
-      info   = getInfo l
-      asRule = makeRule (getId info) (runCore (subst new))
-      subst  = flip (foldl (flip (uncurry substCoreVar))) env
+-- | Construct a prefix for a list of paths and a labeled strategy. The third 
+-- argument is the current term.
+replayPaths :: IsStrategy f => [Path] -> f a -> a -> Prefix a
+replayPaths paths s a = mconcat
+   [ snd (replayPath path s a) | path <- paths ]
+
+-- | Construct a prefix for a path and a labeled strategy. The third argument
+-- is the initial term.
+replayStrategy :: (Monad m, IsStrategy f) => Path -> f a -> a -> m (a, Prefix a)
+replayStrategy path s a =
+   let (xs, f) = replayCore path (toCore s)
+   in case applyList xs a of
+         Just b  -> return (b, f b)
+         Nothing -> fail "Cannot replay strategy"
 
 -----------------------------------------------------------
 --- Remaining functions
 
--- | Returns the derivation tree for a strategy and a term, including all
--- minor rules
-fullDerivationTree :: IsStrategy f => f a -> a -> DerivationTree (Step LabelInfo a) a
-fullDerivationTree = make . processLabelInfo id . toCore . toStrategy
+derivationList :: IsStrategy f => (Rule a -> Rule a -> Ordering) -> f a -> a -> [Derivation (Rule a, Environment) a]
+derivationList cmpRule s a0 = rec a0 (toPrefix s)
  where
-   make core a = fmap fst (parseDerivationTree a (makeState a core))
-
--- | Returns the derivation tree for a strategy and a term with only major rules
-derivationTree :: IsStrategy f => f a -> a -> DerivationTree (Rule a, Environment) a
-derivationTree s = mergeMaybeSteps . mapFirst f . fullDerivationTree s
- where
-   f (RuleStep env r) | isMajor r = Just (r, env)
-   f _ = Nothing
+   toPrefix = majorPrefix . flip makePrefix a0 . toCore
+ 
+   rec a prfx = (if ready prfx then (emptyDerivation a:) else id)
+      [ prepend (a, rEnv) d | (rEnv, b, new) <- firstsOrd prfx, d <- rec b new ]
+ 
+   firstsOrd = map f . firstsOrdered cmp
+    where
+      cmp = cmpRule `on` (fst . g . fst)
+      
+      f ((stp, b), new) = (g stp, b, new)
+      
+      g stp = (stepRule stp, stepEnvironment stp)
 
 -- | Returns a list of all major rules that are part of a labeled strategy
 rulesInStrategy :: IsStrategy f => f a -> [Rule a]
-rulesInStrategy f = [ r | Rule r <- universe (toCore (toStrategy f)), isMajor r ]
+rulesInStrategy s = [ r | Rule r <- universe (toCore s), isMajor r ]
 
 instance LiftView LabeledStrategy where
    liftViewIn = mapRules . liftViewIn
@@ -207,10 +157,7 @@ mapRules f (LS n s) = LS n (mapRulesS f s)
 
 mapRulesS :: (Rule a -> Rule b) -> Strategy a -> Strategy b
 mapRulesS f = S . fmap f . toCore
-{-
-mapRulesM :: Monad m => (Rule a -> m (Rule a)) -> Strategy a -> m (Strategy a)
-mapRulesM f = liftM S . T.mapM f . toCore
--}
+
 -- | Use a function as do-after hook for all rules in a labeled strategy, but
 -- also use the function beforehand
 cleanUpStrategy :: (a -> a) -> LabeledStrategy a -> LabeledStrategy a
@@ -233,11 +180,14 @@ noInterleaving = liftCore $ transform f
 -----------------------------------------------------------
 --- Functions to lift the core combinators
 
-fromCore :: Core LabelInfo a -> Strategy a
+toCore :: IsStrategy f => f a -> Core a
+toCore s = let S core = toStrategy s in core
+
+fromCore :: Core a -> Strategy a
 fromCore = S
 
-liftCore :: IsStrategy f => (Core LabelInfo a -> Core LabelInfo a) -> f a -> Strategy a
-liftCore f = fromCore . f . toCore . toStrategy
+liftCore :: IsStrategy f => (Core a -> Core a) -> f a -> Strategy a
+liftCore f = fromCore . f . toCore
 
-liftCore2 :: (IsStrategy f, IsStrategy g) => (Core LabelInfo a -> Core LabelInfo a -> Core LabelInfo a) -> f a -> g a -> Strategy a
-liftCore2 f = liftCore . f . toCore . toStrategy
+liftCore2 :: (IsStrategy f, IsStrategy g) => (Core a -> Core a -> Core a) -> f a -> g a -> Strategy a
+liftCore2 f = liftCore . f . toCore

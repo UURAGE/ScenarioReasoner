@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,6 +12,8 @@
 -- Facilities to create a log database
 --
 -----------------------------------------------------------------------------
+--  $Id: LoggingDatabase.hs 7050 2014-10-21 12:54:27Z bastiaan $
+
 module Ideas.Main.LoggingDatabase (logMessage, logEnabled) where
 
 import Data.Time
@@ -40,7 +42,7 @@ logMessage req input output ipaddress begin = do
 
      -- insert data into database
      run conn "INSERT INTO log VALUES (?,?,?,?,?,?,?,?,?,?)"
-             [ toSql $ service req
+             [ toSql $ maybe "unknown" show (serviceId req)
              , toSql $ maybe "unknown" show (exerciseId req)
              , toSql $ fromMaybe "unknown" (source req)
              , toSql $ show (dataformat req)

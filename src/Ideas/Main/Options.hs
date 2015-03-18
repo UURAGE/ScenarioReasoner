@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Options and command-line flags for services
 --
 -----------------------------------------------------------------------------
---  $Id: Options.hs 5781 2013-06-03 07:11:51Z bastiaan $
+--  $Id: Options.hs 6517 2014-05-06 16:01:59Z bastiaan $
 
 module Ideas.Main.Options
    ( Flag(..), getFlags
@@ -33,7 +33,7 @@ data Flag = Version | Help | InputFile String
 header :: String
 header =
    "IDEAS: Intelligent Domain-specific Exercise Assistants\n" ++
-   "Copyright 2013, Open Universiteit Nederland\n" ++
+   "Copyright 2014, Open Universiteit Nederland\n" ++
    versionText ++
    "\n\nUsage: ideas [OPTION]     (by default, CGI protocol)\n" ++
    "\nOptions:"

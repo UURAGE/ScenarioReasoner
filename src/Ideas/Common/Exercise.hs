@@ -1,6 +1,6 @@
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,12 +9,14 @@
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- The 'Exercise' record defines all the components that are needed for 
+-- The 'Exercise' record defines all the components that are needed for
 -- calculating feedback for one class of exercises. The fields of an exercise
--- have to be consistent; consistency can be checked with the 
+-- have to be consistent; consistency can be checked with the
 -- "Ideas.Common.ExerciseTests" module.
 --
 -----------------------------------------------------------------------------
+--  $Id: Exercise.hs 6672 2014-07-03 19:00:52Z bastiaan $
+
 module Ideas.Common.Exercise
    ( -- * Exercise record
      Exercise(..), emptyExercise, makeExercise
@@ -36,19 +38,18 @@ module Ideas.Common.Exercise
    , simpleGenerator, useGenerator, randomTerm, randomTerms
      -- * Derivations
    , showDerivation, showDerivations, printDerivation, printDerivations
-   , diffEnvironment
+   , diffEnvironment, defaultDerivation, allDerivations
    ) where
 
 import Data.Char
+import Data.Data
 import Data.Dynamic
-import Data.Function
 import Data.List
 import Data.Maybe
 import Data.Ord
 import Ideas.Common.Classes
 import Ideas.Common.Context
 import Ideas.Common.Derivation
-import Ideas.Common.DerivationTree
 import Ideas.Common.Environment
 import Ideas.Common.Id
 import Ideas.Common.Predicate
@@ -60,15 +61,15 @@ import Ideas.Common.View
 import System.Random
 import Test.QuickCheck hiding (label)
 import Test.QuickCheck.Gen
-import qualified Ideas.Common.Strategy as S
 import qualified Data.Map as M
+import qualified Ideas.Common.Strategy as S
 
 -----------------------------------------------------------------------------
 -- Exercise record
 
 -- | For constructing an empty exercise, use function 'emptyExercise' or
 -- 'makeExercise'.
-data Exercise a = 
+data Exercise a =
   NewExercise
    { -- | Identifier that uniquely determines the exercise: see 'HasId' for
      -- how to use values with identifiers.
@@ -81,17 +82,17 @@ data Exercise a =
      -- | Pretty-printer for expressions of the exercise class. Pretty-printing
      -- should be the inverse of parsing.
    , prettyPrinter :: a -> String
-     -- | Tests wether two expressions (with their contexts) are semantically 
-     -- equivalent. Use 'withoutContext' for defining the equivalence check 
+     -- | Tests wether two expressions (with their contexts) are semantically
+     -- equivalent. Use 'withoutContext' for defining the equivalence check
      -- when the context is not relevant.
    , equivalence :: Context a -> Context a -> Bool
-     -- | Tests wether two expressions (with their contexts) are syntactically 
-     -- the same, or nearly so. Expressions that are similar must also be 
-     -- equivalent. Use 'withoutContext' if the context is not relevant for the 
+     -- | Tests wether two expressions (with their contexts) are syntactically
+     -- the same, or nearly so. Expressions that are similar must also be
+     -- equivalent. Use 'withoutContext' if the context is not relevant for the
      -- similarity check.
    , similarity :: Context a -> Context a -> Bool
-     -- | Predicate suitable identifies which expressions can be solved by the 
-     -- strategy of the exercise class. It acts as the pre-condition of the 
+     -- | Predicate suitable identifies which expressions can be solved by the
+     -- strategy of the exercise class. It acts as the pre-condition of the
      -- strategy.
    , suitable :: Predicate a
      -- | Predicate ready checks if an expression is in a solved form (accepted
@@ -100,10 +101,10 @@ data Exercise a =
      -- | The rewrite strategy that specifies how to solve an exercise.
    , strategy :: LabeledStrategy (Context a)
      -- | Is it possible to restart the rewrite strategy at any point in time?
-     -- Restarting the strategy is needed when a student deviates from the 
+     -- Restarting the strategy is needed when a student deviates from the
      -- strategy (detour). By default, restarting is assumed to be possible.
    , canBeRestarted :: Bool
-     -- | Are there extra rules, possibly buggy, that do not appear in the 
+     -- | Are there extra rules, possibly buggy, that do not appear in the
      -- strategy? Use 'ruleset' to get all rules.
    , extraRules :: [Rule (Context a)]
      -- | The rule ordering is a tiebreaker in situations where more than one
@@ -111,7 +112,7 @@ data Exercise a =
      -- feedback services return all possible rules).
    , ruleOrdering :: Rule (Context a) -> Rule (Context a) -> Ordering
      -- | A navigator is needed for traversing the expression and for using the
-     -- traversal strategy combinators. By default, an exercise has no 
+     -- traversal strategy combinators. By default, an exercise has no
      -- navigator.
    , navigation :: a -> ContextNavigator a
      -- | A finite list of examples, each with an assigned difficulty.
@@ -144,7 +145,7 @@ instance HasId (Exercise a) where
    getId = exerciseId
    changeId f ex = ex { exerciseId = f (exerciseId ex) }
 
--- | The 'emptyExercise' constructor function provides sensible defaults for 
+-- | The 'emptyExercise' constructor function provides sensible defaults for
 -- all fields of the 'Exercise' record.
 emptyExercise :: Exercise a
 emptyExercise = NewExercise
@@ -174,7 +175,7 @@ emptyExercise = NewExercise
    , examples       = []
    }
 
--- | In addition to the defaults of 'emptyExercise', this constructor sets 
+-- | In addition to the defaults of 'emptyExercise', this constructor sets
 -- the fields 'prettyPrinter', 'similarity', and 'hasTermView'.
 makeExercise :: (Show a, Eq a, IsTerm a) => Exercise a
 makeExercise = emptyExercise
@@ -214,8 +215,8 @@ getRule ex a =
       _    -> fail $ "Ambiguous ruleid " ++ showId a
 
 -- | Makes a rule ordering based on a list of values with identifiers (e.g.,
--- a list of rules). Rules with identifiers that are not in the list are 
--- considered after the rules in the list, and are sorted based on their 
+-- a list of rules). Rules with identifiers that are not in the list are
+-- considered after the rules in the list, and are sorted based on their
 -- identifier.
 ruleOrderingWith :: HasId b => [b] -> Rule a -> Rule a -> Ordering
 ruleOrderingWith bs r1 r2 =
@@ -251,7 +252,7 @@ isPrivate = not . isPublic
 type Examples a = [(Difficulty, a)]
 
 data Difficulty = VeryEasy | Easy | Medium | Difficult | VeryDifficult
-   deriving (Eq, Ord, Enum)
+   deriving (Eq, Ord, Enum, Data, Typeable)
 
 instance Show Difficulty where
    show = (xs !!) . fromEnum
@@ -276,7 +277,7 @@ level = zip . repeat
 mapExamples :: (a -> b) -> Examples a -> Examples b
 mapExamples f = map (second f)
 
--- | Returns the examples of an exercise class lifted to a context. 
+-- | Returns the examples of an exercise class lifted to a context.
 examplesContext :: Exercise a -> Examples (Context a)
 examplesContext ex = mapExamples (inContext ex) (examples ex)
 
@@ -286,12 +287,12 @@ examplesContext ex = mapExamples (inContext ex) (examples ex)
 -- | Puts a value into a context with an empty environment.
 inContext :: Exercise a -> a -> Context a
 inContext ex = newContext . navigation ex
-   
+
 -- | Function for defining equivalence or similarity without taking
 -- the context into account.
 withoutContext :: (a -> a -> Bool) -> Context a -> Context a -> Bool
 withoutContext f a b = fromMaybe False (fromContextWith2 f a b)
-   
+
 -----------------------------------------------------------------------------
 -- Type casting
 
@@ -321,7 +322,7 @@ castTo ex a = do
 
 -- | Set an exercise-specific property (with a dynamic type)
 setProperty :: Typeable val => String -> val -> Exercise a -> Exercise a
-setProperty key a ex = 
+setProperty key a ex =
    ex { properties = M.insert key (toDyn a) (properties ex) }
 
 -- | Get an exercise-specific property (of a dynamic type)
@@ -336,7 +337,7 @@ getProperty key ex = M.lookup key (properties ex) >>= fromDynamic
 simpleGenerator :: Gen a -> Maybe (StdGen -> Maybe Difficulty -> a)
 simpleGenerator = useGenerator . const
 
--- | Makes a random exercise generator based on a QuickCheck generator for a 
+-- | Makes a random exercise generator based on a QuickCheck generator for a
 -- particular difficulty level. See the 'randomExercise' field.
 useGenerator :: (Maybe Difficulty -> Gen a) -> Maybe (StdGen -> Maybe Difficulty -> a)
 useGenerator makeGen = Just (\rng -> rec rng . makeGen)
@@ -347,7 +348,7 @@ useGenerator makeGen = Just (\rng -> rec rng . makeGen)
       a         = f r size
 
 -- | Returns a random exercise of a certain difficulty with some random
--- number generator. The field 'randomExercise' is used; if this is not 
+-- number generator. The field 'randomExercise' is used; if this is not
 -- defined (i.e., Nothing), one of the examples is used instead.
 randomTerm :: StdGen -> Exercise a -> Maybe Difficulty -> Maybe a
 randomTerm rng ex mdif =
@@ -373,12 +374,15 @@ randomTerms rng ex mdif = rec rng
 -- | Shows the default derivation for a given start term. The specified rule ordering
 -- is used for selection.
 showDerivation :: Exercise a -> a -> String
-showDerivation ex a = showThisDerivation (defaultDerivation ex a) ex
+showDerivation ex a = 
+   case defaultDerivation ex a of 
+      Just d  -> showThisDerivation d ex
+      Nothing -> "no derivation" 
 
 -- | Shows all derivations for a given start term. Warning: there can be many
 -- derivations.
 showDerivations :: Exercise a -> a -> String
-showDerivations ex a = unlines 
+showDerivations ex a = unlines
    [ "Derivation #" ++ show i ++ "\n" ++ showThisDerivation d ex
    | (i, d) <- zip [1::Int ..] (allDerivations ex a)
    ]
@@ -407,10 +411,10 @@ showThisDerivation d ex = show (present der) ++ extra
    f ((r, local), global) = showId r ++ part local ++ part global
     where
       newl = "\n      "
-      part env | noBindings env = "" 
+      part env | noBindings env = ""
                | otherwise      = newl ++ show env
 
--- | Adds the difference of the environments in a derivation to the steps. 
+-- | Adds the difference of the environments in a derivation to the steps.
 -- Bindings with identifier @location@ are ignored. This utility function is
 -- useful for printing derivations.
 diffEnvironment :: HasEnvironment a => Derivation s a -> Derivation (s, Environment) a
@@ -419,13 +423,9 @@ diffEnvironment = updateSteps $ \old a new ->
        list = bindings old
    in (a, makeEnvironment $ filter keep $ bindings new)
 
-defaultDerivation :: Exercise a -> a -> Derivation (Rule (Context a), Environment) (Context a)
-defaultDerivation ex a =
-   case allDerivations ex a of
-      []  -> emptyDerivation (inContext ex a)
-      d:_ -> d
-   
+defaultDerivation :: Exercise a -> a -> Maybe (Derivation (Rule (Context a), Environment) (Context a))
+defaultDerivation ex = listToMaybe . allDerivations ex
+
 allDerivations :: Exercise a -> a -> [Derivation (Rule (Context a), Environment) (Context a)]
-allDerivations ex =
-   derivations . sortTree (ruleOrdering ex `on` fst) 
-   . derivationTree (strategy ex) . inContext ex
+allDerivations ex = 
+   derivationList (ruleOrdering ex) (strategy ex) . inContext ex

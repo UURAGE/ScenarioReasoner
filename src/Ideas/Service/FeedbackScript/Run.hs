@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 -- Run a feedbackscript
 --
 -----------------------------------------------------------------------------
+--  $Id: Run.hs 6702 2014-07-21 09:30:12Z bastiaan $
+
 module Ideas.Service.FeedbackScript.Run
    ( Script
    , Environment(..), newEnvironment
@@ -24,7 +26,6 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import Ideas.Common.Library hiding (ready, Environment)
-import Ideas.Common.Strategy.Abstract (LabelInfo)
 import Ideas.Service.BasicServices
 import Ideas.Service.Diagnose
 import Ideas.Service.FeedbackScript.Syntax
@@ -34,24 +35,24 @@ data Environment a = Env
    { oldReady   :: Bool
    , expected   :: Maybe (Rule (Context a))
    , recognized :: Maybe (Rule (Context a))
-   , actives    :: Maybe [LabelInfo]
+   , motivation :: Maybe (Rule (Context a))
    , diffPair   :: Maybe (String, String)
    , before     :: Maybe Term
    , after      :: Maybe Term
    , afterText  :: Maybe String
    }
 
-newEnvironment :: State a -> Environment a
-newEnvironment st = newEnvironmentFor st next
+newEnvironment :: State a -> Maybe (Rule (Context a)) -> Environment a
+newEnvironment st motivationRule = newEnvironmentFor st motivationRule next
   where
     next = either (const Nothing) Just (onefirst st)
 
-newEnvironmentFor :: State a -> Maybe ((Rule (Context a), b, c), State a) -> Environment a
-newEnvironmentFor st next = Env
-  { oldReady   = ready st
+newEnvironmentFor :: State a -> Maybe (Rule (Context a)) -> Maybe ((Rule (Context a), b, c), State a) -> Environment a
+newEnvironmentFor st motivationRule next = Env
+  { oldReady   = finished st
   , expected   = fmap (\((x,_,_),_) -> x) next
+  , motivation = motivationRule
   , recognized = Nothing
-  , actives    = listToMaybe (stateLabels st)
   , diffPair   = Nothing
   , before     = f st
   , after      = liftM snd next >>= f
@@ -83,17 +84,20 @@ eval env script = either (return . findIdRef) evalText
          | a == beforeId     = fmap TextTerm (before env)
          | a == afterId      = fmap TextTerm (after env)
          | a == afterTextId  = fmap TextString (afterText env)
+         | a == motivationId = fmap (findIdRef . getId) (motivation env)
          | otherwise         = findRef (==a)
       unref t = Just t
 
    evalBool :: Condition -> Bool
    evalBool (RecognizedIs a) = maybe False (eqId a . getId) (recognized env)
+   evalBool (MotivationIs a) = maybe False (eqId a . getId) (motivation env)
    evalBool (CondNot c)      = not (evalBool c)
    evalBool (CondConst b)    = b
    evalBool (CondRef a)
       | a == oldreadyId        = oldReady env
       | a == hasexpectedId     = isJust (expected env)
       | a == hasrecognizedId   = isJust (recognized env)
+      | a == hasmotivationId   = isJust (motivation env)
       | a == recognizedbuggyId = maybe False isBuggy (recognized env)
       | otherwise              = False
 
@@ -140,18 +144,18 @@ feedbackHint :: Id -> Environment a -> Script -> Text
 feedbackHint feedbackId env script =
    fromMaybe (defaultHint env script) $ make feedbackId env script
 
-feedbackHints :: Id -> [((Rule (Context a), b, c), State a)] -> State a -> Script -> [Text]
-feedbackHints feedbackId nexts state script =
+feedbackHints :: Id -> [((Rule (Context a), b, c), State a)] -> State a -> Maybe (Rule (Context a)) -> Script -> [Text]
+feedbackHints feedbackId nexts state motivationRule script =
    map (\env -> fromMaybe (defaultHint env script) $
      make feedbackId env script) envs
   where
-    envs = map (newEnvironmentFor state . Just) nexts
+    envs = map (newEnvironmentFor state motivationRule . Just) nexts
 
 defaultHint :: Environment a -> Script -> Text
 defaultHint env script = makeText $
    case expected env of
       Just r  -> ruleToString env script r
-      Nothing -> "Sorry, not hint available."
+      Nothing -> "Sorry, no hint available."
 
 make :: Id -> Environment a -> Script -> Maybe Text
 make feedbackId env script = toText env script (TextRef feedbackId)
@@ -162,12 +166,12 @@ feedbackIds = map newId
 
 attributeIds :: [Id]
 attributeIds =
-   [expectedId, recognizedId, diffbeforeId, diffafterId, beforeId, afterId, afterTextId]
+   [expectedId, recognizedId, diffbeforeId, diffafterId, beforeId, afterId, afterTextId, motivationId]
 
 conditionIds :: [Id]
-conditionIds = [oldreadyId, hasexpectedId, hasrecognizedId, recognizedbuggyId]
+conditionIds = [oldreadyId, hasexpectedId, hasrecognizedId, hasmotivationId, recognizedbuggyId]
 
-expectedId, recognizedId, diffbeforeId, diffafterId, beforeId, afterId, afterTextId :: Id
+expectedId, recognizedId, diffbeforeId, diffafterId, beforeId, afterId, afterTextId, motivationId :: Id
 expectedId   = newId "expected"
 recognizedId = newId "recognized"
 diffbeforeId = newId "diffbefore"
@@ -175,9 +179,11 @@ diffafterId  = newId "diffafter"
 beforeId     = newId "before"
 afterId      = newId "after"
 afterTextId  = newId "aftertext"
+motivationId = newId "motivation"
 
-oldreadyId, hasexpectedId, hasrecognizedId, recognizedbuggyId :: Id
+oldreadyId, hasexpectedId, hasrecognizedId, hasmotivationId, recognizedbuggyId :: Id
 oldreadyId        = newId "oldready"
 hasexpectedId     = newId "hasexpected"
 hasrecognizedId   = newId "hasrecognized"
+hasmotivationId   = newId "hasmotivation"
 recognizedbuggyId = newId "recognizedbuggy"

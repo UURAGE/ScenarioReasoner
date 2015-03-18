@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,95 +10,81 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: ProblemDecomposition.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.ProblemDecomposition
-   ( problemDecomposition, Reply(..)
+   ( problemDecomposition, Reply(..), Answer, tAnswer, tReply
    ) where
 
 import Data.Maybe
 import Ideas.Common.Library
 import Ideas.Service.State
 import Ideas.Service.Types
+import Ideas.Common.Utils (fst3)
 
 problemDecomposition :: Maybe Id -> State a -> Maybe (Answer a) -> Either String (Reply a)
 problemDecomposition msloc state maybeAnswer
-   | isNothing $ subStrategy sloc (strategy ex) =
+   | not (checkLocation sloc strat) =
         Left "request error: invalid location for strategy"
    | null answers =
         Left "strategy error: not able to compute an expected answer"
-   | otherwise =
-         case maybeAnswer of
-            Just (Answer answeredTerm) | not (null witnesses) -> Right $
-                    Ok newLocation newState
-                  where
-                    witnesses   = filter (similarity ex answeredTerm . fst) $ take 1 answers
-                    (newCtx, newPrefix) = head witnesses
-                    newLocation = nextTaskLocation (strategy ex) sloc $
-                                     fromMaybe topId $ nextMajorForPrefix newCtx newPrefix
-                    newState    = makeState ex [newPrefix] newCtx
-            _ -> Right $
-                    Incorrect isEquiv newLocation expState arguments
-             where
-               newLocation = subTaskLocation (strategy ex) sloc loc
-               expState = makeState ex [pref] expected
-               isEquiv  = maybe False (equivalence ex expected . fromAnswer) maybeAnswer
-               (expected, pref) = head answers
-               (loc, arguments) = fromMaybe (topId, mempty) $
-                                     firstMajorInPrefix prefix pref
+   | otherwise = Right $
+        case maybeAnswer of
+        
+           Just (Answer answeredTerm) | not (null witnesses) ->
+              Ok newLocation newState
+            where
+              witnesses = filter (similarity ex answeredTerm . fst3) $ take 1 answers
+              (newCtx, _, newPrefix) = head witnesses
+              newLocation = nextTaskLocation strat sloc $
+                               fromMaybe topId $ nextMajorForPrefix newPrefix
+              newState = makeState ex newPrefix newCtx
+
+           _ -> Incorrect isEquiv newLocation expState arguments
+            where
+              newLocation = subTaskLocation strat sloc loc
+              expState = makeState ex pref expected
+              isEquiv  = maybe False (equivalence ex expected . fromAnswer) maybeAnswer
+              (expected, answerSteps, pref) = head answers
+              (loc, arguments) = fromMaybe (topId, mempty) $
+                                    firstMajorInSteps answerSteps
  where
    ex      = exercise state
-   topId   = getId (strategy ex)
+   strat   = strategy ex
+   topId   = getId strat
    sloc    = fromMaybe topId msloc
-   answers = runPrefixLocation sloc (stateContext state) prefix
-   prefix  = case statePrefixes state of
-                []   -> emptyPrefix (strategy ex) (stateContext state)
-                hd:_ -> hd
+   answers = runPrefixLocation sloc prefix
+   prefix  
+      | withoutPrefix state = emptyPrefix strat (stateContext state)
+      | otherwise           = statePrefix state
 
--- | Continue with a prefix until a certain strategy location is reached. At least one
--- major rule should have been executed
-runPrefixLocation :: Id -> a -> Prefix a -> [(a, Prefix a)]
-runPrefixLocation loc a0 p0 =
-   concatMap (checkPair . f) $ derivations $
-   cutOnStep (stop . lastStepInPrefix) $ prefixTree a0 p0
+-- | Continue with a prefix until a certain strategy location is reached.
+runPrefixLocation :: Id -> Prefix a -> [(a, [Step a], Prefix a)]
+runPrefixLocation loc = rec []
  where
-   f d = (lastTerm d, fromMaybe p0 (lastStep d))
-   stop (Just (Exit info)) = getId info == loc
-   stop _ = False
+   rec acc p = do
+      ((st, a), q) <- firsts p
+      if isLoc st then return (a, reverse (st:acc), q)
+                  else rec (st:acc) q
 
-   checkPair result@(a, p)
-      | null rules        = [result]
-      | all isMinor rules = runPrefixLocation loc a p
-      | otherwise         = [result]
-    where
-      rules = stepsToRules $ drop (length $ prefixToSteps p0) $ prefixToSteps p
+   isLoc (Exit l)       = l       == loc
+   isLoc (RuleStep _ r) = getId r == loc
+   isLoc _ = False
 
-firstMajorInPrefix :: Prefix a -> Prefix a -> Maybe (Id, Environment)
-firstMajorInPrefix p0 = rec . drop len . prefixToSteps
+firstMajorInSteps :: [Step a] -> Maybe (Id, Environment)
+firstMajorInSteps (RuleStep env r:_) | isMajor r = Just (getId r, env)
+firstMajorInSteps (_:xs) = firstMajorInSteps xs
+firstMajorInSteps []     = Nothing
+
+nextMajorForPrefix :: Prefix a -> Maybe Id
+nextMajorForPrefix = listToMaybe . rec
  where
-   len = length (prefixToSteps p0)
-   rec xs =
-      case xs of
-         Enter info:RuleStep env r:_ | isMajor r ->
-            Just (getId info, env)
-         _:rest -> rec rest
-         []     -> Nothing
-
-nextMajorForPrefix :: a -> Prefix a -> Maybe Id
-nextMajorForPrefix a p0 = do
-   (_, p1)  <- listToMaybe $ runPrefixMajor a p0
-   rec (reverse (prefixToSteps p1))
- where
-   rec [] = Nothing
-   rec (Enter info:_) = Just (getId info)
-   rec (Exit  info:_) = Just (getId info)
-   rec (_:rest)       = rec rest
-
--- Copied from TypedAbstractService: clean me up
-runPrefixMajor :: a -> Prefix a -> [(a, Prefix a)]
-runPrefixMajor a p0 =
-   map f $ derivations $ cutOnStep (stop . lastStepInPrefix) $ prefixTree a p0
- where
-   f d = (lastTerm d, fromMaybe p0 (lastStep d))
-   stop = maybe False isMajor
+   rec prfx = do
+      ((st, _), p) <- firsts prfx
+      case st of 
+         Enter l -> [l]
+         RuleStep _ r | isMajor r -> [getId r]
+         _ -> rec p
 
 ------------------------------------------------------------------------
 -- Data types for replies
@@ -111,12 +97,14 @@ data Reply a = Ok Id (State a)
 ------------------------------------------------------------------------
 -- Type definition
 
-instance Typed a (Answer a) where
-   typed = Tag "answer" $ Iso (Answer <-> fromAnswer) (Const Context)
+tAnswer :: Type a (Answer a)
+tAnswer = Tag "answer" $ Iso (Answer <-> fromAnswer) (Const Context)
 
-instance Typed a (Reply a) where
-   typed = Tag "DecompositionReply" (Iso (f <-> g) typed)
+tReply :: Type a (Reply a)
+tReply = Tag "DecompositionReply" (Iso (f <-> g) tp)
     where
+      tp = tPair tId tState :|: tTuple4 tBool tId tState tEnvironment
+    
       f (Left (a, b))        = Ok a b
       f (Right (a, b, c, d)) = Incorrect a b c d
 

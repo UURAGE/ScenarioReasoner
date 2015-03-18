@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,6 +12,8 @@
 -- Manages links to information
 --
 -----------------------------------------------------------------------------
+--  $Id: LinkManager.hs 7050 2014-10-21 12:54:27Z bastiaan $
+
 module Ideas.Encoding.LinkManager
    ( LinkManager(..)
    , dynamicLinks, stateToXML
@@ -23,12 +25,12 @@ module Ideas.Encoding.LinkManager
    , linkToDerivations, linkToRule, linkToRandomExample, linkToTestReport
      -- links to state information (dynamic)
    , linkToState, linkToFirsts, linkToApplications, linkToDerivation
+   , linkToMicrosteps
    ) where
 
-import Data.Maybe
 import Ideas.Common.Library
 import Ideas.Encoding.EncoderXML
-import Ideas.Encoding.Evaluator
+import Ideas.Encoding.Encoder
 import Ideas.Service.State
 import Ideas.Service.Types
 import Ideas.Text.HTML
@@ -59,6 +61,7 @@ data LinkManager = LinkManager
    , urlForFirsts        :: forall a . State a -> String
    , urlForApplications  :: forall a . State a -> String
    , urlForDerivation    :: forall a . State a -> String
+   , urlForMicrosteps    :: forall a . State a -> String
    }
 
 ---------------------------------------------------------------------
@@ -115,6 +118,9 @@ linkToState = linkWith . urlForState
 linkToFirsts :: LinkManager -> State a -> HTMLBuilder -> HTMLBuilder
 linkToFirsts = linkWith . urlForFirsts
 
+linkToMicrosteps :: LinkManager -> State a -> HTMLBuilder -> HTMLBuilder
+linkToMicrosteps = linkWith . urlForMicrosteps
+
 linkToApplications :: LinkManager -> State a -> HTMLBuilder -> HTMLBuilder
 linkToApplications = linkWith . urlForApplications
 
@@ -138,7 +144,7 @@ dynamicLinks cgiBinary = LinkManager
    , urlForExercise    = url . exerciseRequest "exerciseinfo"
    , urlForStrategy    = url . exerciseRequest "strategyinfo"
    , urlForRules       = url . exerciseRequest "rulelist"
-   , urlForTestReport  = url . exerciseRequest "testreport" 
+   , urlForTestReport  = url . exerciseRequest "testreport"
    , urlForExamples    = url . exerciseRequest "examples"
    , urlForDerivations = url . exerciseRequest "examplederivations"
    , urlForRule = \ex r ->
@@ -151,10 +157,11 @@ dynamicLinks cgiBinary = LinkManager
    , urlForFirsts       = url . stateRequest "allfirsts"
    , urlForApplications = url . stateRequest "allapplications"
    , urlForDerivation   = url . stateRequest "derivation"
+   , urlForMicrosteps   = url . stateRequest "microsteps" 
    }
  where
    prefix  = cgiBinary ++ "?input="
-   url req = prefix ++ show req
+   url req = prefix ++ compactXML req
 
 simpleRequest :: String -> XML
 simpleRequest s = makeRequest s mempty
@@ -178,10 +185,10 @@ stateRequest s state =
 
 -- assume nothing goest wrong
 stateToXML :: State a -> XMLBuilder
-stateToXML st = fromMaybe mempty (runEncoderStateM encodeState xes st)
- where
-   enc = tag "expr" . string . prettyPrinter (exercise st)
-   xes = XMLEncoderState (exercise st) False enc
+stateToXML st = 
+   case run encodeState (simpleOptions (exercise st)) st of
+      Just a  -> a
+      Nothing -> error "LinkManager: Invalid state"
 
 linkWith :: (a -> String) -> a -> HTMLBuilder -> HTMLBuilder
 linkWith f = link . escapeInURL . f
@@ -226,6 +233,7 @@ staticLinks = LinkManager
    , urlForFirsts       = const ""
    , urlForApplications = const ""
    , urlForDerivation   = const ""
+   , urlForMicrosteps   = const ""
    }
 
 linksUp :: Int -> LinkManager -> LinkManager
@@ -250,6 +258,7 @@ linksUp n lm = lm
    , urlForFirsts       = f1 urlForFirsts
    , urlForApplications = f1 urlForApplications
    , urlForDerivation   = f1 urlForDerivation
+   , urlForMicrosteps   = f1 urlForMicrosteps
    }
  where
    f0 g   = pathUp n $ g lm

@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,20 +12,23 @@
 -- JSON. JSON is a lightweight alternative for XML.
 --
 -----------------------------------------------------------------------------
+--  $Id: JSON.hs 7050 2014-10-21 12:54:27Z bastiaan $
+
 module Ideas.Text.JSON
    ( JSON(..), Key, Number(..)            -- types
-   , InJSON(..)                           -- type class"
+   , InJSON(..)                           -- type class
    , lookupM
    , parseJSON, compactJSON               -- parser and pretty-printers
    , jsonRPC, RPCHandler, propEncoding
    ) where
 
 import Control.Exception
-import Control.Monad.Error
+import Control.Monad
 import Data.List (intersperse)
 import Data.Maybe
 import Ideas.Text.Parsing hiding (string, char)
-import System.IO.Error
+import Prelude hiding (catch)
+import System.IO.Error hiding (catch)
 import Test.QuickCheck
 import Text.PrettyPrint.Leijen hiding ((<$>))
 import qualified Ideas.Text.UTF8 as UTF8
@@ -87,6 +90,8 @@ escape :: String -> String
 escape = concatMap f . fromMaybe "invalid UTF8 string" . UTF8.encodeM
  where
    f '\n' = "\\\\n"
+   f '\r' = ""      -- carriage return (DOS files)
+   f '\t' = "\\\\t"
    f '"'  = "\\\""
    f '\\' = "\\\\"
    f c    = [c]
@@ -203,13 +208,14 @@ instance InJSON RPCRequest where
       , ("params", requestParams req)
       , ("id"    , requestId req)
       ]
-   fromJSON obj = do
-      mj <- lookupM "method" obj
-      pj <- lookupM "params" obj
-      ij <- lookupM "id"     obj
-      case mj of
-         String s -> return (Request s pj ij)
-         _        -> fail "expecting a string"
+   fromJSON json =
+      case lookupM "method" json of
+         Just (String s) ->
+            let pj = fromMaybe Null (lookupM "params" json)
+                ij = fromMaybe Null (lookupM "id" json)
+            in return (Request s pj ij)
+         Just _  -> fail "expecting a string as method"
+         Nothing -> fail "no method specified" 
 
 instance InJSON RPCResponse where
    toJSON resp = Object
@@ -244,18 +250,19 @@ lookupM _ _ = fail "expecting a JSON object"
 --------------------------------------------------------
 -- JSON-RPC over HTTP
 
-type RPCHandler m = String -> JSON -> m JSON
+type RPCHandler = String -> JSON -> IO JSON
 
-jsonRPC :: (MonadError a m, InJSON a)
-        => JSON -> RPCHandler m -> m RPCResponse
-jsonRPC input handler =
+jsonRPC :: JSON -> RPCHandler -> IO RPCResponse
+jsonRPC input rpc =
    case fromJSON input of
       Nothing  -> return (errorResponse (String "Invalid request") Null)
       Just req -> do
-         json <- handler (requestMethod req) (requestParams req)
+         json <- rpc (requestMethod req) (requestParams req)
          return (okResponse json (requestId req))
-       `catchError` \msg ->
-          return (errorResponse (toJSON msg) (requestId req))
+       `catch` handler req
+ where
+   handler :: RPCRequest -> IOException -> IO RPCResponse
+   handler req e = return (errorResponse (toJSON e) (requestId req))
 
 --------------------------------------------------------
 -- Testing parser/pretty-printer

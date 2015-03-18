@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,19 +12,23 @@
 -- functions defined elsewhere.
 --
 -----------------------------------------------------------------------------
+--  $Id: XML.hs 7022 2014-10-16 07:52:09Z bastiaan $
+
 module Ideas.Text.XML
    ( XML, Attr, AttrList, Element(..), InXML(..)
    , XMLBuilder, makeXML
-   , parseXML, compactXML, findAttribute
-   , children, Attribute(..), fromBuilder, findChild, getData
+   , parseXML, parseXMLFile, compactXML, findAttribute
+   , children, Attribute(..), fromBuilder, findChild, findChildren, getData
    , BuildXML(..)
    , module Data.Monoid, munless, mwhen
    ) where
 
+import Control.Monad
 import Data.Char
 import Data.Foldable (toList)
 import Data.Monoid
 import Ideas.Text.XML.Interface hiding (parseXML)
+import System.IO
 import qualified Data.Sequence as Seq
 import qualified Ideas.Text.XML.Interface as I
 
@@ -50,6 +54,11 @@ class InXML a where
 
 ----------------------------------------------------------------
 -- XML parser (a scanner and a XML tree constructor)
+
+parseXMLFile :: FilePath -> IO XML
+parseXMLFile file =
+   withBinaryFile file ReadMode $
+      hGetContents >=> either fail return . parseXML
 
 parseXML :: String -> Either String XML
 parseXML input = do

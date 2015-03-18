@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,47 +9,60 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: BasicServices.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.BasicServices
    ( -- * Basic Services
-     stepsremaining, findbuggyrules, ready, allfirsts, derivation
-   , onefirst, applicable, allapplications, apply, generate
-   , StepInfo, exampleDerivations, recognizeRule
+     stepsremaining, findbuggyrules, allfirsts, solution
+   , onefirst, applicable, allapplications, apply, generate, create
+   , StepInfo, tStepInfo, exampleDerivations, recognizeRule
    ) where
 
 import Control.Monad
 import Data.List
 import Data.Maybe
-import Ideas.Common.Library hiding (derivation, applicable, apply, ready)
+import Ideas.Common.Library hiding (applicable, apply, ready)
 import Ideas.Common.Traversal.Navigator (downs, navigateTo)
 import Ideas.Common.Utils (fst3)
 import Ideas.Service.State
+import Ideas.Service.Types
 import System.Random
 import qualified Ideas.Common.Classes as Apply
+import qualified Ideas.Common.Library as Library
 
 generate :: StdGen -> Exercise a -> Maybe Difficulty -> Either String (State a)
 generate rng ex md =
    case randomTerm rng ex md of
       Just a  -> return (emptyState ex a)
-      Nothing -> fail "No random term"
+      Nothing -> Left "No random term"
+
+create :: Exercise a -> String -> Either String (State a)
+create ex input =
+    case parser ex input of
+        Left err -> Left err
+        Right a
+            | evalPredicate (Library.ready ex) a -> Left "Is ready"
+            | evalPredicate (Library.suitable ex) a -> Right (emptyState ex a)
+            | otherwise -> Left "Not suitable"
 
 -- TODO: add a location to each step
-derivation :: Maybe StrategyConfiguration -> State a -> Either String (Derivation (Rule (Context a), Environment) (Context a))
-derivation mcfg state =
+solution :: Maybe StrategyCfg -> State a -> Either String (Derivation (Rule (Context a), Environment) (Context a))
+solution mcfg state =
    mapSecond (biMap (\(r, _, as) -> (r, as)) stateContext) $
    case mcfg of
-      _ | null ps -> Left "Prefix is required"
+      _ | withoutPrefix state -> Left "Prefix is required"
       -- configuration is only allowed beforehand: hence, the prefix
       -- should be empty (or else, the configuration is ignored). This
       -- restriction should probably be relaxed later on.
-      Just cfg | all (null . prefixToSteps) ps ->
+      Just cfg | isEmptyPrefix prfx ->
          let newStrategy = configure cfg (strategy ex)
              newExercise = ex {strategy = newStrategy}
          in rec timeout d0 (emptyStateContext newExercise (stateContext state))
       _ -> rec timeout d0 state
  where
-   d0 = emptyDerivation state
-   ex = exercise state
-   ps = statePrefixes state
+   d0   = emptyDerivation state
+   ex   = exercise state
+   prfx = statePrefix state
    timeout = 50 :: Int
 
    rec i acc st =
@@ -64,38 +77,22 @@ derivation mcfg state =
 
 type StepInfo a = (Rule (Context a), Location, Environment) -- find a good place
 
--- Note that we have to inspect the last step of the prefix afterwards, because
--- the remaining part of the derivation could consist of minor rules only.
+tStepInfo :: Type a (StepInfo a)
+tStepInfo = tTuple3 tRule tLocation tEnvironment
+
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
-   | null ps   = Left "Prefix is required"
-   | otherwise =
-        let trees  = map tree ps
-            tree p = cutOnStep (justMajor . lastStepInPrefix)
-                               (prefixTree (stateContext state) p)
-            f ((r1, _, _), _) ((r2, _, _), _) =
-               ruleOrdering (exercise state) r1 r2
-            justMajor = maybe False isMajor
-        in Right $ noDuplicates $ sortBy f $ mapMaybe make $ concatMap derivations trees
+   | withoutPrefix state = Left "Prefix is required"
+   | otherwise = Right $ 
+        noDuplicates $ map make $ firsts state
  where
-   ps = statePrefixes state
-
-   make d = do
-      prefixEnd <- lastStep d
-      case lastStepInPrefix prefixEnd of
-         Just (RuleStep env r) | isMajor r -> return
-            ( (r
-              , location (lastTerm d)
-              , env)
-            , makeState (exercise state) [prefixEnd] (lastTerm d)
-            )
-         _ -> Nothing
+   make ((s, ctx), st) = ((stepRule s, location ctx, stepEnvironment s), st)
 
    noDuplicates []     = []
    noDuplicates (x:xs) = x : noDuplicates (filter (not . eq x) xs)
 
-   eq ((r1, l1, a1), s1) ((r2, l2, a2), s2) =
-      r1==r2 && l1==l2 && a1==a2 && exercise s1 == exercise s2
+   eq (x1, s1) (x2, s2) =
+      x1 == x2 && exercise s1 == exercise s2
       && similarity (exercise s1) (stateContext s1) (stateContext s2)
 
 onefirst :: State a -> Either String (StepInfo a, State a)
@@ -139,8 +136,8 @@ setLocation loc c0 = fromMaybe c0 (navigateTo loc c0)
 -- to the current term at the given location, in which case the request is invalid.
 apply :: Rule (Context a) -> Location -> Environment -> State a -> Either String (State a)
 apply r loc env state
-   | null (statePrefixes state) = applyOff
-   | otherwise                  = applyOn
+   | withoutPrefix state = applyOff
+   | otherwise           = applyOn
  where
    applyOn = -- scenario 1: on-strategy
       maybe applyOff Right $ listToMaybe
@@ -152,11 +149,8 @@ apply r loc env state
          (new, _):_ -> Right (makeNoState (exercise state) new)
          []         -> Left ("Cannot apply " ++ show r)
 
-ready :: State a -> Bool
-ready state = isReady (exercise state) (stateTerm state)
-
 stepsremaining :: State a -> Either String Int
-stepsremaining = mapSecond derivationLength . derivation Nothing
+stepsremaining = mapSecond derivationLength . solution Nothing
 
 findbuggyrules :: State a -> Context a -> [(Rule (Context a), Location, Environment)]
 findbuggyrules state a =
@@ -180,4 +174,4 @@ recognizeRule ex r ca cb = rec (top ca)
       concatMap rec (downs x)
 
 exampleDerivations :: Exercise a -> Either String [Derivation (Rule (Context a), Environment) (Context a)]
-exampleDerivations ex = mapM (derivation Nothing . emptyState ex . snd) (examples ex)
+exampleDerivations ex = mapM (solution Nothing . emptyState ex . snd) (examples ex)

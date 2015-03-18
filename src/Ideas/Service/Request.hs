@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,20 +9,29 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: Request.hs 7050 2014-10-21 12:54:27Z bastiaan $
+
 module Ideas.Service.Request where
 
 import Data.Char
 import Data.List
+import Data.Maybe
 import Ideas.Common.Library hiding (exerciseId)
 import Ideas.Common.Utils
 
 data Request = Request
-   { service    :: String
-   , exerciseId :: Maybe Id
-   , source     :: Maybe String
-   , dataformat :: DataFormat
-   , encoding   :: [Encoding]
+   { serviceId      :: Maybe Id
+   , exerciseId     :: Maybe Id
+   , user           :: Maybe String
+   , source         :: Maybe String
+   , feedbackScript :: Maybe String
+   , cgiBinary      :: Maybe String
+   , dataformat     :: DataFormat
+   , encoding       :: [Encoding]
    }
+   
+emptyRequest :: Request
+emptyRequest = Request Nothing Nothing Nothing Nothing Nothing Nothing XML []
 
 data DataFormat = XML | JSON
    deriving Show -- needed for LoggingDatabase
@@ -33,7 +42,7 @@ data Encoding = EncHTML      -- html page as output
               | EncCompact   -- compact ouput
               | EncPretty    -- pretty output
  deriving Eq
- 
+
 instance Show Encoding where
    showList xs rest = intercalate "+" (map show xs) ++ rest
    show EncHTML     = "html"
@@ -46,18 +55,16 @@ htmlOutput :: Request -> Bool
 htmlOutput = (EncHTML `elem`) . encoding
 
 compactOutput :: Request -> Bool
-compactOutput = compactOutputDefault True
-
-compactOutputDefault :: Bool -> Request -> Bool
-compactOutputDefault b req =
-   let xs = encoding req
-   in case (EncCompact `elem` xs, EncPretty `elem` xs) of
-        (True, False) -> True
-        (False, True) -> False
-        _             -> b
-
+compactOutput req =
+   case (EncCompact `elem` xs, EncPretty `elem` xs) of
+      (True, False) -> True
+      (False, True) -> False
+      _             -> isJust (cgiBinary req)
+ where 
+   xs = encoding req
+   
 useOpenMath :: Request -> Bool
-useOpenMath = (EncString `notElem`) . encoding
+useOpenMath r = all (`notElem` encoding r) [EncString, EncHTML]
 
 useLogging :: Request -> Bool
 useLogging = (EncHTML `notElem`) . encoding

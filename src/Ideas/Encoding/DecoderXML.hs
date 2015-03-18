@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,48 +12,38 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
+--  $Id: DecoderXML.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Encoding.DecoderXML
-   ( XMLDecoder, XMLDecoderState(..), xmlDecoder
+   ( XMLDecoder, xmlDecoder
    ) where
 
 import Control.Monad
 import Data.Char
-import Data.List
-import Data.Maybe
-import Ideas.Common.Library hiding (exerciseId, (:=))
-import Ideas.Encoding.Evaluator
+import Ideas.Common.Library hiding ((<|>))
+import Ideas.Common.Traversal.Navigator
+import Ideas.Encoding.Encoder
 import Ideas.Encoding.OpenMathSupport
-import Ideas.Service.FeedbackScript.Syntax (Script)
 import Ideas.Service.State
 import Ideas.Service.Types
+import Ideas.Service.Request
 import Ideas.Text.OpenMath.Object
 import Ideas.Text.XML
-import System.Random (StdGen)
 
-type XMLDecoder a = EncoderState (XMLDecoderState a) XML
+type XMLDecoder a = Decoder a XML
 
-data XMLDecoderState a = XMLDecoderState
-   { getExercise       :: Exercise a
-   , getScript         :: Script
-   , getStdGen         :: StdGen
-   , isOpenMath        :: Bool
-   , decodeTerm        :: XML -> Either String a
-   }
-
-xmlDecoder :: Type a t -> XMLDecoder a t
+xmlDecoder :: TypedDecoder a XML
 xmlDecoder tp =
    case tp of
       Tag s t
          | s == "answer" -> do
-              c <- encoderFor (findChild "answer")
-              xmlDecoder t // c
+              decodeChild "answer" (xmlDecoder t)
          | s == "Difficulty" -> do
-              g <- equalM typed tp
-              a <- encoderFor (findAttribute "difficulty")
+              g <- equalM tDifficulty tp
+              a <- decoderFor (findAttribute "difficulty")
               maybe (fail "unknown difficulty level") (return . g) (readDifficulty a)
          | otherwise -> do
-              cx <- encoderFor (findChild s)
-              xmlDecoder t // cx
+              decodeChild s (xmlDecoder t)
       Iso p t  -> liftM (from p) (xmlDecoder t)
       Pair t1 t2 -> do
          x <- xmlDecoder t1
@@ -71,70 +61,91 @@ xmlDecoder tp =
             Environment -> decodeArgEnvironment
             Location    -> decodeLocation
             StratCfg    -> decodeConfiguration
-            StdGen      -> withState getStdGen
-            Script      -> withState getScript
-            Exercise    -> withState getExercise
-            Id          -> do -- improve!
-                              a <- encoderFor (findChild "location")
-                              return (newId (getData a))
+            StdGen      -> getStdGen
+            Script      -> getScript
+            Exercise    -> getExercise
+            Id          -> -- improve! 
+                           decodeChild "location" $ 
+                              makeDecoder (newId . getData)
             _ -> fail $ "No support for argument type in XML: " ++ show tp
       _ -> fail $ "No support for argument type in XML: " ++ show tp
 
+-- <ruleid>
 decodeRule :: XMLDecoder a (Rule (Context a))
-decodeRule = do
-   ex <- withState getExercise
-   xml0 <- encoderFor (findChild "ruleid")
-   getRule ex (newId (getData xml0))
+decodeRule = decodeChild "ruleid" $ do
+   ex <- getExercise
+   decoderFor (getRule ex . newId . getData)
 
+-- <location>
 decodeLocation :: XMLDecoder a Location
-decodeLocation = do
-   xml <- encoderFor (findChild "location")
-   return (toLocation (read (getData xml)))
+decodeLocation = decodeChild "location" $ do
+   makeDecoder (toLocation . read . getData)
 
+-- <state> 
 decodeState :: XMLDecoder a (State a)
-decodeState = do
-   ex  <- withState getExercise
-   xml <- encoderFor (findChild "state")
-   mp  <- decodePrefix  // xml
-   ctx <- decodeContext // xml
-   prs <- forM (maybeToList mp) $ \path -> 
-             makePrefix path (strategy ex) ctx
-   return (makeState ex prs ctx)
+decodeState = decodeChild "state"  $ do
+   ex  <- getExercise
+   ps  <- decodePaths
+   ctx <- decodeContext
+   let prf = replayPaths ps (strategy ex) ctx
+   return (makeState ex prf ctx)
 
-decodePrefix :: XMLDecoder a (Maybe Path)
-decodePrefix = do
-   prefixText <- simpleEncoder (maybe "" getData . findChild "prefix")
+-- <prefix>
+decodePaths :: XMLDecoder a [Path]
+decodePaths = do
+   prefixText <- makeDecoder (maybe "" getData . findChild "prefix")
    if all isSpace prefixText
-      then return (Just emptyPath)
+      then return [emptyPath]
       else if prefixText ~= "no prefix"
-      then return Nothing
-      else liftM Just (readM prefixText)
+      then return []
+      else readPaths prefixText
  where
    a ~= b = g a == g b
    g = map toLower . filter (not . isSpace)
 
 decodeContext :: XMLDecoder a (Context a)
 decodeContext = do
-   ex   <- withState getExercise
-   f    <- withState decodeTerm
-   expr <- encoderFor (either fail return . f)
+   ex   <- getExercise
+   expr <- decodeTerm
    env  <- decodeEnvironment
-   return (setEnvironment env (inContext ex expr))
+   let ctx    = setEnvironment env (inContext ex expr)
+       locRef = makeRef "location" 
+   case locRef ? env of 
+      Just s  -> maybe (fail "invalid location") return $ do 
+         loc <- liftM toLocation (readM s)
+         navigateTo loc (deleteRef locRef ctx)
+      Nothing -> 
+         return ctx
 
+decodeTerm :: XMLDecoder a a
+decodeTerm = withOpenMath f
+ where
+   f True  = decodeOMOBJ
+   f False = decodeChild "expr" $ do
+      ex <- getExercise
+      decoderFor $ either fail return . parser ex . getData
+
+decodeOMOBJ :: XMLDecoder a a
+decodeOMOBJ = decodeChild "OMOBJ" $ decoderFor $ \xml -> do
+   ex    <- getExercise
+   omobj <- fromXML xml
+   case fromOpenMath ex omobj of
+      Just a  -> return a
+      Nothing -> fail "Invalid OpenMath object for this exercise"
+                
 decodeEnvironment :: XMLDecoder a Environment
-decodeEnvironment = encoderFor $ \xml ->
-   case findChild "context" xml of
-      Just this -> foldM add mempty (children this)
-      Nothing   -> return mempty
+decodeEnvironment = 
+   decodeChild "context" (decoderFor $ foldM add mempty . children)
+   <|> return mempty
  where
    add env item = do
       unless (name item == "item") $
          fail $ "expecting item tag, found " ++ name item
-      n    <- findAttribute "name"  item
-      isOM <- withState isOpenMath
+      n   <- findAttribute "name"  item
+      req <- getRequest
       case findChild "OMOBJ" item of
          -- OpenMath object found inside item tag
-         Just this | isOM ->
+         Just this | useOpenMath req ->
             case xml2omobj this >>= fromOMOBJ of
                Left err -> fail err
                Right term ->
@@ -144,36 +155,30 @@ decodeEnvironment = encoderFor $ \xml ->
             value <- findAttribute "value" item
             return $ insertRef (makeRef n) value env
 
-decodeConfiguration :: XMLDecoder a StrategyConfiguration
-decodeConfiguration = do
-   xml <- encoderFor (findChild "configuration")
-   liftM makeStrategyConfiguration $
-      mapM decodeAction (children xml)
+-- <configuration>
+decodeConfiguration :: XMLDecoder a StrategyCfg
+decodeConfiguration = decodeChild "configuration" $
+   decoderFor $ \xml -> 
+      liftM mconcat $
+         mapM decodeAction (children xml)
  where
    decodeAction item = do
       guard (null (children item))
-      action <-
-         case find (\a -> map toLower (show a) == name item) configActions of
-            Just a  -> return a
-            Nothing -> fail $ "unknown action " ++ show (name item)
+      action <- readM (name item)
       cfgloc <- findAttribute "name" item
-      return (byName (newId cfgloc), action)
+      return (action `byName` newId cfgloc)
 
 decodeArgEnvironment :: XMLDecoder a Environment
-decodeArgEnvironment = encoderFor $ \xml ->
-   liftM makeEnvironment $ sequence
-      [ decodeBinding // x
-      | x <- children xml
-      , name x == "argument"
-      ]
+decodeArgEnvironment = decoderFor $
+   liftM makeEnvironment . mapM (decodeBinding //) . findChildren "argument"
 
 decodeBinding :: XMLDecoder a Binding
-decodeBinding = encoderFor $ \xml -> do
-   a <- findAttribute "description" xml
-   isOM <- withState isOpenMath
+decodeBinding = decoderFor $ \xml -> do
+   a   <- findAttribute "description" xml
+   req <- getRequest
    case findChild "OMOBJ" xml of
       -- OpenMath object found inside tag
-      Just this | isOM ->
+      Just this | useOpenMath req ->
          case xml2omobj this >>= fromOMOBJ of
             Left err   -> fail err
             Right term -> return (termBinding a term)
@@ -182,3 +187,11 @@ decodeBinding = encoderFor $ \xml -> do
  where
    termBinding :: String -> Term -> Binding
    termBinding = makeBinding . makeRef
+   
+decodeChild :: String -> XMLDecoder a b -> XMLDecoder a b
+decodeChild s m = split f >>= (m //)
+ where
+   p     = either (const False) ((==s) . name)
+   f xml = case break p (content xml) of
+              (xs, Right y:ys) -> Right (y, xml { content = xs ++ ys })
+              _ -> Left $ "Could not find child " ++ s

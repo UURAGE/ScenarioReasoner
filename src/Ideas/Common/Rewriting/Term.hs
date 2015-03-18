@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -13,6 +13,8 @@
 -- A simple data type for term rewriting
 --
 -----------------------------------------------------------------------------
+--  $Id: Term.hs 6664 2014-06-30 14:25:20Z bastiaan $
+
 module Ideas.Common.Rewriting.Term
    ( -- * Symbols
      Symbol, newSymbol
@@ -22,7 +24,7 @@ module Ideas.Common.Rewriting.Term
    , fromTermM, fromTermWith
      -- * Functions and symbols
    , WithFunctions(..), isSymbol, isFunction
-   , unary, binary, isUnary, isBinary
+   , unary, binary, ternary, isUnary, isBinary
      -- * Variables
    , WithVars(..), isVariable
    , vars, varSet, hasVar, withoutVar
@@ -189,6 +191,9 @@ unary s a = function s [a]
 
 binary :: WithFunctions a => Symbol -> a -> a -> a
 binary s a b = function s [a, b]
+
+ternary :: WithFunctions a => Symbol -> a -> a -> a -> a
+ternary s a b c = function s [a, b, c]
 
 isUnary :: (WithFunctions a, Monad m) => Symbol -> a -> m a
 isUnary s a =

@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,11 +9,13 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
+--  $Id: ServiceList.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Service.ServiceList (serviceList, metaServiceList) where
 
-import Ideas.Common.Library hiding (apply, applicable, derivation, ready)
 import Ideas.Common.ExerciseTests
-import Ideas.Common.Utils.TestSuite
+import Ideas.Common.Library hiding (apply, applicable, suitable, ready)
+import Ideas.Common.Utils.TestSuite hiding (Message)
 import Ideas.Service.BasicServices
 import Ideas.Service.DomainReasoner
 import Ideas.Service.FeedbackText
@@ -21,6 +23,7 @@ import Ideas.Service.ProblemDecomposition (problemDecomposition)
 import Ideas.Service.State
 import Ideas.Service.Types
 import qualified Ideas.Service.Diagnose as Diagnose
+import qualified Ideas.Service.ProblemDecomposition as ProblemDecomposition
 import qualified Ideas.Service.Submit as Submit
 
 ------------------------------------------------------
@@ -29,14 +32,15 @@ import qualified Ideas.Service.Submit as Submit
 serviceList :: [Service]
 serviceList =
    -- basic services
-   [ derivationS, allfirstsS, onefirstS, readyS
+   [ solutionS, derivationS, allfirstsS, onefirstS
+   , equivalenceS, similarityS, suitableS, finishedS, readyS
    , stepsremainingS, allapplicationsS
-   , applyS, generateS, applicableS
+   , applyS, generateS, createS, applicableS
    , examplesS, submitS, diagnoseS
    , findbuggyrulesS, problemdecompositionS
    -- textual services
    , onefirsttextS, submittextS
-   , derivationtextS, feedbacktextS
+   , derivationtextS, feedbacktextS, microstepsS
    ]
 
 metaServiceList :: DomainReasoner -> [Service]
@@ -49,13 +53,18 @@ metaServiceList dr =
 ------------------------------------------------------
 -- Basic services
 
-derivationS :: Service
-derivationS = makeService "basic.derivation"
-   "Returns one possible derivation (or: worked-out example) starting with the \
+solutionS :: Service
+solutionS = makeService "basic.solution"
+   "Returns one possible worked-out solution starting with the \
    \current expression. The first optional argument lets you configure the \
    \strategy, i.e., make some minor modifications to it. Rules used and \
    \intermediate expressions are returned in a list." $
-   derivation ::: typed
+   solution ::: tMaybe tStrategyCfg .-> tState .-> tError (tDerivation (tPair tRule tEnvironment) tContext)
+
+derivationS :: Service
+derivationS = deprecate $ makeService "basic.derivation"
+   "See 'solution' service." $
+   (serviceFunction solutionS)
 
 allfirstsS :: Service
 allfirstsS = makeService "basic.allfirsts"
@@ -63,7 +72,7 @@ allfirstsS = makeService "basic.allfirsts"
    \onefirst service to get only one suggestion. For each suggestion, a new \
    \state, the rule used, and the location where the rule was applied are \
    \returned." $
-   allfirsts ::: typed
+   allfirsts ::: tState .-> tError (tList (tPair tStepInfo tState))
 
 onefirstS :: Service
 onefirstS = makeService "basic.onefirst"
@@ -71,48 +80,73 @@ onefirstS = makeService "basic.onefirst"
    \service to get all possible steps that are allowed by the strategy. In \
    \addition to a new state, the rule used and the location where to apply \
    \this rule are returned." $
-   onefirst ::: typed :-> Const String :|: Tag "elem" typed
+   onefirst ::: tState .-> tString :|: Tag "elem" (tPair tStepInfo tState)
    -- special tag for (legacy) xml encoding
 
+equivalenceS :: Service
+equivalenceS = makeService "basic.equivalence"
+   "Tests whether two terms are semantically equivalent." $
+   equivalence ::: tExercise .-> tContext .-> tContext .-> tBool
+
+similarityS :: Service
+similarityS = makeService "basic.similarity"
+   "Tests whether two terms are (nearly) the same." $
+   similarity ::: tExercise .-> tContext .-> tContext .-> tBool
+
+suitableS :: Service
+suitableS = makeService "basic.suitable"
+   "Identifies which terms can be solved by the strategy." $
+   suitable ::: tState .-> tBool
+
+finishedS :: Service
+finishedS = makeService "basic.finished"
+   "Checks whether a term is in solved form." $
+   finished ::: tState .-> tBool
+
 readyS :: Service
-readyS = makeService "basic.ready"
-   "Test if the current expression is in a form accepted as a final answer. \
-   \For this, the strategy is not used." $
-   ready ::: typed
+readyS = deprecate $ makeService "basic.ready"
+   "See 'finished' service." $
+   serviceFunction finishedS
 
 stepsremainingS :: Service
 stepsremainingS = makeService "basic.stepsremaining"
    "Computes how many steps are remaining to be done, according to the \
    \strategy. For this, only the first derivation is considered, which \
-   \corresponds to the one returned by the derivation Ideas.Service." $
-   stepsremaining ::: typed
+   \corresponds to the one returned by the derivation service." $
+   stepsremaining ::: tState .-> tError tInt
 
 applicableS :: Service
 applicableS = deprecate $ makeService "basic.applicable"
    "Given a current expression and a location in this expression, this service \
    \yields all rules that can be applied at this location, regardless of the \
    \strategy." $
-   applicable ::: typed
+   applicable ::: tLocation .-> tState .-> tList tRule
 
 allapplicationsS :: Service
 allapplicationsS = makeService "basic.allapplications"
    "Given a current expression, this service yields all rules that can be \
    \applied at a certain location, regardless wether the rule used is buggy \
    \or not. Some results are within the strategy, others are not." $
-   allapplications ::: typed
+   allapplications ::: tState .-> tList (tTuple3 tRule tLocation tState)
 
 applyS :: Service
 applyS = makeService "basic.apply"
    "Apply a rule at a certain location to the current expression. If this rule \
    \was not expected by the strategy, we deviate from it. If the rule cannot \
    \be applied, this service call results in an error." $
-   apply ::: typed
+   apply ::: tRule .-> tLocation .-> tEnvironment .-> tState .-> tError tState
 
 generateS :: Service
 generateS = makeService "basic.generate"
    "Given an exercise code and a difficulty level (optional), this service \
    \returns an initial state with a freshly generated expression." $
-   generate ::: typed
+   generate ::: tStdGen .-> tExercise .-> tMaybe tDifficulty .-> tError tState
+
+createS :: Service
+createS = makeService "basic.create"
+    "Given an expression, this service \
+    \returns an initial state with the original given expression." $
+    create ::: tExercise .-> tString .-> tError tState
 
 examplesS :: Service
 examplesS = makeService "basic.examples"
@@ -120,21 +154,21 @@ examplesS = makeService "basic.examples"
    \with an exercise. These are the examples that appear at the page generated \
    \for each exercise. Also see the generate service, which returns a random \
    \start term." $
-   examplesContext ::: typed
+   examplesContext ::: tExercise .-> tExamples
 
 findbuggyrulesS :: Service
 findbuggyrulesS = makeService "basic.findbuggyrules"
    "Search for common misconceptions (buggy rules) in an expression (compared \
    \to the current state). It is assumed that the expression is indeed not \
    \correct. This service has been superseded by the diagnose service." $
-   findbuggyrules ::: typed
+   findbuggyrules ::: tState .-> tContext .-> tList (tTuple3 tRule tLocation tEnvironment)
 
 submitS :: Service
 submitS = deprecate $ makeService "basic.submit"
    "Analyze an expression submitted by a student. Possible answers are Buggy, \
    \NotEquivalent, Ok, Detour, and Unknown. This service has been superseded \
-   \by the diagnose Ideas.Service." $
-   Submit.submit ::: typed
+   \by the diagnose service." $
+   Submit.submit ::: tState .-> tContext .-> Submit.tResult
 
 diagnoseS :: Service
 diagnoseS = makeService "basic.diagnose"
@@ -146,7 +180,7 @@ diagnoseS = makeService "basic.diagnose"
    \expression was not expected by the strategy, but the applied rule was \
    \detected), and Correct (it is correct, but we don't know which rule was \
    \applied)." $
-   Diagnose.diagnose ::: typed
+   Diagnose.diagnose ::: tState .-> tContext .-> tMaybe tId .-> Diagnose.tDiagnosis
 
 ------------------------------------------------------
 -- Problem decomposition service
@@ -156,7 +190,7 @@ problemdecompositionS = makeService "basic.problemdecomposition"
    "Strategy service developed for the SURF project Intelligent Feedback for a \
    \binding with the MathDox system on linear algebra exercises. This is a \
    \composite service, and available for backwards compatibility." $
-   problemDecomposition ::: typed
+   problemDecomposition ::: tMaybe tId .-> tState .-> tMaybe ProblemDecomposition.tAnswer .-> tError ProblemDecomposition.tReply
 
 ------------------------------------------------------
 -- Services with a feedback component
@@ -166,13 +200,13 @@ onefirsttextS = makeService "textual.onefirsttext"
    "Similar to the onefirst service, except that the result is now returned as \
    \a formatted text message. The optional string is for announcing the event \
    \leading to this service call (which can influence the returned result)." $
-   onefirsttext ::: typed
+   onefirsttext ::: tScript .-> tState .-> tMaybe tString .-> tPair tMessage (tMaybe tState)
 
 derivationtextS :: Service
 derivationtextS = makeService "textual.derivationtext"
    "Similar to the derivation service, but the rules appearing in the derivation \
    \have been replaced by a short description of the rule." $
-   derivationtext ::: typed
+   derivationtext ::: tScript .-> tState .-> tError (tDerivation tString tContext)
 
 submittextS :: Service
 submittextS = deprecate $ makeService "textual.submittext"
@@ -182,12 +216,12 @@ submittextS = deprecate $ makeService "textual.submittext"
    \The boolean in the \
    \result specifies whether the submitted term is accepted and incorporated \
    \in the new state." $
-   submittext ::: typed
+   submittext ::: tScript .-> tState .-> tString .-> tPair tMessage tState
 
 feedbacktextS :: Service
 feedbacktextS = makeService "textual.feedbacktext"
-   "Textual feedback for diagnose Ideas.Service. Experimental." $
-   feedbacktext ::: typed
+   "Textual feedback for diagnose service. Experimental." $
+   feedbacktext ::: tScript .-> tState .-> tContext .-> tMaybe tId .-> tPair tMessage tState
 
 ------------------------------------------------------
 -- Reflective services
@@ -195,23 +229,23 @@ feedbacktextS = makeService "textual.feedbacktext"
 indexS :: DomainReasoner -> Service
 indexS dr = makeService "meta.index"
    "Index of the domain reasoner" $
-   dr ::: typed
+   dr ::: tDomainReasoner
 
 exerciselistS :: DomainReasoner -> Service
 exerciselistS dr = makeService "meta.exerciselist"
    "Returns all exercises known to the system. For each exercise, its domain, \
    \identifier, a short description, and its current status are returned." $
-   exercisesSorted dr ::: typed
+   exercisesSorted dr ::: tList tSomeExercise
 
 servicelistS :: DomainReasoner -> Service
 servicelistS dr = makeService "meta.servicelist"
    "List of all supported feedback services" $
-   servicesSorted dr ::: typed
+   servicesSorted dr ::: tList tService
 
 serviceinfoS :: DomainReasoner -> Service
 serviceinfoS dr = makeService "meta.serviceinfo"
    "Information about a feedback service" $
-   (findService dr :: Id -> Either String Service) ::: typed
+   findService dr ::: tId .-> tError tService
 
 rulelistS :: Service
 rulelistS = makeService "meta.rulelist"
@@ -219,12 +253,12 @@ rulelistS = makeService "meta.rulelist"
    \name (or identifier), whether the rule is buggy, and whether the rule was \
    \expressed as an observable rewrite rule. See rulesinfo for more details \
    \about the rules." $
-   ruleset ::: typed
+   ruleset ::: tExercise .-> tList tRule
 
 ruleinfoS :: Service
 ruleinfoS = makeService "meta.ruleinfo"
    "Information about a rule" $
-   (id :: Rule (Context a) -> Rule (Context a)) ::: typed
+   id ::: tRule .-> tRule
 
 rulesinfoS :: Service
 rulesinfoS = makeService "meta.rulesinfo"
@@ -235,23 +269,30 @@ rulesinfoS = makeService "meta.rulesinfo"
 strategyinfoS :: Service
 strategyinfoS = makeService "meta.strategyinfo"
    "Returns the representation of the strategy of a particular exercise." $
-   (toStrategy . strategy) ::: typed
+   (toStrategy . strategy) ::: tExercise .-> tStrategy
 
 exerciseinfoS :: Service
 exerciseinfoS = makeService "meta.exerciseinfo"
    "Exercise information" $
-   (id :: Exercise a -> Exercise a) ::: typed
+   id ::: tExercise .-> tExercise
 
 stateinfoS :: Service
 stateinfoS = makeService "meta.stateinfo"
    "State information" $
-   (id :: State a -> State a) ::: typed
+   id ::: tState .-> tState
+
+microstepsS :: Service
+microstepsS = makeService "meta.microsteps" "Next (minor) steps." $
+   (map f . microsteps) ::: tState .-> tList (tPair (tTuple3 tRule tLocation tEnvironment) tState)
+ where
+   f ((s, ctx), st) = ((stepRule s, location ctx, stepEnvironment s), st)
 
 examplederivationsS :: Service
 examplederivationsS = makeService "meta.examplederivations"
-   "Show example derivations" $ exampleDerivations ::: typed
-   
+   "Show example derivations" $ 
+   exampleDerivations ::: tExercise .-> tError (tList (tDerivation (tPair tRule tEnvironment) tContext))
+
 testreportS :: Service
 testreportS = makeService "meta.testreport"
-   "Show test report for an exercise." $ 
-   (\stdgen -> runTestSuiteResult False . exerciseTestSuite stdgen) ::: typed 
+   "Show test report for an exercise." $
+   (\stdgen -> runTestSuiteResult False . exerciseTestSuite stdgen) ::: tStdGen .-> tExercise .-> tIO tTestSuiteResult

@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2013, Open Universiteit Nederland. This file is distributed
+-- Copyright 2014, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,18 +12,19 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
+--  $Id: EncoderXML.hs 7093 2014-10-25 09:39:24Z bastiaan $
+
 module Ideas.Encoding.EncoderXML
-   ( XMLEncoder, XMLEncoderState(..)
+   ( XMLEncoder
    , xmlEncoder, encodeState
    ) where
 
-import Control.Monad
 import Data.Char
 import Data.Maybe
 import Data.Monoid
-import Ideas.Common.Library hiding (exerciseId, (:=), (<|>))
+import Ideas.Common.Library hiding (exerciseId, (:=), alternatives)
 import Ideas.Common.Utils (Some(..))
-import Ideas.Encoding.Evaluator
+import Ideas.Encoding.Encoder
 import Ideas.Encoding.OpenMathSupport
 import Ideas.Encoding.RulesInfo (rulesInfoXML)
 import Ideas.Encoding.StrategyInfo
@@ -38,23 +39,17 @@ import qualified Ideas.Service.ProblemDecomposition as PD
 
 -----------------
 
-type XMLEncoder a t = EncoderState (XMLEncoderState a) t XMLBuilder
+type XMLEncoder a t = Encoder a t XMLBuilder
 
-data XMLEncoderState a = XMLEncoderState
-   { getExercise :: Exercise a
-   , isOpenMath  :: Bool
-   , encodeTerm  :: a -> XMLBuilder
-   }
-
-xmlEncoder :: XMLEncoder a (TypedValue (Type a))
-xmlEncoder = msum
-   [ encodeTyped encodeDiagnosis
-   , encodeTyped encodeDecompositionReply
-   , encodeTyped encodeDerivation
-   , encodeTyped encodeDerivationText
-   , encodeTyped encodeDifficulty
-   , encodeTyped encodeMessage
-   , encoderStateFor $ \xp (val ::: tp) ->
+xmlEncoder :: TypedEncoder a XMLBuilder
+xmlEncoder =
+   (encodeDiagnosis, tDiagnosis) <?>
+   (encodeDecompositionReply, PD.tReply) <?>
+   (encodeDerivation, tDerivation (tPair tRule tEnvironment) tContext) <?>
+   (encodeDerivationText, tDerivation tString tContext) <?>
+   (encodeDifficulty, tDifficulty) <?>
+   (encodeMessage, FeedbackText.tMessage) <?>
+   encoderFor (\(val ::: tp) ->
         case tp of
            -- meta-information
            Tag "RuleShortInfo" t ->
@@ -62,7 +57,9 @@ xmlEncoder = msum
                  Just f  -> ruleShortInfo // f val
                  Nothing -> fail "rule short info"
            Tag "RulesInfo" _ ->
-              return (rulesInfoXML (getExercise xp) (encodeTerm xp))
+              withExercise $ \ex -> 
+              withOpenMath $ \useOM ->
+                 pure (rulesInfoXML ex (buildTerm useOM ex))
            Tag "elem" t ->
               tag "elem" (xmlEncoder // (val ::: t))
            -- special cases for lists
@@ -80,8 +77,7 @@ xmlEncoder = msum
                             Right b -> xmlEncoder // (b ::: t2)
            Unit       -> mempty
            Const t    -> xmlEncoderConst // (val ::: t)
-           _ -> fail $ show tp
-   ]
+           _ -> fail $ show tp)
 
 xmlEncoderConst :: XMLEncoder a (TypedValue (Const a))
 xmlEncoderConst = encoderFor $ \tv@(val ::: tp) ->
@@ -100,56 +96,59 @@ xmlEncoderConst = encoderFor $ \tv@(val ::: tp) ->
 
 encodeState :: XMLEncoder a (State a)
 encodeState = encoderFor $ \st -> element "state"
-   [ encodePrefixes // statePrefixes st
+   [ if withoutPrefix st
+     then mempty
+     else element "prefix" [string (show (statePrefix st))]
    , encodeContext // stateContext st
    ]
 
-encodePrefixes :: XMLEncoder a [Prefix (Context a)]
-encodePrefixes = encoderFor $ \ps ->
-   case ps of
-      [] -> mempty
-      _  -> element "prefix" $ map (string . showPrefix) ps
-
 encodeContext :: XMLEncoder a (Context a)
-encodeContext = encoderStateFor $ \xp ctx ->
-   liftM (encodeTerm xp) (fromContext ctx)
+encodeContext = withOpenMath $ \useOM -> exerciseEncoder $ \ex ctx ->
+   maybe (error "encodeContext") (buildTerm useOM ex) (fromContext ctx)
    <>
    let values = bindings (withLoc ctx)
        loc    = fromLocation (location ctx)
        withLoc
           | null loc  = id
           | otherwise = insertRef (makeRef "location") loc
-   in return $ munless (null values) $ element "context"
+   in munless (null values) $ element "context"
          [  element "item"
                [ "name"  .=. showId tb
                , case getTermValue tb of
-                    term | isOpenMath xp ->
+                    term | useOM ->
                        builder (omobj2xml (toOMOBJ term))
                     _ -> "value" .=. showValue tb
                ]
          | tb <- values
          ]
 
+buildTerm :: BuildXML b => Bool -> Exercise a -> a -> b
+buildTerm useOM ex
+   | useOM     = either msg (builder . toXML) . toOpenMath ex
+   | otherwise = tag "expr" . string . prettyPrinter ex
+ where
+   msg s = error ("Error encoding term in OpenMath: " ++ s)
+
 encodeLocation :: XMLEncoder a Location
-encodeLocation = encoderFor $ \loc -> return ("location" .=. show loc)
+encodeLocation = encoderFor $ \loc -> "location" .=. show loc
 
 encodeEnvironment :: HasEnvironment env => XMLEncoder a env
 encodeEnvironment = encoderFor $ \env ->
    mconcat [ encodeTypedBinding // b | b <- bindings env ]
 
 encodeTypedBinding :: XMLEncoder a Binding
-encodeTypedBinding = encoderStateFor $ \xp tb ->
+encodeTypedBinding = withOpenMath $ \useOM -> makeEncoder $ \tb ->
    tag "argument" $
       ("description" .=. showId tb) <>
       case getTermValue tb of
-         term | isOpenMath xp -> builder $
+         term | useOM -> builder $
             omobj2xml $ toOMOBJ term
          _ -> string (showValue tb)
 
 encodeDerivation :: XMLEncoder a (Derivation (Rule (Context a), Environment) (Context a))
 encodeDerivation = encoderFor $ \d ->
    let xs = [ (s, a) | (_, s, a) <- triples d ]
-   in xmlEncoder // (xs ::: typed)
+   in xmlEncoder // (xs ::: tList (tPair (tPair tRule tEnvironment) tContext))
 
 encodeDerivationText :: XMLEncoder a (Derivation String (Context a))
 encodeDerivationText = encoderFor $ \d -> encodeAsList
@@ -158,7 +157,7 @@ encodeDerivationText = encoderFor $ \d -> encodeAsList
    ]
 
 ruleShortInfo :: XMLEncoder a (Rule (Context a))
-ruleShortInfo = simpleEncoder $ \r -> mconcat
+ruleShortInfo = makeEncoder $ \r -> mconcat
    [ "name"        .=. showId r
    , "buggy"       .=. showBool (isBuggy r)
    , "arguments"   .=. show (length (getRefs r))
@@ -166,19 +165,19 @@ ruleShortInfo = simpleEncoder $ \r -> mconcat
    ]
 
 encodeDifficulty :: XMLEncoder a Difficulty
-encodeDifficulty = simpleEncoder $ \d ->
+encodeDifficulty = makeEncoder $ \d ->
    "difficulty" .=. show d
 
 encodeText :: XMLEncoder a Text
 encodeText = encoderFor $ \txt ->
    mconcat [ encodeItem // item | item <- textItems txt ]
  where
-   encodeItem = encoderStateFor $ \xp item -> return $
+   encodeItem = withOpenMath $ \useOM -> exerciseEncoder $ \ex item ->
       case item of
          TextTerm a -> fromMaybe (text item) $ do
-            v <- hasTermView (getExercise xp)
+            v <- hasTermView ex
             b <- match v a
-            return (encodeTerm xp b)
+            return (buildTerm useOM ex b)
          _ -> text item
 
 encodeMessage :: XMLEncoder a FeedbackText.Message
@@ -196,7 +195,7 @@ encodeDiagnosis = encoderFor $ \diagnosis ->
       Buggy env r -> element "buggy"
          [encodeEnvironment // env, "ruleid" .=. showId r]
       NotEquivalent s ->
-          if null s then return (emptyTag "notequiv")
+          if null s then emptyTag "notequiv"
                     else element "notequiv" [ "reason" .=.  s ]
       Similar b st -> element "similar"
          ["ready" .=. showBool b, encodeState // st]
