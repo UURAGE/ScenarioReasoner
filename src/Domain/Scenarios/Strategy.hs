@@ -12,12 +12,10 @@ import Domain.Scenarios.Parser
 
 type StrategyMap a = M.Map String (Strategy a)
 
--- add some comment to test the push of git!!
-
 --framework code, try not to break your head.
 guardedRule :: IsId b => b -> String -> (a -> Bool) -> (a -> a) -> Rule a
 guardedRule identifier description check update =
-    describe description $ makeRule identifier (\x -> do guard $ check x; Just $ update x)
+    describe description $ makeRule identifier (\state -> do guard $ check state; Just $ update state)
     --make description and add it to the rule $ make the rule
 
 makeStrategy :: Monad m => Script -> m (Strategy EmotionalState)
@@ -28,6 +26,11 @@ makeStrategy script = do
     return $ sequence' (map interleave strategies) -- transform nested list into sequence of interleaves
     where
         sequence' = Ideas.Common.Strategy.Combinators.sequence
+        
+        
+makeNewStrategy :: Monad m => Script -> m (Strategy EmotionalState)
+makeNewStrategy script = undefined
+    
 
 makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy EmotionalState)
 makeTreeStrategy tuple@(tree,_) scriptId statementId = do

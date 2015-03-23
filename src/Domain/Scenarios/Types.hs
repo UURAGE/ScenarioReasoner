@@ -14,7 +14,8 @@ import Ideas.Text.JSON
 
 type ParameterValue = Int
 type Emotion = String
-
+type ID = String
+type Name = String
 
 -- | A condition
 data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
@@ -44,8 +45,8 @@ data ScoringFunction = Constant Int
                      | IntegeredCondition Condition    
 
 data Parameter = Parameter
-        { parameterId           :: String
-        , parameterName         :: String
+        { parameterId           :: ID
+        , parameterName         :: Name
         , parameterEmotion      :: Maybe Emotion
         , parameterInitialValue :: Maybe ParameterValue
         , parameterScored       :: Bool
@@ -56,7 +57,7 @@ parameterInitialValueOrZero :: Parameter -> ParameterValue
 parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
 
 -- | A value describing the type of a statement element 
-data StatementElementType = ComputerStatement | PlayerStatement | Conversation
+data StatementType = ComputerStatement | PlayerStatement | Conversation
     deriving (Show, Eq, Read)
 
 -- | A value describing the type of a piece of text in a conversation
@@ -65,21 +66,33 @@ data ConversationTextType = PlayerText
                           | SituationText
     deriving (Show, Eq, Read)
 
+data Dialogue = Dialogue [InterleaveLevel]
 
--- | Holds all the trees contained in an interleave
-data Interleave = Interleave [Tree] [Sequence] --current model does not allow sequences within interleave. But might be necessary later
-        
-data Sequence = Sequence [Tree] [Interleave] --current model has one top level sequencce that contains only interleaves
-        
+data InterleaveLevel = InterleaveLevel (Int, [Tree])
+
+data Interleave = Interleave [Tree]
+
 data Tree = Tree
-        { treeID        :: String
-        , treeStartID   :: String
-        , treeAtomic    :: String
+        { treeID          :: ID
+        , treeStartID     :: ID
+        , treeStatements  :: [Statement]
+        , treeAtomic      :: Bool
         }
         
+data Statement = Statement
+        { statementID           :: ID
+        , statementType         :: StatementType
+        , statementDescription  :: Either String [(ConversationTextType, String)]
+        , statementPrecondition :: Maybe Condition
+        , statementEffects      :: [Effect]
+        , statementJump         :: Bool
+        , endOfConversation     :: Bool
+        , nextStatIDs           :: [ID]
+        }
 
-instance Show Tree where
-    show (Tree a b c) = "tree: " ++ show a ++ " start: " ++ show b ++ " atomic: " ++ show c
+--instance Show Tree where
+ --   show (Tree id start atom stats) = "tree: " ++ show id ++ " start: " ++ show start ++ " atomic: " ++ show atom
+
 
 -- | Calculates the value of a condition based on the given state.
 evaluateCondition :: Condition -> EmotionalState -> Bool
@@ -131,7 +144,7 @@ calculateSubScores parameters state =
 
 
 -- | Returns the value to be used to represent a statement type in a rule ID.
-toIdTypeSegment :: StatementElementType -> String
+toIdTypeSegment :: StatementType -> String
 toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show
 
 -- | Applies a function to the first element of a list, if there is one.
@@ -146,11 +159,11 @@ errorOnFail = fromMaybe (error "failed...")
 -- | EmotionalState
 -- The state is affected by every step in a strategy.
 
-type EmotionalState = (M.Map String Int, String)
+type EmotionalState = (M.Map ID ParameterValue, ID)
 
 -- | The effect of a statement on the current emotional state
 data Effect = Effect
-        { effectIdref      :: String
+        { effectIdref      :: ID
         , effectChangeType :: ChangeType
         , effectValue      :: ParameterValue
         } deriving (Show, Eq)

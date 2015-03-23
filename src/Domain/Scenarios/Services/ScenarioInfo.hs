@@ -11,43 +11,47 @@ data ScenarioInfo = ScenarioInfo String
                                  String
                                  String
                                  Difficulty
+                                 String
+                                 String
+                                 String
                                  (Maybe String)
                                  (Maybe String)
                                  (Maybe String)
                                  [ParameterInfo]
                                  String
-                                 String
-                                 String
+                                 
                                  
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo = 
     Iso ((<-!) pairify) (Pair (Tag "id"              tString)
                         (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
-                        (Pair                        tDifficulty
+                        (Pair                        tDifficulty                        
+                        (Pair (Tag "showscore"       tString)
+                        (Pair (Tag "showfeedback"    tString)                          
+                        (Pair (Tag "feedback"        tString)
                         (Pair (Tag "bannerImage"    (tMaybe tString))
                         (Pair (Tag "characterImage" (tMaybe tString))
                         (Pair (Tag "model"          (tMaybe tString))
-                        (Pair (Tag "parameters"     (tList tParameterInfo))  
-                        (Pair (Tag "showscore"       tString)
-                        (Pair (Tag "showfeedback"    tString)                          
-                              (Tag "feedback"        tString)))))))))))
+                        (Pair (Tag "parameters"     (tList tParameterInfo))
+                              (Tag "location"        tString))))))))))))
                               
-        where pairify (ScenarioInfo a b c d e f g h i j k) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j ,k))))))))))
+        where pairify (ScenarioInfo a b c d e f g h i j k l) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j, (k, l)))))))))))
               
 instance Show ScenarioInfo where
-  show (ScenarioInfo id name desc diff b c m ps ss sf fb) = 
+  show (ScenarioInfo id name desc diff ss sf fb b c m ps lc) = 
     show id   ++ "\n" ++ 
     show name ++ "\n" ++ 
     show desc ++ "\n" ++ 
-    show diff ++ "\n" ++ 
+    show diff ++ "\n" ++
+    show ss   ++ "\n" ++ 
+    show sf   ++ "\n" ++ 
+    show fb   ++ "\n" ++
     show b    ++ "\n" ++ 
     show c    ++ "\n" ++ 
     show m    ++ "\n" ++ 
     show ps   ++ "\n" ++ 
-    show ss   ++ "\n" ++ 
-    show sf   ++ "\n" ++ 
-    show fb
+    show lc
 
 data ParameterInfo = ParameterInfo String
                                    String
@@ -77,13 +81,14 @@ getScenarioInfoFor script = ScenarioInfo
                 (scriptName)
                 (scriptDescription)
                 (scriptDifficulty)
+                (scriptShowScore)
+                (scriptShowFeedback)
+                (scriptFeedback)--true: feedback in game and at the end, false: only at the end
                 (scriptBannerImage)
                 (scriptCharacterImage)
                 (scriptModel)
                 (scriptParameters)
-                (scriptShowScore)
-                (scriptShowFeedback)
-                (scriptFeedback)--true: feedback in game and at the end, false: only at the end
+                (scriptLocation)
     where scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
           scriptDescription = errorOnFail $ getScriptDescription script
@@ -95,6 +100,7 @@ getScenarioInfoFor script = ScenarioInfo
           scriptShowScore = errorOnFail $ getScriptShowScore script
           scriptShowFeedback = errorOnFail $ getScriptShowFeedback script
           scriptFeedback = errorOnFail $ getScriptFeedback script
+          scriptLocation = errorOnFail $ getScriptLocation script
           describeParameter param = ParameterInfo
                 (parameterId param)
                 (parameterName param)

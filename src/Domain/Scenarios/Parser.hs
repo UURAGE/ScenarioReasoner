@@ -65,6 +65,9 @@ getScriptShowFeedback = getMetaDataString "showfeedback"
 getScriptFeedback :: Monad m => Script -> m String
 getScriptFeedback = getMetaDataString "feedback"
 
+getScriptLocation :: Monad m => Script -> m String
+getScriptLocation = getMetaDataString "location"
+
 -- | Queries the given script for its difficulty.
 getScriptDifficulty :: Monad m => Script -> m Difficulty
 getScriptDifficulty script = do
@@ -123,7 +126,7 @@ getScriptScoreExtremes (Script scriptElem) = return $
     maximumValue <- findAttribute "maximum" scoreExtremesElem
     return (read minimumValue, read maximumValue)
 
-getScriptStatements :: Monad m => Script -> m [Statement]
+getScriptStatements :: Monad m => Script -> m [Element]
 getScriptStatements script = do
     trees <- getTreesElements script
     treeStatements <- mapM getTreeStatements trees
@@ -131,52 +134,52 @@ getScriptStatements script = do
 
 
 -- | Extracts all statements from the given tree.
-getTreeStatements :: Monad m => TreeElement -> m [Statement]
+getTreeStatements :: Monad m => TreeElement -> m [Element]
 getTreeStatements (TreeElement treeElem) = return $ catMaybes $ map getIfStatement $ children treeElem
-    where getIfStatement statement = getType (Statement statement) >> (Just $ Statement statement)
+    where getIfStatement statement = getType statement >> (Just statement)
 
 -- | Takes a statement and returns its type.
-getType :: Monad m => Statement -> m StatementElementType
-getType (Statement element) = readM . applyToFirst toUpper . name $ element
+getType :: Monad m => Element -> m StatementType
+getType element = readM . applyToFirst toUpper . name $ element
 
 -- | Takes a statement and returns its precondition, if it has one.
-getMaybePrecondition :: Monad m => Statement -> m (Maybe Condition)
-getMaybePrecondition (Statement element) =
+getMaybePrecondition :: Monad m => Element -> m (Maybe Condition)
+getMaybePrecondition element =
     maybe (return Nothing) (liftM Just . parseConditionRoot) $ findChild "preconditions" element
 
 -- | Takes a statement and returns its visual media.
-getMediaVisuals :: Monad m => Statement -> m [(String, String)]
-getMediaVisuals (Statement element) = return $
+getMediaVisuals :: Monad m => Element -> m [(String, String)]
+getMediaVisuals element = return $
     childrenNamed "media" element >>=
     findChild "visuals" >>=
     children >>=
     parseVisual
 
 -- | Takes a statement and returns its visual media.
-getMediaAudios :: Monad m => Statement -> m [String]
-getMediaAudios (Statement element) = return $
+getMediaAudios :: Monad m => Element -> m [String]
+getMediaAudios element = return $
     childrenNamed "media" element >>=
     findChild "audios" >>=
     children >>=
     findAttribute "extid"
 
 -- | Takes a statement and returns its effects.
-getEffects :: Monad m => Statement -> m [Effect]
-getEffects (Statement element) = return $
+getEffects :: Monad m => Element -> m [Effect]
+getEffects element = return $
     findChild "effects" element >>=
     children >>=
     return . parseEffect
 
 -- | Takes a statement and returns its intents.
-getIntents :: Monad m => Statement -> m [String]
-getIntents (Statement element) = return $
+getIntents :: Monad m => Element -> m [String]
+getIntents element = return $
     findChild "intents" element >>=
     children >>=
     return . getData
 
 -- | Takes a statement and returns its text.
-getText :: Monad m => Statement -> m (Either String [(ConversationTextType, String)])
-getText (Statement element) =
+getText :: Monad m => Element -> m (Either String [(ConversationTextType, String)])
+getText element =
     case name element of
         "conversation" -> return $ Right $
             map toConversationText $ filter (isSuffixOf "Text" . name) $ children element
@@ -186,20 +189,20 @@ getText (Statement element) =
     where toConversationText textEl =
             (read $ applyToFirst toUpper $ name textEl, getData textEl)
 
-getFeedback :: Monad m => Statement -> m (Maybe String)
-getFeedback (Statement element) = return $
+getFeedback :: Monad m => Element -> m (Maybe String)
+getFeedback element = return $
     findChild "feedback" element >>=
     return . getData
 
-getEnd :: Monad m => Statement -> m String
-getEnd (Statement element) = return $ head $ findAttribute "possibleEnd" element
+getEnd :: Monad m => Element -> m Bool
+getEnd element = return $ (head $ findAttribute "possibleEnd" element) == "true"
 
-getJump :: Monad m => Statement -> m String
-getJump (Statement element) = return $ head $ findAttribute "jumpPoint" element
+getJump :: Monad m => Element -> m Bool
+getJump element = return $ (head $ findAttribute "jumpPoint" element) == "true"
 
 -- | Takes a statement and returns the IDs of the statements following it.
-getNexts :: Monad m => Statement -> m [String]
-getNexts (Statement element) = do
+getNexts :: Monad m => Element -> m [ID]
+getNexts element = do
     case name element of
         "conversation"      -> getResponses >>= getIdrefs
         "computerStatement" -> getResponses >>= getIdrefs
@@ -235,7 +238,7 @@ getTreesElements (Script element) = do
 		
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
-findStatement :: Monad m => Script -> String -> m Statement
+findStatement :: Monad m => Script -> String -> m Element
 findStatement (Script scriptElem) idVar = if null foundElems
                                             then fail $ "Cannot find statement with ID " ++ idVar
                                             else return $ head foundElems
@@ -249,9 +252,9 @@ findStatement (Script scriptElem) idVar = if null foundElems
           childElems = children scriptElem
           idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
 
-findStatementAt :: Element -> String -> [Statement]
+findStatementAt :: Element -> String -> [Element]
 findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "id" scriptElem)
-                                        then (Statement scriptElem : filteredChildren)
+                                        then (scriptElem : filteredChildren)
                                         else filteredChildren
                                     where
                                         childElems = children scriptElem
@@ -261,7 +264,7 @@ findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "
 
 -- | Takes a script, a statement element type and a statement or conversation ID and
 -- returns the corresponding element.
-findTypedStatement :: Script -> StatementElementType -> String -> Element
+findTypedStatement :: Script -> StatementType -> String -> Element
 findTypedStatement (Script scriptElem) statementType idVar = head (filter
         (idAttributeIs idVar)
         (childrenNamed elementName scriptElem))
@@ -284,13 +287,43 @@ parseScript filepath = do
 
 -- Functions to be used internally
 ------------------------------------------------------
+parseDialogue :: Script -> Dialogue
+parseDialogue (Script elem) = Dialogue (map parseInterleaveLevel interleaveLevels)
+  where
+    seqElem = findChild "sequence" elem
+    interleaveLevels = findChildren "interleave" seqElem 
+     
+    
+parseInterleave :: Element -> Interleave
+parseInterleave interleaveElem = do
+    trees <- findChildren "tree" interleaveElem 
+    return (Interleave (map parseTree trees))
 
 parseTree :: Element -> Tree
 parseTree element = Tree
                 { treeID = head $ findAttribute "id" element
                 , treeStartID = head $ findAttribute "idref" $ head $ findChild "start" element
-                , treeAtomic = head $ findAttribute "atomic" element
+                , treeStatements = parseStatements
+                , treeAtomic = (head $ findAttribute "atomic" element) == "true"
                 }
+          
+parseStatement :: Element -> Statement
+parseStatement element = Statement
+                    { statementID = head $ findAttribute "id" element
+                    , statementType = getType element             
+                    , statementDescription = getText element
+                    , statementPrecondition = getMaybePrecondition element
+                    , statementEffects = getEffects element
+                    , statementJump = getJump element
+                    , endOfConversation = getEnd element
+                    , nextStatIDs = getNexts element
+                    }
+
+parseStatements :: Element -> [Statement]
+parseStatements elem = 
+    map parseStatement (findChildren "playerStatement"   elem) ++ 
+    map parseStatement (findChildren "computerStatement" elem) ++ 
+    map parseStatement (findChildren "conversation"      elem)
 
 -- | Parses a visual (video or image).
 parseVisual :: Monad m => Element -> m (String, String)
@@ -401,7 +434,6 @@ instance HasId Script where
                 return $ describe scriptDescription $ "scenarios" # scriptId
     changeId _ _ = error "The ID of a Script is determined externally."
 
-newtype Statement = Statement Element
 instance HasId Statement where
     getId statement@(Statement element) = either error id $ do
                 statementId <- findAttribute "id" element
