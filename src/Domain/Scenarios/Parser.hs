@@ -65,6 +65,10 @@ getScriptShowFeedback = getMetaDataString "showfeedback"
 getScriptFeedback :: Monad m => Script -> m String
 getScriptFeedback = getMetaDataString "feedback"
 
+-- | Queries the given script for when it should display feedback 
+getScriptLocation :: Monad m => Script -> m String
+getScriptLocation = getMetaDataString "location"
+
 -- | Queries the given script for its difficulty.
 getScriptDifficulty :: Monad m => Script -> m Difficulty
 getScriptDifficulty script = do

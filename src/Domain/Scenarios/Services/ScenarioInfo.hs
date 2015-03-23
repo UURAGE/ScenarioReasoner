@@ -18,6 +18,7 @@ data ScenarioInfo = ScenarioInfo String
                                  String
                                  String
                                  String
+                                 String
                                  
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo = 
@@ -31,23 +32,25 @@ tScenarioInfo =
                         (Pair (Tag "parameters"     (tList tParameterInfo))  
                         (Pair (Tag "showscore"       tString)
                         (Pair (Tag "showfeedback"    tString)                          
-                              (Tag "feedback"        tString)))))))))))
+                        (Pair (Tag "feedback"        tString)
+                              (Tag "location"        tString))))))))))))
                               
-        where pairify (ScenarioInfo a b c d e f g h i j k) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j ,k))))))))))
+        where pairify (ScenarioInfo a b c d e f g h i j k l) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j ,(k, l)))))))))))
               
 instance Show ScenarioInfo where
-  show (ScenarioInfo id name desc diff b c m ps ss sf fb) = 
+  show (ScenarioInfo id name desc diff bim cim mod ps ss sf fb loc) = 
     show id   ++ "\n" ++ 
     show name ++ "\n" ++ 
     show desc ++ "\n" ++ 
     show diff ++ "\n" ++ 
-    show b    ++ "\n" ++ 
-    show c    ++ "\n" ++ 
-    show m    ++ "\n" ++ 
+    show bim  ++ "\n" ++ 
+    show cim  ++ "\n" ++ 
+    show mod  ++ "\n" ++ 
     show ps   ++ "\n" ++ 
     show ss   ++ "\n" ++ 
     show sf   ++ "\n" ++ 
-    show fb
+    show fb   ++ "\n" ++
+    show loc
 
 data ParameterInfo = ParameterInfo String
                                    String
@@ -84,6 +87,7 @@ getScenarioInfoFor script = ScenarioInfo
                 (scriptShowScore)
                 (scriptShowFeedback)
                 (scriptFeedback)--true: feedback in game and at the end, false: only at the end
+                (scriptLocation)
     where scriptId = show $ getId script
           scriptName = errorOnFail $ getScriptName script
           scriptDescription = errorOnFail $ getScriptDescription script
@@ -95,6 +99,7 @@ getScenarioInfoFor script = ScenarioInfo
           scriptShowScore = errorOnFail $ getScriptShowScore script
           scriptShowFeedback = errorOnFail $ getScriptShowFeedback script
           scriptFeedback = errorOnFail $ getScriptFeedback script
+          scriptLocation = errorOnFail $ getScriptLocation script
           describeParameter param = ParameterInfo
                 (parameterId param)
                 (parameterName param)
