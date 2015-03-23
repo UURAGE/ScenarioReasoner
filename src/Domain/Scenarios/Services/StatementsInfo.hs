@@ -20,19 +20,19 @@ data StatementInfo = StatementInfo String
                                    [String]
                                    (Maybe String)
                                    MediaInfo
-                                   String --ending
-                                   String --jump
+                                   Bool --ending
+                                   Bool --jump
 
 tStatementInfo :: Type a StatementInfo
 tStatementInfo = 
-    Iso ((<-!) pairify) (Pair (Tag "id"  tString)
-                        (Pair (Tag "type" tString)
-                        (Pair (Tag "text" tStatementText)
-                        (Pair (Tag "intents" (tList tString))
+    Iso ((<-!) pairify) (Pair (Tag "id"        tString)
+                        (Pair (Tag "type"      tString)
+                        (Pair (Tag "text"      tStatementText)
+                        (Pair (Tag "intents"  (tList tString))
                         (Pair (Tag "feedback" (tMaybe tString))
-                        (Pair (Tag "media" tMediaInfo)
-                        (Pair (Tag "end" tString)
-                              (Tag "jump" tString))))))))
+                        (Pair (Tag "media"     tMediaInfo)
+                        (Pair (Tag "end"       tBool)
+                              (Tag "jump"      tBool))))))))
 
         where pairify (StatementInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
 

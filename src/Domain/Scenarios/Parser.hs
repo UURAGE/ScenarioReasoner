@@ -134,8 +134,8 @@ getScriptStatements script = do
 
 
 -- | Extracts all statements from the given tree.
-getTreeStatements :: Monad m => TreeElement -> m [Element]
-getTreeStatements (TreeElement treeElem) = return $ catMaybes $ map getIfStatement $ children treeElem
+getTreeStatements :: Monad m => Element -> m [Element]
+getTreeStatements treeElem = return $ catMaybes $ map getIfStatement $ children treeElem
     where getIfStatement statement = getType statement >> (Just statement)
 
 -- | Takes a statement and returns its type.
@@ -218,23 +218,28 @@ getNexts element = do
 
 -- | returns tree id, start node id and tree element, grouped by interleave level
 -- parsed tree provides easy access to id information. tree element is to build a strategy with
-getTrees :: Monad m => Script -> m [[(Tree, TreeElement)]]
+getTrees :: Monad m => Script -> m [[(Tree, Element)]]
 getTrees (Script element) = do
-   firstSequence <- findChild "sequence" element
-   let interleaves = findChildren "interleave" firstSequence
-   levels <- mapM (\el ->findAttribute "level" el) interleaves
-   let intLevels = map (\x -> read x ::Int) levels
-   let zipped = zip intLevels interleaves
-   let sorted = sortWith (\(level,_)->level) zipped
-   return $ map ((\(_,interleaveElem)->map createTuple (children interleaveElem))) sorted
-        where createTuple treeElem = (parseTree treeElem, TreeElement treeElem)
+    firstSequence <- findChild "sequence" element
+    let interleaves = findChildren "interleave" firstSequence
+    levels <- mapM (\el ->findAttribute "level" el) interleaves
+    let intLevels = map (\x -> read x ::Int) levels
+    let zipped = zip intLevels interleaves
+    let sorted = sortWith (\(level,_)->level) zipped
+    let interleaveElems = map (\(_,elem)->elem) sorted
+    let treeElems = map children interleaveElems
+    trees <- mapM (mapM parseTree) treeElems
+    return $ zipLists trees treeElems
+      where
+        zipLists []          []          = []
+        zipLists (trees:tss) (elems:ess) = zip trees elems : zipLists tss ess
 
 -- returns all elements of all trees
-getTreesElements :: Monad m => Script -> m [TreeElement]
+getTreesElements :: Monad m => Script -> m [Element]
 getTreesElements (Script element) = do
    firstSequence <- findChild "sequence" element
    let interleaves = findChildren "interleave" firstSequence
-   return $ concatMap (\interleaveElem -> map (\e -> TreeElement e) (children interleaveElem)) interleaves
+   return $ concatMap (\interleaveElem -> map (\e -> e) (children interleaveElem)) interleaves
 		
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
@@ -287,44 +292,58 @@ parseScript filepath = do
 
 -- Functions to be used internally
 ------------------------------------------------------
-parseDialogue :: Script -> Dialogue
-parseDialogue (Script elem) = Dialogue (map parseInterleaveLevel interleaveLevels)
-  where
-    seqElem = findChild "sequence" elem
-    interleaveLevels = findChildren "interleave" seqElem 
-     
+parseDialogue :: Monad m => Script -> m Dialogue
+parseDialogue (Script elem) = do
+    seqElem <- findChild "sequence" elem
+    let interleaveLevels = findChildren "interleave" seqElem 
+    dialogue <- mapM parseInterleaveLevel interleaveLevels
+    return dialogue
     
-parseInterleave :: Element -> Interleave
-parseInterleave interleaveElem = do
-    trees <- findChildren "tree" interleaveElem 
-    return (Interleave (map parseTree trees))
+parseInterleaveLevel :: Monad m => Element -> m InterleaveLevel
+parseInterleaveLevel interleaveElem = do 
+    level <- findAttribute "level" interleaveElem
+    let treeElems = findChildren "tree" interleaveElem 
+    trees <- mapM parseTree treeElems
+    return (read level :: Int, trees)
 
-parseTree :: Element -> Tree
-parseTree element = Tree
-                { treeID = head $ findAttribute "id" element
-                , treeStartID = head $ findAttribute "idref" $ head $ findChild "start" element
-                , treeStatements = parseStatements
-                , treeAtomic = (head $ findAttribute "atomic" element) == "true"
-                }
-          
-parseStatement :: Element -> Statement
-parseStatement element = Statement
-                    { statementID = head $ findAttribute "id" element
-                    , statementType = getType element             
-                    , statementDescription = getText element
-                    , statementPrecondition = getMaybePrecondition element
-                    , statementEffects = getEffects element
-                    , statementJump = getJump element
-                    , endOfConversation = getEnd element
-                    , nextStatIDs = getNexts element
-                    }
+parseTree :: Monad m => Element -> m Tree
+parseTree treeElem = do
+    statements <- parseStatements treeElem
+    return Tree
+        { treeID         = head $ findAttribute "id" treeElem
+        , treeStartID    = head $ findAttribute "idref" $ head $ findChild "start" treeElem
+        , treeStatements = statements
+        , treeAtomic     = null (filter (\stat -> statJump stat) statements)
+        }
 
-parseStatements :: Element -> [Statement]
-parseStatements elem = 
-    map parseStatement (findChildren "playerStatement"   elem) ++ 
-    map parseStatement (findChildren "computerStatement" elem) ++ 
-    map parseStatement (findChildren "conversation"      elem)
+parseStatement :: Monad m => Element -> m Statement
+parseStatement statElem = do
+    statementType         <- getType statElem
+    statementText         <- getText statElem
+    statementPrecondition <- getMaybePrecondition statElem
+    statementEffects      <- getEffects statElem
+    statementJump         <- getJump statElem
+    conversationEnd       <- getEnd statElem
+    nextStats             <- getNexts statElem
 
+    return Statement
+        { statID            = head $ findAttribute "id" statElem
+        , statType          = statementType        
+        , statDescription   = statementText
+        , statPrecondition  = statementPrecondition
+        , statEffects       = statementEffects
+        , statJump          = statementJump
+        , endOfConversation = conversationEnd
+        , nextStatIDs       = nextStats
+        }
+        
+parseStatements :: Monad m => Element -> m [Statement]
+parseStatements elem = do 
+    playerStats   <- mapM parseStatement (findChildren "playerStatement"   elem)
+    computerStats <- mapM parseStatement (findChildren "computerStatement" elem)
+    conversation  <- mapM parseStatement (findChildren "conversation"      elem)
+    return (playerStats ++ computerStats ++ conversation)
+    
 -- | Parses a visual (video or image).
 parseVisual :: Monad m => Element -> m (String, String)
 parseVisual element = do
@@ -434,16 +453,17 @@ instance HasId Script where
                 return $ describe scriptDescription $ "scenarios" # scriptId
     changeId _ _ = error "The ID of a Script is determined externally."
 
-instance HasId Statement where
-    getId statement@(Statement element) = either error id $ do
-                statementId <- findAttribute "id" element
+instance HasId Element where
+    getId statement = either error id $ do
+                statementId <- findAttribute "id" statement
                 statementText <- getText statement
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementId
     changeId _ _ = error "The ID of a Statement is determined externally."
+    
 
 -- | Creates the full ID for the given statement in the context of the given script.
-createFullId :: Script -> Statement -> Id
+createFullId :: Script -> Element -> Id
 createFullId script statement = scriptId # typeSegment # idSegment
     where scriptId = getId script
           typeSegment = toIdTypeSegment $ fromJust $ getType statement

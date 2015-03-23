@@ -9,6 +9,7 @@ import Ideas.Common.Strategy.Combinators
 
 import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
+import Ideas.Text.XML.Interface(Element)
 
 type StrategyMap a = M.Map String (Strategy a)
 
@@ -32,27 +33,24 @@ makeNewStrategy :: Monad m => Script -> m (Strategy EmotionalState)
 makeNewStrategy script = undefined
     
 
-makeTreeStrategy :: Monad m => (Tree, TreeElement) -> String -> String -> m (Strategy EmotionalState)
+makeTreeStrategy :: Monad m => (Tree, Element) -> String -> String -> m (Strategy EmotionalState)
 makeTreeStrategy tuple@(tree,_) scriptId statementId = do
     strategyTuple <- makeSubStrategy tuple scriptId M.empty statementId
     let strategy = fst strategyTuple
-    if(treeAtomic tree == "true")
+    if(treeAtomic tree)
         then return (atomic strategy)
         else return strategy
 
 
 --sub strats make a strat for one tree, so it should not be too hard to expand it once we know the starting statements of each tree.
-makeSubStrategy :: Monad m => (Tree, TreeElement) -> String -> StrategyMap EmotionalState -> String -> m (Strategy EmotionalState, StrategyMap EmotionalState)
-makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = do
+makeSubStrategy :: Monad m => (Tree, Element) -> String -> StrategyMap EmotionalState -> String -> m (Strategy EmotionalState, StrategyMap EmotionalState)
+makeSubStrategy (tree,  treeElem) scriptId strategyMap statementId = do
 
-    let statement = head $ findStatementAt el statementId
+    let statement = head $ findStatementAt treeElem statementId
     statementType         <- getType statement
     statementDescription  <- getText statement
     statementPrecondition <- getMaybePrecondition statement
     statementEffects      <- getEffects statement
-    statJump              <- getJump statement
-	
-    let isJump = statJump == "true"
 
     case M.lookup statementId strategyMap of --check if statement is already in the strategy
 
@@ -75,11 +73,11 @@ makeSubStrategy (tree,  t@(TreeElement el)) scriptId strategyMap statementId = d
                     return (statementStrategy, M.insert statementId statementStrategy strategyMap)
 
                 firstNextId : restNextIds -> do -- process all possible choices
-                    firstStrategyTuple <- makeSubStrategy (tree, t) scriptId strategyMap firstNextId
+                    firstStrategyTuple <- makeSubStrategy (tree, treeElem) scriptId strategyMap firstNextId
                     (foldedStrategy, nextsStrategyMap) <- foldM folder firstStrategyTuple restNextIds
                     let statementStrategy = rule <*> foldedStrategy
                     return (statementStrategy, M.insert statementId statementStrategy nextsStrategyMap)
 
     where folder (stratSoFar, rulesSoFar) nextId = do
-            (newStrat, newRules) <- makeSubStrategy (tree, t) scriptId rulesSoFar nextId
+            (newStrat, newRules) <- makeSubStrategy (tree, treeElem) scriptId rulesSoFar nextId
             return (stratSoFar <|> newStrat, newRules)

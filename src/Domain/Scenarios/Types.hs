@@ -16,6 +16,7 @@ type ParameterValue = Int
 type Emotion = String
 type ID = String
 type Name = String
+type BoolStr = String 
 
 -- | A condition
 data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
@@ -66,9 +67,9 @@ data ConversationTextType = PlayerText
                           | SituationText
     deriving (Show, Eq, Read)
 
-data Dialogue = Dialogue [InterleaveLevel]
+type Dialogue = [InterleaveLevel]
 
-data InterleaveLevel = InterleaveLevel (Int, [Tree])
+type InterleaveLevel = (Int, [Tree])
 
 data Interleave = Interleave [Tree]
 
@@ -80,14 +81,14 @@ data Tree = Tree
         }
         
 data Statement = Statement
-        { statementID           :: ID
-        , statementType         :: StatementType
-        , statementDescription  :: Either String [(ConversationTextType, String)]
-        , statementPrecondition :: Maybe Condition
-        , statementEffects      :: [Effect]
-        , statementJump         :: Bool
-        , endOfConversation     :: Bool
-        , nextStatIDs           :: [ID]
+        { statID            :: ID
+        , statType          :: StatementType
+        , statDescription   :: Either String [(ConversationTextType, String)]
+        , statPrecondition  :: Maybe Condition
+        , statEffects       :: [Effect]
+        , statJump          :: Bool
+        , endOfConversation :: Bool
+        , nextStatIDs       :: [ID]
         }
 
 --instance Show Tree where
