@@ -1,5 +1,7 @@
 module Domain.Scenarios.Strategy where
 
+import GHC.Exts(sortWith)
+
 import Control.Monad hiding (sequence)
 import Data.List
 import qualified Data.Map as M
@@ -11,7 +13,7 @@ import Domain.Scenarios.Types
 import Domain.Scenarios.Parser
 import Ideas.Text.XML.Interface(Element)
 
-type StrategyMap a = M.Map String (Strategy a)
+type StrategyMap a = M.Map ID (Strategy a)
 
 --framework code, try not to break your head.
 guardedRule :: IsId b => b -> String -> (a -> Bool) -> (a -> a) -> Rule a
@@ -81,3 +83,53 @@ makeSubStrategy (tree,  treeElem) scriptId strategyMap statementId = do
     where folder (stratSoFar, rulesSoFar) nextId = do
             (newStrat, newRules) <- makeSubStrategy (tree, treeElem) scriptId rulesSoFar nextId
             return (stratSoFar <|> newStrat, newRules)
+            
+makeDialogueStrategy :: Monad m => Script -> m (Strategy EmotionalState)
+makeDialogueStrategy script = do
+    dialogue <- parseDialogue script
+    let sortedDialogue = sortWith (\(level, _) -> level) dialogue
+    scriptID <- getScriptId script
+    intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scriptID) sortedDialogue
+    return (sequence' intLvlStrategies)
+      where 
+        sequence' = Ideas.Common.Strategy.Combinators.sequence
+        
+makeIntLvlStrategy :: Monad m => InterleaveLevel -> ID -> m (Strategy EmotionalState) 
+makeIntLvlStrategy (_, trees) scriptID = do
+    treeStrategies <- mapM (\tree -> makeTreStrategy tree scriptID) trees
+    return (interleave treeStrategies)
+    
+makeTreStrategy :: Monad m => Tree -> ID -> m (Strategy EmotionalState)
+makeTreStrategy tree scriptID = do
+    let startID = treeStartID tree
+    treeStrategy <- makeStatementStrategy startID tree scriptID
+    if (treeAtomic tree)
+        then return (atomic treeStrategy)
+        else return treeStrategy
+    
+makeStatementStrategy :: Monad m => ID -> Tree -> ID -> StrategyMap EmotionalState -> m (Strategy EmotionalState)
+makeStatementStrategy statementID tree scriptID strategyMap = do 
+    let statement = find (\stat -> statID stat == statementID) (treeStatements tree)
+    
+    case M.lookup statementID strategyMap of
+        
+        Just statementStrategy -> return (statementStrategy, strategyMap)
+        
+        Nothing                -> do
+            let rule = guardedRule
+                    (["scenarios", scriptID, toIdTypeSegment (statType statement), statementID]
+                    (either id (intercalate " // " . map snd) (statDescription statement))
+                    (evaluateMaybeCondition (statPrecondition statement)) -- check if precondition is fulfilled
+                    (\state -> foldr applyEffect (fst state, treeID tree) (statEffects statement)))
+                    --the initial state is not generated here. 
+                    --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
+            nextIDs <- nextStatIDs statement
+            
+            case nextIDs of 
+                [] -> do 
+                    let statementStrategy = atomic rule
+                    return (statementStrategy, M.insert statementId statementStrategy strategyMap)
+                    
+                _  -> do 
+                    statementStrategy <- makeNextStatementStrategy statementID rule nextIDs tree scriptID strategyMap 
+                    return statementStrategy
