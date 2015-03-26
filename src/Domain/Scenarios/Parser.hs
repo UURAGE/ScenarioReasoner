@@ -313,7 +313,7 @@ parseTree treeElem = do
         { treeID         = head $ findAttribute "id" treeElem
         , treeStartID    = head $ findAttribute "idref" $ head $ findChild "start" treeElem
         , treeStatements = statements
-        , treeAtomic     = null (filter (\stat -> statJump stat) statements)
+        , treeAtomic     = null (filter (\stat -> jumpPoint stat) statements)
         }
 
 parseStatement :: Monad m => Element -> m Statement
@@ -332,7 +332,7 @@ parseStatement statElem = do
         , statDescription   = statementText
         , statPrecondition  = statementPrecondition
         , statEffects       = statementEffects
-        , statJump          = statementJump
+        , jumpPoint         = statementJump
         , endOfConversation = conversationEnd
         , nextStatIDs       = nextStats
         }

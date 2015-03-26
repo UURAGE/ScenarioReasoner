@@ -86,7 +86,7 @@ data Statement = Statement
         , statDescription   :: Either String [(ConversationTextType, String)]
         , statPrecondition  :: Maybe Condition
         , statEffects       :: [Effect]
-        , statJump          :: Bool
+        , jumpPoint         :: Bool
         , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
         }
