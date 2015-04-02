@@ -24,9 +24,9 @@ guardedRule identifier description check update =
     describe description $ makeRule identifier (\state -> do guard $ check state; Just $ update state)
     --make description and add it to the rule $ make the rule
    
-makeGuardedRule :: ID -> Statement -> Tree -> Rule EmotionalState
-makeGuardedRule scriptID statement tree = guardedRule
-    (["scenarios", scriptID, toIdTypeSegment (statType statement), statID statement])
+makeGuardedRule :: ID -> Statement -> Tree -> String -> Rule EmotionalState
+makeGuardedRule scriptID statement tree interleaved = guardedRule
+    (["scenarios", scriptID, toIdTypeSegment (statType statement), statID statement, interleaved])
     (either id (intercalate " // " . map snd) (statDescription statement))
     (evaluateMaybeCondition (statPrecondition statement)) -- check if precondition is fulfilled
     (\state -> foldr applyEffect (fst state, treeID tree) (statEffects statement))
@@ -52,10 +52,10 @@ makeIntLvlStrategy (_, trees) scriptID = do
 makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy EmotionalState)
 makeTreeStrategy tree scriptID = do
     let startID = treeStartID tree
-    strategy <- makeStatStrategy Nothing startID tree scriptID
-    if (treeAtomic tree)
-        then return (atomic strategy)
-        else return strategy
+    
+    strategy <- makeRealStatStrategy tree scriptID startID
+    
+    return strategy
     
 {-
 makeStatementStrategy :: Monad m => ID -> Tree -> ID -> StrategyMap EmotionalState -> m StrategyState
@@ -87,8 +87,8 @@ makeStatementStrategy statementID tree scriptID strategyMap = do
                         (nextStrategy, nextMap) <- makeStatementStrategy nextID tree scriptID mapSoFar
                         return (stratSoFar <|> nextStrategy, nextMap)
 -}
-                        
-      
+
+{-
 -- de versie als je bovenaan een sequence begint (na een boombegin, of als je net uit een jumppoint komt)
 makeStatStrategy :: Monad m => Maybe (Strategy EmotionalState) -> ID -> Tree -> ID -> m (Strategy EmotionalState)
 makeStatStrategy Nothing statementID tree scriptID = do 
@@ -119,7 +119,7 @@ makeStatStrategy Nothing statementID tree scriptID = do
         handleJumpPoint statement rule nextStatement
             |  jumpPoint nextStatement && not (jumpPoint statement) = do
                 nextStrategy <- makeStatStrategy Nothing (statID nextStatement) tree scriptID
-                return ( (atomic (atomic rule)) <*> nextStrategy)            
+                return ( (atomic (atomic rule)) <*> nextStrategy)           
             |  jumpPoint statement = do
                 nextStrategy <- makeStatStrategy Nothing (statID nextStatement) tree scriptID
                 return (rule <*> nextStrategy)
@@ -160,6 +160,7 @@ makeStatStrategy (Just strategySoFar) statementID tree scriptID = do
             |  otherwise = do
                 nextStrategy <- makeStatStrategy (Just (strategySoFar <*> rule)) (statID nextStatement) tree scriptID
                 return nextStrategy
+-}
                 
 {-               
 makeNextIDsStrategy :: Monad m => [ID] -> Tree -> ID -> ID -> StrategyMap EmotionalState -> m StrategyState
@@ -174,6 +175,103 @@ makeNextIDsStrategy (nextID : restIDs) scriptID tree previousID strategyMap = do
     return (stratSoFar <|> nextStrategy, nextMap)
 -}  
 
+
+makeRealStatStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy EmotionalState)
+makeRealStatStrategy tree scriptID statementID = do 
+    -- Vind het gekozen statement door in de boom te zoeken op ID
+    let statement = errorOnFail $ find (\stat -> statID stat == statementID) (treeStatements tree)
+    -- maak een regel aan, als er geinterleaved moet worden, wordt "interleaved" meegegeven aan de rule id (HACK) 
+    let rule | jumpPoint statement = makeGuardedRule scriptID statement tree "interleaved"
+             | otherwise           = makeGuardedRule scriptID statement tree "" 
+                        
+    -- haal de volgende mogelijke statmentkeuzes (ID) uit de boom
+    let nextIDs = nextStatIDs statement
+    
+    case nextIDs of 
+        [] -> return (toStrategy rule)
+        _  -> do
+            -- handle elk statement recursief af
+            nextStrategyList <- mapM (makeRealStatStrategy tree scriptID) nextIDs
+            
+            let nextStrategy = alternatives nextStrategyList
+            
+            let strategy = rule <*> nextStrategy
+                         
+            return strategy 
+            
+{-            
+makeStatementStrategy :: Monad m => Maybe (Strategy EmotionalState) -> ID -> Tree -> ID -> m [Strategy EmotionalState]
+makeStatementStrategy Nothing statementID tree scriptID = do 
+    -- Vind het gekozen statement door in de boom te zoeken op ID
+    let statement = errorOnFail $ find (\stat -> statID stat == statementID) (treeStatements tree)
+    -- maak een regel aan 
+    let rule = makeGuardedRule scriptID statement tree
+    -- haal de volgende mogelijke statmentkeuzes (ID) uit de boom
+    let nextIDs = nextStatIDs statement
+    
+    case nextIDs of 
+        -- geef een atomic regel als je aan het eind van een tak zit
+        [] -> return [atomic rule]
+        -- anders:
+        _  -> do
+            -- vind de volgende mogelijke statements
+            let nextStats = filter (\s -> elem (statID s) nextIDs) (treeStatements tree) 
+            -- handle elk statement recursief af
+            nextStrategies <- mapM (handleJumpPoint statement rule) nextStats
+            
+            return nextStrategies
+    where
+        -- functie die van een statement en regel een (deel)strategie maken, gebaseerd op of het een jumppoint is of niet
+        -- als het volgende statement een jumppoint is dan moeten we de rule atomair maken
+        -- als dit statement een jumppoint is dan maakt het niet uit of het volgende een jumpPoint is
+        -- anders geef de strategy tot nu toe door
+        handleJumpPoint :: Monad m => Statement -> Rule EmotionalState -> Statement -> m (Strategy EmotionalState)
+        handleJumpPoint statement rule nextStatement
+            |  jumpPoint nextStatement && not (jumpPoint statement) = do
+                nextStrategies <- makeStatementStrategy Nothing (statID nextStatement) tree scriptID
+                return ( (atomic (atomic rule)) <*> (alternatives nextStrategies))           
+            |  jumpPoint statement = do
+                nextStrategies <- makeStatementStrategy Nothing (statID nextStatement) tree scriptID
+                return (rule <*> (alternatives nextStrategies))
+            |  otherwise            = do
+                nextStrategies <- makeStatementStrategy (Just (atomic rule)) (statID nextStatement) tree scriptID
+                return (alternatives nextStrategies)
+                
+-- versie als je verder gaat uit een vorige boom
+makeStatementStrategy (Just strategySoFar) statementID tree scriptID = do                    
+    -- Vind het gekozen statement door in de boom te zoeken op ID
+    let statement = errorOnFail $ find (\stat -> statID stat == statementID) (treeStatements tree)
+    -- maak een regel aan 
+    let rule = makeGuardedRule scriptID statement tree
+    -- haal de volgende mogelijke statementkeuzes (ID) uit de boom
+    let nextIDs = nextStatIDs statement
+    
+    case nextIDs of 
+        -- geef een atomic regel als je aan het eind van een tak zit
+        [] -> return [atomic (strategySoFar <*> rule)]
+        
+        _  -> do
+            -- vind de volgende mogelijke statements
+            let nextStats = filter (\s -> elem (statID s) nextIDs) (treeStatements tree) 
+            -- handle elk statement recursief af
+            nextStrategies <- mapM (handleJumpPoint statement rule) nextStats
+            
+            return nextStrategies
+            
+    where 
+        handleJumpPoint :: Monad m => Statement -> Rule EmotionalState -> Statement -> m (Strategy EmotionalState)
+        handleJumpPoint statement rule nextStatement
+            |  not (jumpPoint statement) && jumpPoint nextStatement = do
+                nextStrategies <- makeStatementStrategy Nothing (statID nextStatement) tree scriptID
+                return ((atomic (strategySoFar <*> rule)) <*> (alternatives nextStrategies))
+            |  jumpPoint statement = do
+                nextStrategies <- makeStatementStrategy Nothing (statID nextStatement) tree scriptID
+                return ((atomic strategySoFar) <*> rule <*> (alternatives nextStrategies))
+            |  otherwise = do
+                nextStrategies <- makeStatementStrategy (Just (strategySoFar <*> rule)) (statID nextStatement) tree scriptID
+                return (alternatives nextStrategies)
+
+-}
 
 
 

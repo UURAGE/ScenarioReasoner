@@ -81,6 +81,7 @@ coreToProcess useLabels = fromAtoms . toProcess . rec . coreSubstAll
          Var _      -> error "not substituted: var"
 
    switch (Single (Enter _)) = False
+   switch (Single (RuleStep _ r)) = isInfixOf "interleaved" (showId (getId r))
    switch _ = True
 
 collapse :: Core a -> Core a

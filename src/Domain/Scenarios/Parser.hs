@@ -467,4 +467,4 @@ createFullId :: Script -> Element -> Id
 createFullId script statement = scriptId # typeSegment # idSegment
     where scriptId = getId script
           typeSegment = toIdTypeSegment $ fromJust $ getType statement
-          idSegment = getId statement
+          idSegment = getId statement          
