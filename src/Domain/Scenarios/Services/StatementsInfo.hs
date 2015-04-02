@@ -21,7 +21,6 @@ data StatementInfo = StatementInfo String
                                    (Maybe String)
                                    MediaInfo
                                    Bool --ending
-                                   Bool --jump
 
 tStatementInfo :: Type a StatementInfo
 tStatementInfo = 
@@ -31,10 +30,9 @@ tStatementInfo =
                         (Pair (Tag "intents"  (tList tString))
                         (Pair (Tag "feedback" (tMaybe tString))
                         (Pair (Tag "media"     tMediaInfo)
-                        (Pair (Tag "end"       tBool)
-                              (Tag "jump"      tBool))))))))
+                              (Tag "end"       tBool)))))))
 
-        where pairify (StatementInfo a b c d e f g h) = (a, (b, (c, (d, (e, (f, (g, h)))))))
+        where pairify (StatementInfo id tp text ints fb media end) = (id, (tp, (text, (ints, (fb, (media, end))))))
 
 
 data MediaInfo = MediaInfo [(String, String)] [String]
@@ -43,7 +41,7 @@ tMediaInfo :: Type a MediaInfo
 tMediaInfo = 
     Iso ((<-!) pairify) (Pair (Tag "visuals" (tList (tPair tString tString)))
                               (Tag "audios"  (tList tString)))
-        where pairify (MediaInfo a b) = (a, b)
+        where pairify (MediaInfo visuals audios) = (visuals, audios)
         
 statementsinfo :: [Script] -> Exercise a -> [StatementInfo]
 statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatements script
@@ -60,7 +58,6 @@ statementsinfo scripts ex = map statementInfo $ emptyOnFail $ getScriptStatement
                     (emptyOnFail $ getMediaAudios statement)
                 )
                 (head $ getEnd statement)--because monad
-                (head $ getJump statement)
           emptyOnFail = fromMaybe []
           showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
 

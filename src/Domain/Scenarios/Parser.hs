@@ -313,7 +313,6 @@ parseTree treeElem = do
         { treeID         = head $ findAttribute "id" treeElem
         , treeStartID    = head $ findAttribute "idref" $ head $ findChild "start" treeElem
         , treeStatements = statements
-        , treeAtomic     = null (filter (\stat -> jumpPoint stat) statements)
         }
 
 parseStatement :: Monad m => Element -> m Statement
@@ -464,7 +463,9 @@ instance HasId Element where
 
 -- | Creates the full ID for the given statement in the context of the given script.
 createFullId :: Script -> Element -> Id
-createFullId script statement = scriptId # typeSegment # idSegment
+createFullId script statement = scriptId # typeSegment # idSegment # interleaveSegment
     where scriptId = getId script
           typeSegment = toIdTypeSegment $ fromJust $ getType statement
-          idSegment = getId statement          
+          idSegment = getId statement
+          interleaveSegment | (head $ findAttribute "jumpPoint" statement) == "true" = "interleaved"
+                            | otherwise                                              = ""

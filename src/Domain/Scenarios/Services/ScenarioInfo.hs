@@ -62,10 +62,10 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
                                      (Pair (Tag "name"     tString)
                                            (Tag "emotion" (tMaybe tString))))
                                            
-        where pairify (ParameterInfo a b c) = (a, (b, c))
+        where pairify (ParameterInfo id name emotion) = (id, (name, emotion))
 
 instance Show ParameterInfo where
-  show (ParameterInfo a b c) = show a ++ ", " ++ show b ++ ", " ++ show c
+  show (ParameterInfo id name emotion) = show id ++ ", " ++ show name ++ ", " ++ show emotion
   
   -- scenariolist service
 scenariolist :: [Script] -> [ScenarioInfo]

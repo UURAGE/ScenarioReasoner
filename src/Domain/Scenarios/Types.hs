@@ -77,7 +77,6 @@ data Tree = Tree
         { treeID          :: ID
         , treeStartID     :: ID
         , treeStatements  :: [Statement]
-        , treeAtomic      :: Bool
         }
         
 data Statement = Statement
