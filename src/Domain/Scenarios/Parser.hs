@@ -463,9 +463,15 @@ instance HasId Element where
 
 -- | Creates the full ID for the given statement in the context of the given script.
 createFullId :: Script -> Element -> Id
-createFullId script statement = scriptId # typeSegment # idSegment # interleaveSegment
-    where scriptId = getId script
-          typeSegment = toIdTypeSegment $ fromJust $ getType statement
-          idSegment = getId statement
-          interleaveSegment | (head $ findAttribute "jumpPoint" statement) == "true" = "interleaved"
-                            | otherwise                                              = ""
+createFullId script statementElement = scriptId # typeSegment # idSegment # interleaveSegment
+  where 
+    statement = head (parseStatement statementElement) --out of monad
+    scriptId = getId script
+    typeSegment = toIdTypeSegment $ statType statement
+    idSegment = statID statement 
+    
+    nextIDs = nextStatIDs statement
+    
+    interleaveSegment | jumpPoint statement                                 = "interleaved"
+                      | not (endOfConversation statement) && (null nextIDs) = "interleaved"
+                      | otherwise                                           = ""

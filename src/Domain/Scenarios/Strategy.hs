@@ -60,13 +60,14 @@ makeStatementStrategy tree scriptID statementID = do
     -- Find the given statement in the tree with the id
     let statement = errorOnFail $ find (\stat -> statID stat == statementID) (treeStatements tree)
     
+    let nextIDs = nextStatIDs statement    
+    
     -- Make a rule for the statement and tell the framework if we want to interleave here or not. 
     -- (processed in Ideas.Common.Strategy.Parsing.hs in the switch function)
-    let rule | jumpPoint statement = makeGuardedRule scriptID statement tree "interleaved"
-             | otherwise           = makeGuardedRule scriptID statement tree "" 
-                        
-    let nextIDs = nextStatIDs statement
-    
+    let rule | jumpPoint statement                                 = makeGuardedRule scriptID statement tree "interleaved"
+             | not (endOfConversation statement) && null (nextIDs) = makeGuardedRule scriptID statement tree "interleaved"
+             | otherwise                                           = makeGuardedRule scriptID statement tree "" 
+            
     case nextIDs of 
         [] -> return (toStrategy rule)
         _  -> do

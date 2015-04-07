@@ -72,12 +72,14 @@ type Dialogue = [InterleaveLevel]
 type InterleaveLevel = (Int, [Tree])
 
 data Interleave = Interleave [Tree]
+    deriving (Show, Eq)
 
 data Tree = Tree
         { treeID          :: ID
         , treeStartID     :: ID
         , treeStatements  :: [Statement]
         }
+    deriving(Show, Eq)
         
 data Statement = Statement
         { statID            :: ID
@@ -89,6 +91,7 @@ data Statement = Statement
         , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
         }
+    deriving(Show, Eq)
 
 --instance Show Tree where
  --   show (Tree id start atom stats) = "tree: " ++ show id ++ " start: " ++ show start ++ " atomic: " ++ show atom
