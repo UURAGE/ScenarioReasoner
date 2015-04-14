@@ -15,7 +15,7 @@ data ScoringFunction = Constant Score
 data Parameter = Parameter
         { parameterId           :: ID
         , parameterName         :: Name
-        , parameterEmotion      :: Emotion
+        , parameterEmotion      :: Maybe Emotion
         , parameterInitialValue :: ParameterValue
         , parameterScored       :: Bool
         }

@@ -38,7 +38,7 @@ makeStrategy :: Monad m => ScriptElem -> m (Strategy ScriptState)
 makeStrategy script = do
     let dialogue = parseDialogue script
     let sortedDialogue = sortWith (\(level, _) -> level) dialogue
-    let scriptID = parseScriptElemId script
+    let scriptID = parseScriptID script
     intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scriptID) sortedDialogue
     return (sequence' intLvlStrategies)
       where 

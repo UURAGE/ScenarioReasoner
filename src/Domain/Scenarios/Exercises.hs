@@ -19,12 +19,12 @@ getExercises scenarioId = do
 
 getExercise :: String -> IO (Exercise ScriptState, ScriptElem)
 getExercise path = do
-    script <- parseScript path
-    exercise <- exerciseFromScript script
-    return (exercise, script)
+    scriptElem <- parseScriptElem path
+    exercise <- exerciseFromScript scriptElem
+    return (exercise, scriptElem)
 
 exerciseFromScript :: Monad m => ScriptElem -> m (Exercise ScriptState)
-exerciseFromScript script = do
+exerciseFromScript scriptElem = do
     scriptDifficulty <- getScriptDifficulty script
     scriptStrategy <- makeStrategy script
     scriptParameters <- getScriptParameters script

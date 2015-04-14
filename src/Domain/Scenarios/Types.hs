@@ -30,13 +30,8 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
                                            (Tag "emotion" (tMaybe tString))))                                           
         where pairify (ParameterInfo id name emotion) = (id, (name, emotion))
         
-tToggles :: Type a [Toggle]
-tToggles = Iso ((<-!) pairify) (pairToggleTags toggleTags)
-  where 
-    toggleTags = map (\name -> Tag name tBool) toggleList
-    pairToggleTags (tt1:tt2:[]) = Pair tt1 tt2
-    pairToggleTags (tt1:tts)    = Pair tt1 (pairToggleTags tts)
-    pairify (Toggle name bool) = (name, bool)
+tToggle :: Type a (Toggle n b) 
+tToggle = Iso (<-!) (Tag n (tBool))
     
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 tScoreResult :: Type a ScoreResult
