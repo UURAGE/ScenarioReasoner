@@ -5,10 +5,10 @@ import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
 
-import Domain.Scenarios.Parser
-import Domain.Scenarios.Services.ScenarioInfo(scenariolist, scenarioinfo, tScenarioInfo)
-import Domain.Scenarios.Services.StatementsInfo(statementsinfo, tStatementInfo)
-import Domain.Scenarios.Services.Score(score, tScoreResult)
+import Domain.Scenarios.Services.ScenarioInfo
+import Domain.Scenarios.Services.StatementsInfo
+import Domain.Scenarios.Services.Score
+import Domain.Scenarios.Types
 
 customServices :: [Script] -> [Service]
 customServices scripts = map (flip ($) scripts)

@@ -1,28 +1,20 @@
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 -----------------------------------------------------------------------------
 {- |
-Basic functions to query a ScriptLanguage XML script as specified by the
+Basic functions to query a ScriptElemLanguage XML script as specified by the
 Communicate!-team.
 
-This code doesn't do any error checking on the script. Scripts deviating
+This code doesn't do any error checking on the script. ScriptElems deviating
 from the specifications may lead to unspecified behaviour (most likely
 a Haskell-exception).
 -}
 -----------------------------------------------------------------------------
-module Domain.Scenarios.Parser
-{-   ( Script
-    , getScriptId, getScriptName, getScriptDate, getScriptDescription, getScriptDifficulty
-    , getScriptModel, getScriptBannerImage, getScriptCharacterImage
-    , getScriptStartId, getScriptParameters
-    , getScriptScoringFunction, getScriptScoreExtremes, getScriptStatements
-    , getType, getMaybePrecondition, getMediaVisuals, getMediaAudios
-    , getEffects, getIntents, getFeedback, getText, getNexts, getJumpPoint
-    , findStatement
-    , parseScript
-    , createFullId
-    ) -} where
+module Domain.Scenarios.Parser where
+
 import GHC.Exts (sortWith)
 
 import Control.Monad
+
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -32,219 +24,229 @@ import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
 import Ideas.Text.XML.Interface(parseXML, findChildren, findChild, findAttribute, children, name, getData, Element)
 
-import Domain.Scenarios.Types
+import Domain.Scenarios.ScoreFunction
+import Domain.Scenarios.Condition
+import Domain.Scenarios.ScriptState
+import Domain.Scenarios.TypeDefs
 
+--data Script = Script MetaData Dialogue
+
+-- Metadata parameter
+
+
+type Dialogue = [InterleaveLevel]
+
+type InterleaveLevel = (Int, [Tree])
+
+data Interleave = Interleave [Tree]
+    deriving (Show, Eq)
+
+data Tree = Tree
+        { treeID          :: ID
+        , treeStartID     :: ID
+        , treeStatements  :: [Statement]
+        }
+    deriving(Eq)    
+    
+instance Show Tree where
+    show (Tree id start stats) = 
+        "tree: "        ++ show id    ++ 
+        " start: "      ++ show start ++
+        " statements: " ++ show stats ++ "\n"    
+        
+data Statement = Statement
+        { statID            :: ID
+        , statType          :: StatementType
+        , statText          :: Either String [(ConversationTextType, String)]
+        , statPrecondition  :: Maybe Condition
+        , statEffects       :: [Effect]
+        , jumpPoint         :: Bool
+        , endOfConversation :: Bool
+        , nextStatIDs       :: [ID]
+        , statMedia         :: Media
+        , statIntents       :: [String]
+        , statFeedback      :: String
+        }
+    deriving(Eq)
+    
+data Media = Media [(Name, ID)] [ID]
+    deriving(Show,Eq)
+
+instance Show Statement where
+    show (Statement id t desc pc es jp end nexts media is fb) = 
+        "statement: "     ++ show id    ++ 
+        " type: "         ++ show t     ++ 
+        " description: "  ++ show desc  ++
+        " precondition: " ++ show pc    ++ 
+        " effects: "      ++ show es    ++
+        " jumpPoint: "    ++ show jp    ++
+        " end: "          ++ show end   ++
+        " nextIDs: "      ++ show nexts ++ 
+        " media: "        ++ show media ++ 
+        " intents: "      ++ show is    ++ 
+        " feedback: "     ++ show fb    ++ "\n"
+        
+-- | A value describing the type of a statement element 
+data StatementType = ComputerStatement | PlayerStatement | Conversation
+    deriving (Show, Eq, Read)
+
+-- | A value describing the type of a piece of text in a conversation
+data ConversationTextType = PlayerText | ComputerText | SituationText
+    deriving (Show, Eq, Read)
+
+    
 -- Functions to be exposed as an interface
 -----------------------------------------------------
 
 -- | Queries the given script for its ID.
-getScriptId :: Monad m => Script -> m String
-getScriptId = getMetaDataString "id"
+parseScriptElemId :: ScriptElem -> ID
+parseScriptElemId = parseMetaDataString "id"
 
 -- | Queries the given script for its name.
-getScriptName :: Monad m => Script -> m String
-getScriptName = getMetaDataString "name"
-
--- | Queries the given script for its date.
-getScriptDate :: Monad m => Script -> m String
-getScriptDate = getMetaDataString "date"
+parseScriptElemName :: ScriptElem -> Name
+parseScriptElemName = parseMetaDataString "name"
 
 -- | Queries the given script for its description.
-getScriptDescription :: Monad m => Script -> m String
-getScriptDescription = getMetaDataString "description"
+parseScriptElemDescription :: ScriptElem -> String
+parseScriptElemDescription = parseMetaDataString "description"
 
--- Deze code = experiment om nieuwe variablen uit xml te halen.
-getScriptShowScore :: Monad m => Script -> m String
-getScriptShowScore = getMetaDataString "showscore"
-
--- Deze code = experiment om nieuwe variablen uit xml te halen.
-getScriptShowFeedback :: Monad m => Script -> m String
-getScriptShowFeedback = getMetaDataString "showfeedback"
-
--- | Queries the given script for when it should display feedback
-getScriptFeedback :: Monad m => Script -> m String
-getScriptFeedback = getMetaDataString "feedback"
-
-getScriptLocation :: Monad m => Script -> m String
-getScriptLocation = getMetaDataString "location"
+parseScriptElemLocation :: ScriptElem -> Name
+parseScriptElemLocation = parseMetaDataString "location"
 
 -- | Queries the given script for its difficulty.
-getScriptDifficulty :: Monad m => Script -> m Difficulty
-getScriptDifficulty script = do
-    difficultyString <- getMetaDataString "difficulty" script
-    maybe (fail $ "Could not read difficulty " ++ difficultyString) return $ readDifficulty difficultyString
+parseScriptDifficulty :: ScriptElem -> Difficulty
+parseScriptDifficulty scriptElem = errorOnFail errorMsg (readDifficulty difficultyString)
+ where 
+    difficultyString = parseMetaDataString "difficulty" scriptElem
+    errorMsg = "Could not read difficulty: " ++ difficultyString
 
 -- | Queries the given script for its banner image.
-getScriptBannerImage :: Monad m => Script -> m (Maybe String)
-getScriptBannerImage (Script scriptElem) = return $
+parseScriptBannerImage :: ScriptElem -> Maybe ID
+parseScriptBannerImage scriptElem = nothingOnFail (
     findChild "metadata" scriptElem >>=
-    findChild "bannerImage" >>=
-    findAttribute "extid"
+    findChild "bannerImage"         >>=
+    findAttribute "extid")
 
 -- | Queries the given script for its character image.
-getScriptCharacterImage :: Monad m => Script -> m (Maybe String)
-getScriptCharacterImage (Script scriptElem) = return $
+parseScriptCharacterImage :: ScriptElem -> Maybe ID
+parseScriptCharacterImage scriptElem = nothingOnFail(
     findChild "metadata" scriptElem >>=
-    findChild "characterImage" >>=
-    findAttribute "extid"
+    findChild "characterImage"      >>=
+    findAttribute "extid")
 
 -- | Queries the given script for its model.
-getScriptModel :: Monad m => Script -> m (Maybe String)
-getScriptModel (Script scriptElem) = return $
+parseScriptModel :: ScriptElem -> Maybe ID
+parseScriptModel scriptElem = nothingOnFail(
     findChild "metadata" scriptElem >>=
-    findChild "model" >>=
-    findAttribute "extid"
+    findChild "model"               >>=
+    findAttribute "extid")
 
 -- | Queries the given script for its startId.
-getScriptStartId :: Monad m => Script -> m String
-getScriptStartId (Script scriptElem) = do
-    metadata          <- findChild "metadata" scriptElem
-    dataElem          <- findChild "start" metadata
-    findAttribute "idref" dataElem
+parseScriptStartId :: ScriptElem -> ID
+parseScriptStartId scriptElem = getAttribute "idref" startElem
+  where
+    metaDataElem = getChild "metadata" scriptElem
+    startElem    = getChild "start" metaDataElem
+    
 
 -- | Queries the given script for its parameters.
-getScriptParameters :: Monad m => Script -> m [Parameter]
-getScriptParameters (Script scriptElem) = do
-    metadata          <- findChild "metadata" scriptElem
-    parameterData     <- findChild "parameters" metadata
-    return (map parseParameterAttributes (children parameterData))
+parseScriptParameters :: ScriptElem -> [Parameter]
+parseScriptParameters scriptElem = map parseParameter (children parameterElem)
+  where
+    metaDataElem  = getChild "metadata" scriptElem
+    parameterElem = getChild "parameters" metaDataElem
 
 -- | Queries the given script for its scoring function.
-getScriptScoringFunction :: Monad m => Script -> m ScoringFunction
-getScriptScoringFunction (Script scriptElem) =
-    findChild "metadata" scriptElem >>=
-    findChild "scoringFunction" >>=
-    getExactlyOne "scoring function" . children >>=
-    parseScoringFunction
+parseScriptScoringFunction :: ScriptElem -> ScoringFunction
+parseScriptScoringFunction scriptElem = parseScoringFunction (getChild "sum" scoringFunctionElem)
+  where 
+    metaDataElem = getChild "metadata" scriptElem
+    scoringFunctionElem = getChild "scoringFunction" metaDataElem
 
 -- | Queries the given script for its score extremes.
-getScriptScoreExtremes :: Monad m => Script -> m (Maybe (Int, Int))
-getScriptScoreExtremes (Script scriptElem) = return $
+parseScriptScoreExtremes :: ScriptElem -> Maybe (Score, Score)
+parseScriptScoreExtremes scriptElem = 
     findChild "metadata" scriptElem >>=
-    findChild "scoreExtremes" >>= \scoreExtremesElem -> do
+    findChild "scoreExtremes"       >>= 
+    \scoreExtremesElem -> do
     minimumValue <- findAttribute "minimum" scoreExtremesElem
     maximumValue <- findAttribute "maximum" scoreExtremesElem
-    return (read minimumValue, read maximumValue)
-
-getScriptStatements :: Monad m => Script -> m [Element]
-getScriptStatements script = do
-    trees <- getTreesElements script
-    treeStatements <- mapM getTreeStatements trees
-    return $ concat treeStatements
-
-
--- | Extracts all statements from the given tree.
-getTreeStatements :: Monad m => Element -> m [Element]
-getTreeStatements treeElem = return $ catMaybes $ map getIfStatement $ children treeElem
-    where getIfStatement statement = getType statement >> (Just statement)
+    return (read minimumValue :: Score, read maximumValue :: Score)
 
 -- | Takes a statement and returns its type.
-getType :: Monad m => Element -> m StatementType
-getType element = readM . applyToFirst toUpper . name $ element
+parseType :: Element -> StatementType
+parseType statElem = read (applyToFirst toUpper (name statElem))
 
--- | Takes a statement and returns its precondition, if it has one.
-getMaybePrecondition :: Monad m => Element -> m (Maybe Condition)
-getMaybePrecondition element =
-    maybe (return Nothing) (liftM Just . parseConditionRoot) $ findChild "preconditions" element
+-- | Takes a statement element and returns its precondition, if it has one.
+-- | Uses the monadic findChild for Maybe Monad
+parseMaybePrecondition :: Element -> Maybe Condition
+parseMaybePrecondition statElem =
+    maybe Nothing (Just . parseConditionRoot) (findChild "preconditions" statElem)
 
--- | Takes a statement and returns its visual media.
-getMediaVisuals :: Monad m => Element -> m [(String, String)]
-getMediaVisuals element = return $
-    childrenNamed "media" element >>=
-    findChild "visuals" >>=
-    children >>=
-    parseVisual
+-- | Parses media of the statement element
+parseMedia :: Element -> Media
+parseMedia statElem = Media (parseMediaVisuals statElem) (parseMediaAudios statElem)
+  where 
+    -- | Takes a statement and returns its visual media.
+    parseMediaVisuals :: Element -> [(Name, ID)]
+    parseMediaVisuals statElem = map parseMediaVisual visualElems
+      where 
+        visualElems = 
+            findChild "media" statElem >>= 
+            findChild "visuals"        >>= 
+            children
+        -- | Parses video or image
+        parseMediaVisual :: Element -> (Name, ID)
+        parseMediaVisual e = (name e, getAttribute "extid" e)
 
--- | Takes a statement and returns its visual media.
-getMediaAudios :: Monad m => Element -> m [String]
-getMediaAudios element = return $
-    childrenNamed "media" element >>=
-    findChild "audios" >>=
-    children >>=
-    findAttribute "extid"
-
--- | Takes a statement and returns its effects.
-getEffects :: Monad m => Element -> m [Effect]
-getEffects element = return $
-    findChild "effects" element >>=
-    children >>=
-    return . parseEffect
-
+    -- | Takes a statement and returns its visual media.
+    parseMediaAudios :: Element -> [ID]
+    parseMediaAudios statElem = map (getAttribute "extid") audioElems
+      where audioElems =
+                findChild "media" statElem >>= 
+                findChild "audio"          >>= 
+                children 
+            
 -- | Takes a statement and returns its intents.
-getIntents :: Monad m => Element -> m [String]
-getIntents element = return $
-    findChild "intents" element >>=
-    children >>=
-    return . getData
+parseIntents :: Element -> [String]
+parseIntents statElem = map getData (findChild "intents" statElem >>= children)
 
 -- | Takes a statement and returns its text.
-getText :: Monad m => Element -> m (Either String [(ConversationTextType, String)])
-getText element =
-    case name element of
-        "conversation" -> return $ Right $
-            map toConversationText $ filter (isSuffixOf "Text" . name) $ children element
-        _              -> do
-            textElem <- findChild "text" element
-            return $ Left $ getData textElem
-    where toConversationText textEl =
-            (read $ applyToFirst toUpper $ name textEl, getData textEl)
+parseText :: Element -> Either String [(ConversationTextType, String)]
+parseText statElem =
+    case name statElem of
+        "conversation" -> Right (map toConversationText (filter (isSuffixOf "Text" . name) (children statElem)))
+        _              -> Left (getData (getChild "text" statElem))
+  where toConversationText textEl = (read (applyToFirst toUpper (name textEl)), getData textEl)
 
-getFeedback :: Monad m => Element -> m (Maybe String)
-getFeedback element = return $
-    findChild "feedback" element >>=
-    return . getData
+-- | Parses the feedback of the given statement element
+parseFeedback :: StatElem -> String
+parseFeedback statElem = getData (getChild "feedback" statElem)
+ 
+-- | Takes a statement and returns the IDs of the statements following it. TODO!!!!
+parseNextStatIDs :: StatElem -> [ID]
+parseNextStatIDs element = errorOnFail errorMsg nextIDs
+  where 
+    errorMsg = "Failed to get the nextIDs of: " ++ name element
+    nextIDs =
+        case name element of
+            "conversation"      -> getResponses >>= getIdrefs
+            "computerStatement" -> getResponses >>= getIdrefs
+            "playerStatement"   -> getNextComputerStatements >>= getIdrefs
+            _                   -> fail $
+                "Cannot get nexts of statement represented by element named " ++ (name element)
+      where getIdrefs = mapM (findAttribute "idref")
+            getResponses = liftM children $ findChild "responses" element
+            getNextComputerStatements =
+                case findChild "nextComputerStatements" element of
+                      Just nextElem -> return $ children nextElem
+                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element
 
-getEnd :: Monad m => Element -> m Bool
-getEnd element = return $ (head $ findAttribute "possibleEnd" element) == "true"
 
-getJump :: Monad m => Element -> m Bool
-getJump element = return $ (head $ findAttribute "jumpPoint" element) == "true"
-
--- | Takes a statement and returns the IDs of the statements following it.
-getNexts :: Monad m => Element -> m [ID]
-getNexts element = do
-    case name element of
-        "conversation"      -> getResponses >>= getIdrefs
-        "computerStatement" -> getResponses >>= getIdrefs
-        "playerStatement"   -> getNextComputerStatements >>= getIdrefs
-        _                   -> fail $
-            "Cannot get nexts of statement represented by element named " ++ (name element)
-    where getIdrefs = mapM (findAttribute "idref")
-          getResponses = liftM children $ findChild "responses" element
-          getNextComputerStatements =
-              case findChild "nextComputerStatements" element of
-                  Just nCSElem -> return $ children nCSElem
-                  Nothing      -> liftM singleton $ findChild "nextComputerStatement" element
-
--- | returns tree id, start node id and tree element, grouped by interleave level
--- parsed tree provides easy access to id information. tree element is to build a strategy with
-getTrees :: Monad m => Script -> m [[(Tree, Element)]]
-getTrees (Script element) = do
-    firstSequence <- findChild "sequence" element
-    let interleaves = findChildren "interleave" firstSequence
-    levels <- mapM (\el ->findAttribute "level" el) interleaves
-    let intLevels = map (\x -> read x ::Int) levels
-    let zipped = zip intLevels interleaves
-    let sorted = sortWith (\(level,_)->level) zipped
-    let interleaveElems = map (\(_,elem)->elem) sorted
-    let treeElems = map children interleaveElems
-    trees <- mapM (mapM parseTree) treeElems
-    return $ zipLists trees treeElems
-      where
-        zipLists []          []          = []
-        zipLists (trees:tss) (elems:ess) = zip trees elems : zipLists tss ess
-
--- returns all elements of all trees
-getTreesElements :: Monad m => Script -> m [Element]
-getTreesElements (Script element) = do
-   firstSequence <- findChild "sequence" element
-   let interleaves = findChildren "interleave" firstSequence
-   return $ concatMap (\interleaveElem -> map (\e -> e) (children interleaveElem)) interleaves
-		
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
-findStatement :: Monad m => Script -> String -> m Element
-findStatement (Script scriptElem) idVar = if null foundElems
+findStatement :: Monad m => ScriptElem -> String -> m Element
+findStatement scriptElem idVar = if null foundElems
                                             then fail $ "Cannot find statement with ID " ++ idVar
                                             else return $ head foundElems
                                           where
@@ -267,211 +269,221 @@ findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "
                                                               then []
                                                               else concat [findStatementAt x idVar | x <- children scriptElem]
 
--- | Takes a script, a statement element type and a statement or conversation ID and
--- returns the corresponding element.
-findTypedStatement :: Script -> StatementType -> String -> Element
-findTypedStatement (Script scriptElem) statementType idVar = head (filter
-        (idAttributeIs idVar)
-        (childrenNamed elementName scriptElem))
-    where elementName = applyToFirst toLower $ show statementType
-          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)
-          
-findScript :: String -> [Script] -> Exercise a -> Script
-findScript usage scripts ex =
-    case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
-            [foundScript] -> foundScript
-            _             ->
-                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."
-
--- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
-parseScript :: String -> IO Script
-parseScript filepath = do
+-- | Parses the XML script at "filepath" to a ScriptElem. hGetContent is NOT lazy.
+parseScriptElem :: String -> IO ScriptElem
+parseScriptElem filepath = do
     withBinaryFile filepath ReadMode $ \h ->
-      hGetContents h >>= either fail (return . Script) . parseXML
-                        -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
+      hGetContents h >>= either fail return . parseXML
+                        -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElem) . parseXML b
 
 -- Functions to be used internally
 ------------------------------------------------------
-parseDialogue :: Monad m => Script -> m Dialogue
-parseDialogue (Script elem) = do
-    seqElem <- findChild "sequence" elem
-    let interleaveLevels = findChildren "interleave" seqElem 
-    dialogue <- mapM parseInterleaveLevel interleaveLevels
-    return dialogue
+parseDialogue :: ScriptElem -> Dialogue
+parseDialogue scriptElem = map parseInterleaveLevel interleaveElems
+  where
+    sequenceElem = getChild "sequence" scriptElem
+    interleaveElems = findChildren "interleave" sequenceElem 
     
-parseInterleaveLevel :: Monad m => Element -> m InterleaveLevel
-parseInterleaveLevel interleaveElem = do 
-    level <- findAttribute "level" interleaveElem
-    let treeElems = findChildren "tree" interleaveElem 
-    trees <- mapM parseTree treeElems
-    return (read level :: Int, trees)
+parseInterleaveLevel :: Element -> InterleaveLevel
+parseInterleaveLevel interleaveElem = (read level :: Int, trees)
+  where
+    level = getAttribute "level" interleaveElem
+    treeElems = findChildren "tree" interleaveElem 
+    trees = map parseTree treeElems
 
-parseTree :: Monad m => Element -> m Tree
-parseTree treeElem = do
-    statements <- parseStatements treeElem
-    return Tree
-        { treeID         = head $ findAttribute "id" treeElem
-        , treeStartID    = head $ findAttribute "idref" $ head $ findChild "start" treeElem
-        , treeStatements = statements
-        }
+parseTree :: Element -> Tree
+parseTree treeElem = 
+    Tree
+    { treeID         = getAttribute "id" treeElem
+    , treeStartID    = getAttribute "idref" (getChild "start" treeElem)
+    , treeStatements = parseStatements treeElem
+    }
 
-parseStatement :: Monad m => Element -> m Statement
-parseStatement statElem = do
-    statementType         <- getType statElem
-    statementText         <- getText statElem
-    statementPrecondition <- getMaybePrecondition statElem
-    statementEffects      <- getEffects statElem
-    statementJump         <- getJump statElem
-    conversationEnd       <- getEnd statElem
-    nextStats             <- getNexts statElem
+parseStatements :: Element -> [Statement]
+parseStatements treeElem = playerStats ++ computerStats ++ conversation
+  where
+    playerStats   = map parseStatement (findChildren "playerStatement"   treeElem)
+    computerStats = map parseStatement (findChildren "computerStatement" treeElem)
+    conversation  = map parseStatement (findChildren "conversation"      treeElem)
 
-    return Statement
-        { statID            = head $ findAttribute "id" statElem
-        , statType          = statementType        
-        , statDescription   = statementText
-        , statPrecondition  = statementPrecondition
-        , statEffects       = statementEffects
-        , jumpPoint         = statementJump
-        , endOfConversation = conversationEnd
-        , nextStatIDs       = nextStats
-        }
-        
-parseStatements :: Monad m => Element -> m [Statement]
-parseStatements elem = do 
-    playerStats   <- mapM parseStatement (findChildren "playerStatement"   elem)
-    computerStats <- mapM parseStatement (findChildren "computerStatement" elem)
-    conversation  <- mapM parseStatement (findChildren "conversation"      elem)
-    return (playerStats ++ computerStats ++ conversation)
-    
--- | Parses a visual (video or image).
-parseVisual :: Monad m => Element -> m (String, String)
-parseVisual element = do
-    extid <- findAttribute "extid" element
-    return (name element, extid)
+parseStatement :: StatElem -> Statement
+parseStatement statElem = 
+    Statement
+    { statID            = getAttribute "id"         statElem
+    , statType          = parseType                 statElem       
+    , statText          = parseText                 statElem
+    , statPrecondition  = parseMaybePrecondition    statElem
+    , statEffects       = parseEffects              statElem
+    , jumpPoint         = parseJumpPoint            statElem
+    , endOfConversation = parseEnd                  statElem
+    , nextStatIDs       = parseNextStatIDs          statElem
+    , statMedia         = parseMedia                statElem
+    , statIntents       = parseIntents              statElem
+    , statFeedback      = parseFeedback             statElem
+    }
 
--- | Parses an effect.
+parseJumpPoint :: StatElem -> Bool    
+parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
+
+parseEnd :: StatElem -> Bool    
+parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
+
+-- | Takes a statement element and returns its effects.
+parseEffects :: StatElem -> [Effect]
+parseEffects statElem = map parseEffect effectElems 
+  where effectElems = children (getChild "effects" statElem)
+
 parseEffect :: Element -> Effect
-parseEffect element = Effect
-            { effectIdref      = head (findAttribute "idref" element)
-            , effectChangeType = parseChangeType (head (findAttribute "changeType" element))
-            , effectValue      = parseCompareValue (head (findAttribute "value" element))
+parseEffect effectElem = Effect
+            { effectIdref      = getAttribute "idref" effectElem
+            , effectChangeType = parseChangeType      effectElem
+            , effectValue      = parseCompareValue    effectElem
             }
 
 -- | Parses a string to a Changetype. Gives an exception on invalid input.
-parseChangeType :: String -> ChangeType
-parseChangeType = read . applyToFirst toUpper
+parseChangeType :: Element -> ChangeType
+parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
+    where changeTypeStr = getAttribute "changeType" effectElem
 
 -- | Parses a condition root if it contains exactly one condition.
-parseConditionRoot :: Monad m => Element -> m Condition
-parseConditionRoot conditionRootElem =
-    getExactlyOne "condition" (children conditionRootElem) >>=
-    return . parseCondition
+parseConditionRoot :: Element -> Condition
+parseConditionRoot conditionRootElem = parseCondition conditionElem
+  where conditionElem = getChild "condition" conditionRootElem
 
 -- | Parses a condition. Recursively parses Ands and Ors.
 parseCondition :: Element -> Condition
-parseCondition element = case name element of
-    "and"       -> And $ map parseCondition (children element)
-    "or"        -> Or  $ map parseCondition (children element)
-    "condition" -> Condition $ ComparisonsCondition
-            { conditionIdref = head (findAttribute "idref" element)
-            , conditionTest  = parseCompareOperator (head (findAttribute "test" element))
-            , conditionValue = parseCompareValue (head (findAttribute "value" element))
-            }
+parseCondition conditionElem = case name conditionElem of
+    "and"       -> And (map parseCondition (children conditionElem))
+    "or"        -> Or  (map parseCondition (children conditionElem))
+    "condition" -> Condition $ ComparisonCondition
+        { conditionIdref = getAttribute "idref" conditionElem
+        , conditionTest  = parseCompareOperator conditionElem
+        , conditionValue = parseCompareValue    conditionElem
+        }
 
 -- | Parses a compare operator. Gives an exception on invalid input.
-parseCompareOperator :: String -> CompareOperator
-parseCompareOperator = read . applyToFirst toUpper
+parseCompareOperator :: Element -> CompareOperator
+parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "test"  conditionElem))
 
 -- | Parses a value in a condition.
-parseCompareValue :: String -> Int
-parseCompareValue input = read input
+parseCompareValue :: Element -> ParameterValue
+parseCompareValue e = read (getAttribute "value" e)
 
 -- | Parses a scoring function element.
-parseScoringFunction :: Monad m => Element -> m ScoringFunction
+parseScoringFunction :: Element -> ScoringFunction
 parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
-    "constant"           -> liftM Constant $ findAttribute "value" scoringFunctionElem >>= readM
-    "sum"                -> liftM Sum $ mapM parseScoringFunction $ children scoringFunctionElem
-    "scale"              -> do
-            scalarEl          <- findAttribute "scalar" scoringFunctionElem
-            scalar            <- readM scalarEl
-            scoringFunctionEl <- getExactlyOne "scoringFunction" (children scoringFunctionElem)
-            scoringFunction   <- parseScoringFunction scoringFunctionEl
-            return $ Scale scalar scoringFunction
-    "paramRef"           -> liftM ParamRef $ findAttribute "idref" scoringFunctionElem
-    "integeredCondition" -> do
-            conditionEl       <- getExactlyOne "condition" (children scoringFunctionElem)
-            return $ IntegeredCondition $ parseCondition conditionEl
-    otherName            -> fail $ "Cannot parse scoring function element named " ++ otherName
-
+    "constant"           -> Constant            parseConstant
+    "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
+    "scale"              -> Scale               parseScalar (parseScoringFunction childElem)
+    "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
+    "integeredCondition" -> IntegeredCondition (parseCondition conditionElem)
+  where 
+    parseConstant = read (getAttribute "value" scoringFunctionElem)  :: Score
+    parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
+    childElem     = getChild "scoringFunction" scoringFunctionElem   :: Element
+    conditionElem = getChild "condition" scoringFunctionElem         :: Element
+            
 -- | Parses a parameter Element inside the parameters inside the metadata of the script.
-parseParameterAttributes :: Element -> Parameter
-parseParameterAttributes paraElem = Parameter
-        { parameterId           = head (findAttribute "id" paraElem)
-        , parameterName         = fromMaybe (head (findAttribute "id" paraElem)) (findAttribute "name" paraElem)
-        , parameterEmotion      = findAttribute "emotionid" paraElem
-        , parameterInitialValue = findAttribute "initialValue" paraElem >>= readM
-        , parameterScored       = fromMaybe False $ findAttribute "scored" paraElem >>= parseBool
+parseParameter :: Element -> Parameter
+parseParameter paramElem = Parameter
+        { parameterId           = getAttribute "id" paramElem
+        , parameterName         = getAttribute "name" paramElem
+        , parameterEmotion      = getAttribute "emotionid" paramElem
+        , parameterInitialValue = read (getAttribute "initialValue" paramElem) :: Int
+        , parameterScored       = parseMaybeBool (getAttribute "scored" paramElem)
         }
 
 -- | Parses a Bool.
-parseBool :: String -> Maybe Bool
-parseBool = readM . applyToFirst toUpper
+parseBool :: String -> Bool
+parseBool boolStr = errorOnFail "Failed to parse bool" (readM boolStr)
+
+parseMaybeBool :: String -> Bool
+parseMaybeBool boolStr = fromMaybe False (Just (boolStr == "true"))
 
 -- | Queries the given script for basic information. Which information being queried is specified
 --  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
-getMetaDataString :: Monad m => String -> Script -> m String
-getMetaDataString metaDataName (Script scriptElem) = do
-    metadata          <- findChild "metadata" scriptElem
-    dataElem          <- findChild metaDataName metadata
-    return (getData dataElem)
+parseMetaDataString :: Name -> ScriptElem -> String
+parseMetaDataString metaDataName scriptElem = getData dataElem
+  where 
+    metadata = getChild "metadata" scriptElem
+    dataElem = getChild metaDataName metadata
 
--- | Gets exactly one item from a list and fails appropriately if there are more or fewer.
-getExactlyOne :: Monad m => String -> [a] -> m a
-getExactlyOne iDescription is = case is of
-    [i] -> return i
-    []   -> fail $ "needed exactly one " ++ iDescription ++ ", got zero"
-    _    -> fail $ "needed exactly one " ++ iDescription ++ ", got " ++ (show (length is))
-
+    
 -- Functions that extend the XML parser
 ---------------------------------------------------------
 
 -- | Returns all children of the given element with the given name.
-childrenNamed :: String -> Element -> [Element]
-childrenNamed s e = filter ((==s) . name) (children e)
+childrenNamed :: Name -> Element -> [Element]
+childrenNamed elemName elem = filter ((==elemName) . name) (children elem)
+
+-- | Returns the child element with the given name out of the Monad defined in the framework 
+getChild :: Name -> Element -> Element 
+getChild elemName element = errorOnFail errorMsg mChild
+  where 
+    errorMsg = "Failed to find child: " ++ elemName
+    mChild = findChild elemName element
+
+-- | Finds an attribute and gets it out of the Monad defined in the framework 
+getAttribute :: String -> Element -> String
+getAttribute attributeName element = errorOnFail errorMsg mAttribute
+  where 
+    errorMsg = "Failed to find attribute: " ++ attributeName 
+    mAttribute = findAttribute attributeName element
 
 -- Definitions of data structures and related functions
 ---------------------------------------------------------
 
-newtype TreeElement = TreeElement Element
+type ScriptElem = Element
+type TreeElem = Element
+type StatElem = Element
 
-newtype Script = Script Element
-instance HasId Script where
+instance HasId ScriptElem where
     getId script = either error id $ do
-                scriptId <- getScriptId script
-                scriptDescription <- getScriptDescription script
+                let scriptId = parseScriptElemId script
+                let scriptDescription = parseScriptElemDescription script
                 return $ describe scriptDescription $ "scenarios" # scriptId
-    changeId _ _ = error "The ID of a Script is determined externally."
+    changeId _ _ = error "The ID of a ScriptElem is determined externally."
 
-instance HasId Element where
+instance HasId Statement where
     getId statement = either error id $ do
-                statementId <- findAttribute "id" statement
-                statementText <- getText statement
+                let statementId = statID statement
+                let statementText = statText statement
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementId
     changeId _ _ = error "The ID of a Statement is determined externally."
     
 
 -- | Creates the full ID for the given statement in the context of the given script.
-createFullId :: Script -> Element -> Id
-createFullId script statementElement = scriptId # typeSegment # idSegment # interleaveSegment
+createFullId :: ScriptElem -> Statement -> Id
+createFullId scriptElem statement = scriptId # typeSegment # statId # interleaveSegment
   where 
-    statement = head (parseStatement statementElement) --out of monad
-    scriptId = getId script
+    scriptId = getId scriptElem
     typeSegment = toIdTypeSegment $ statType statement
-    idSegment = statID statement 
+    statId = statID statement 
     
     nextIDs = nextStatIDs statement
     
     interleaveSegment | jumpPoint statement                                 = "interleaved"
                       | not (endOfConversation statement) && (null nextIDs) = "interleaved"
                       | otherwise                                           = ""
+                      
+-- | Returns the value to be used to represent a statement type in a rule ID.
+toIdTypeSegment :: StatementType -> String
+toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show
+
+-- | Extra error function for getting a type out of Monad
+errorOnFail :: String -> Maybe a -> a
+errorOnFail errorMsg ma = fromMaybe (error errorMsg) ma
+
+emptyOnFail :: Maybe [a] -> [a]
+emptyOnFail = fromMaybe []
+
+nothingOnFail :: Maybe a -> Maybe a
+nothingOnFail (Just a) = Just a
+nothingOnFail _        = Nothing
+
+-- | Applies a function to the first element of a list, if there is one.
+applyToFirst :: (a -> a) -> [a] -> [a]
+applyToFirst _ []     = []
+applyToFirst f (x:xs) = (f x) : xs
+

@@ -1,251 +1,67 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Types where
 
-import Control.Monad
-import Data.Char
-import qualified Data.Map as M
-import Data.Maybe
+import Ideas.Service.Types
 
-import Ideas.Common.Library hiding (Sum)
-import Ideas.Common.Utils
-import Ideas.Text.JSON
+import Domain.Scenarios.Services.StatementsInfo(StatementInfo, StatementText, MediaInfo)
+import Domain.Scenarios.Services.ScenarioInfo(ScenarioInfo, ParameterInfo)
+import Domain.Scenarios.Services.Score(ScoreResult)
 
------------------------------------------------------------------------------
+-- | Ideas Framework type definitions for sending an object through a service
 
-type ParameterValue = Int
-type Emotion = String
-type ID = String
-type Name = String
-type BoolStr = String 
-
--- | A condition
-data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
-               | Or [Condition] -- ^ A list of conditions, one of which needs to be satisfied
-               | Condition ComparisonCondition -- ^ A comparison condition
-               deriving (Show, Eq)
-
--- | A condition that compares the value of a parameter using a binary predicate
-data ComparisonCondition = ComparisonsCondition
-        { conditionIdref :: String
-        , conditionTest  :: CompareOperator
-        , conditionValue :: ParameterValue
-        } deriving (Show, Eq)
-data CompareOperator = LessThan
-                     | LessThanEqualTo
-                     | EqualTo
-                     | GreaterThanEqualTo
-                     | GreaterThan
-                     | NotEqualTo
-                     deriving (Show, Eq, Read)
-                     
--- | Datastructure for a function to calculate the score based on the current state
-data ScoringFunction = Constant Int
-                     | Sum [ScoringFunction]
-                     | Scale Int ScoringFunction
-                     | ParamRef String
-                     | IntegeredCondition Condition    
-
-data Parameter = Parameter
-        { parameterId           :: ID
-        , parameterName         :: Name
-        , parameterEmotion      :: Maybe Emotion
-        , parameterInitialValue :: Maybe ParameterValue
-        , parameterScored       :: Bool
-        } deriving (Show, Eq)
-
--- | Returns the initial value of a parameter, or zero if it does not have one.
-parameterInitialValueOrZero :: Parameter -> ParameterValue
-parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
-
--- | A value describing the type of a statement element 
-data StatementType = ComputerStatement | PlayerStatement | Conversation
-    deriving (Show, Eq, Read)
-
--- | A value describing the type of a piece of text in a conversation
-data ConversationTextType = PlayerText
-                          | ComputerText
-                          | SituationText
-    deriving (Show, Eq, Read)
-
-type Dialogue = [InterleaveLevel]
-
-type InterleaveLevel = (Int, [Tree])
-
-data Interleave = Interleave [Tree]
-    deriving (Show, Eq)
-
-data Tree = Tree
-        { treeID          :: ID
-        , treeStartID     :: ID
-        , treeStatements  :: [Statement]
-        }
-    deriving(Show, Eq)
+-- ScenarioInfo types -----------------------------------------------------------------------------------------------------------
+tScenarioInfo :: Type a ScenarioInfo
+tScenarioInfo = 
+    Iso ((<-!) pairify) (Pair (Tag "id"              tString)
+                        (Pair (Tag "name"            tString)
+                        (Pair (Tag "description"     tString)
+                        (Pair                        tDifficulty    
+                        (Pair (Tag "bannerImage"    (tMaybe tString))
+                        (Pair (Tag "characterImage" (tMaybe tString))
+                        (Pair (Tag "model"          (tMaybe tString))
+                        (Pair (Tag "parameters"     (tList tParameterInfo))
+                        (Pair (Tag "location"        tString)
+                              (Tag "toggles"         tToggles))))))))))                              
+        where pairify (ScenarioInfo a b c d e f g h i j k l) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j, (k, l)))))))))))
+                       
+tParameterInfo :: Type a ParameterInfo
+tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
+                                     (Pair (Tag "name"     tString)
+                                           (Tag "emotion" (tMaybe tString))))                                           
+        where pairify (ParameterInfo id name emotion) = (id, (name, emotion))
         
-data Statement = Statement
-        { statID            :: ID
-        , statType          :: StatementType
-        , statDescription   :: Either String [(ConversationTextType, String)]
-        , statPrecondition  :: Maybe Condition
-        , statEffects       :: [Effect]
-        , jumpPoint         :: Bool
-        , endOfConversation :: Bool
-        , nextStatIDs       :: [ID]
-        }
-    deriving(Show, Eq)
+tToggles :: Type a [Toggle]
+tToggles = Iso ((<-!) pairify) (pairToggleTags toggleTags)
+  where 
+    toggleTags = map (\name -> Tag name tBool) toggleList
+    pairToggleTags (tt1:tt2:[]) = Pair tt1 tt2
+    pairToggleTags (tt1:tts)    = Pair tt1 (pairToggleTags tts)
+    pairify (Toggle name bool) = (name, bool)
+    
+-- ScoreResult type -------------------------------------------------------------------------------------------------------------
+tScoreResult :: Type a ScoreResult
+tScoreResult =
+    Iso ((<-!) pairify) (Pair (Tag "mainscore"          tInt)
+                        (Pair (Tag "subscores"         (tList (tTuple3 tString tString tInt)))
+                              (Tag "extremes"          (tMaybe (tList tInt)))))
+        where pairify (ScoreResult score subscores extremes) = (score, (subscores, extremes))        
 
---instance Show Tree where
- --   show (Tree id start atom stats) = "tree: " ++ show id ++ " start: " ++ show start ++ " atomic: " ++ show atom
+-- StatementInfo types ----------------------------------------------------------------------------------------------------------
+tStatementInfo :: Type a StatementInfo
+tStatementInfo = 
+    Iso ((<-!) pairify) (Pair (Tag "id"        tString)
+                        (Pair (Tag "type"      tString)
+                        (Pair (Tag "text"      tStatementText)
+                        (Pair (Tag "intents"  (tList tString))
+                        (Pair (Tag "feedback" (tMaybe tString))
+                              (Tag "media"     tMediaInfo))))))
+        where pairify (StatementInfo id tp text ints fb media) = (id, (tp, (text, (ints, (fb, media)))))
 
+tStatementText :: Type a StatementText
+tStatementText = tString :|: (tList (tPair tString tString))
 
--- | Calculates the value of a condition based on the given state.
-evaluateCondition :: Condition -> EmotionalState -> Bool
-evaluateCondition mainCondition state = evaluate mainCondition
-    where evaluate :: Condition -> Bool
-          evaluate condition = case condition of
-            And subConditions    -> and . map evaluate $ subConditions
-            Or  subConditions    -> or  . map evaluate $ subConditions
-            Condition comparison -> evaluateComparisonCondition comparison state
-
--- | Calculates the value of a comparison based on the given state.
-evaluateComparisonCondition :: ComparisonCondition -> EmotionalState -> Bool
-evaluateComparisonCondition comparison state = operator tested value
-    where operator = getCompareOperator (conditionTest comparison)
-          tested = getParamOrZero (conditionIdref comparison) state
-          value  = conditionValue comparison
-
--- | Calculates the value of a possible condition based on the given state.
-evaluateMaybeCondition :: Maybe Condition -> EmotionalState -> Bool
-evaluateMaybeCondition = maybe (const True) evaluateCondition
-
--- | Returns the binary predicate corresponding to the given operator type.
-getCompareOperator :: CompareOperator -> (Int -> Int -> Bool)
-getCompareOperator operator = case operator of
-            LessThan           -> (<)
-            LessThanEqualTo    -> (<=)
-            EqualTo            -> (==)
-            GreaterThanEqualTo -> (>=)
-            GreaterThan        -> (>)
-            NotEqualTo         -> (/=)
-                     
--- | Calculates the value of a scoring function based on the given state.
-calculateScore :: ScoringFunction -> EmotionalState -> Int
-calculateScore mainScoringFunction state = calculate mainScoringFunction  
-    where calculate scoringFunction = case scoringFunction of
-            Constant value               -> value
-            Sum subFunctions             -> sum . map calculate $ subFunctions
-            Scale scalar subFunction     -> scalar * calculate subFunction
-            ParamRef paramId             -> getParamOrZero paramId state
-            IntegeredCondition condition -> if evaluateCondition condition state then 1 else 0
-
--- | Calculates the values of the scored parameters in the given state.
-calculateSubScores :: [Parameter] -> EmotionalState -> [(String, String, Int)]
-calculateSubScores parameters state = 
-    map (\param -> ( parameterId param
-                   , parameterName param
-                   , getParamOrZero (parameterId param) state)
-        ) . filter parameterScored $ parameters
-
-
--- | Returns the value to be used to represent a statement type in a rule ID.
-toIdTypeSegment :: StatementType -> String
-toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show
-
--- | Applies a function to the first element of a list, if there is one.
-applyToFirst :: (a -> a) -> [a] -> [a]
-applyToFirst f (x:xs) = (f x) : xs
-applyToFirst _ [] = []
-
-errorOnFail :: Maybe a -> a
-errorOnFail = fromMaybe (error "failed...")
-
------------------------------------------------------------------------------
--- | EmotionalState
--- The state is affected by every step in a strategy.
-
-type EmotionalState = (M.Map ID ParameterValue, ID)
-
--- | The effect of a statement on the current emotional state
-data Effect = Effect
-        { effectIdref      :: ID
-        , effectChangeType :: ChangeType
-        , effectValue      :: ParameterValue
-        } deriving (Show, Eq)
-data ChangeType = Set | Delta deriving (Show, Eq, Read)
-
--- | Applies the chosen effect to the emotional state
-applyEffect :: Effect -> EmotionalState -> EmotionalState
-applyEffect effect state = case effectChangeType effect of
-        Set   -> setParam idref value state
-        Delta -> setParam idref ((getParamOrZero idref state) + value) state
-    where idref = effectIdref effect
-          value = effectValue effect
-
--- EmotionalState to JSON
-
-instance InJSON a => InJSON (M.Map String a)  where
-    toJSON = Object . map kvpToJSON . M.assocs
-        where kvpToJSON (key, value) = (key, toJSON value)
-    fromJSON (Object kjvps) = liftM M.fromList (mapM kvpFromJSON kjvps)
-        where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue) 
-    fromJSON _ = fail "expecting an object"
-
-showJSON :: EmotionalState -> String
-showJSON = compactJSON . toJSON
-
-readJSON :: String -> Either String EmotionalState
-readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON
-
--- - -
--- Instances of isTerm
---   toTerm   :: a -> Term
---   fromTerm :: MonadPlus m => Term -> m a
--- - -
-
-instance IsTerm (M.Map String Int) where
- toTerm = toTerm . M.toAscList . (M.mapKeysMonotonic ShowString)
- fromTerm x = do 
-   x' <- fromTerm x
-   return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
-
-getParamOrZero :: String -> EmotionalState -> Int
-getParamOrZero name state = M.findWithDefault 0 name (fst state)
-
-setZero, setOne :: String -> EmotionalState -> EmotionalState
-setZero name state = (flip M.insert 1 name (fst state), snd state)
-setOne name state = (flip M.insert 1 name (fst state), snd state)
-
-setParam :: String -> Int -> EmotionalState -> EmotionalState
-setParam name value state = (M.insert name value (fst state), snd state)
-
-onlyOne :: String -> EmotionalState -> EmotionalState
-onlyOne name state = ((flip M.insert 1 name).(M.map (\_-> 0)) $ (fst state), snd state)
-
-isZero, isOne :: String -> EmotionalState -> Bool
-isZero s cf = isVal 0 True s (cf)
-isOne s cf = isVal 1 False s (cf)
-
-isEmpty :: EmotionalState -> Bool
-isEmpty cf = M.null (fst cf)
-
-eitherIsOne :: [String] -> EmotionalState -> Bool
-eitherIsOne [] _      = False
-eitherIsOne (x:xs) ck = (isOne x ck) || (eitherIsOne xs ck)
-
-isVal :: Int -> Bool -> String -> EmotionalState -> Bool
-isVal v d s m = case M.lookup s (fst m) of
- Nothing -> d
- Just x -> (x == v)
- 
-andF :: (a->Bool) -> (a->Bool) -> a -> Bool
-andF f g a = (f a) && (g a)
-
-orF :: (a->Bool) -> (a->Bool) -> a -> Bool
-orF f g a = (f a) || (g a)
-
---emptyState :: EmotionalState
---emptyState = (M.empty, "")
-
-fromList :: [(String, Int)] -> EmotionalState
-fromList list = (M.fromList list, "")
-
-----------------------------------------------------------------------------------------------------------------
+tMediaInfo :: Type a MediaInfo
+tMediaInfo = 
+    Iso ((<-!) pairify) (Pair (Tag "visuals" (tList (tPair tString tString)))
+                              (Tag "audios"  (tList tString)))
+        where pairify (MediaInfo visuals audios) = (visuals, audios)
