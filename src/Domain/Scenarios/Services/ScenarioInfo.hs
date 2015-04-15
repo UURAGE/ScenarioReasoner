@@ -5,7 +5,7 @@ import Ideas.Common.Library
 
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Parser
-import Domain.Scenarios.TypeDefs(ID, Name, Emotion)
+import Domain.Scenarios.Globals
 
 data ScenarioInfo = ScenarioInfo ID
                                  Name
@@ -33,11 +33,11 @@ instance Show ParameterInfo where
   show (ParameterInfo id name emotion) = show id ++ ", " ++ show name ++ ", " ++ show emotion
   
 -- scenariolist service
-scenariolist :: [ScriptElem] -> [ScenarioInfo]
+scenariolist :: [ScriptElement] -> [ScenarioInfo]
 scenariolist = map (getScenarioInfo . parseScript)
 
 -- scenarioinfo service
-scenarioinfo :: [ScriptElem] -> Exercise a -> ScenarioInfo
+scenarioinfo :: [ScriptElement] -> Exercise a -> ScenarioInfo
 scenarioinfo scripts ex = getScenarioInfo (parseScript (findScript "get info for" scripts ex))
 
 getScenarioInfo :: Script -> ScenarioInfo

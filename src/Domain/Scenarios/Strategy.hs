@@ -15,7 +15,7 @@ import Ideas.Text.XML.Interface(Element)
 import Domain.Scenarios.ScriptState
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
-import Domain.Scenarios.TypeDefs
+import Domain.Scenarios.Globals
 
 --Framework code, try not to break your head.
 guardedRule :: IsId b => b -> String -> (ScriptState -> Bool) -> (ScriptState -> ScriptState) -> Rule ScriptState
@@ -34,7 +34,7 @@ makeGuardedRule scriptID statement tree interleaved = guardedRule
             
 
 -- Takes the dialogue, sorts it with the level of interleaving and makes a strategy foreach level          
-makeStrategy :: Monad m => ScriptElem -> m (Strategy ScriptState)
+makeStrategy :: Monad m => ScriptElement -> m (Strategy ScriptState)
 makeStrategy script = do
     let dialogue = parseDialogue script
     let sortedDialogue = sortWith (\(level, _) -> level) dialogue

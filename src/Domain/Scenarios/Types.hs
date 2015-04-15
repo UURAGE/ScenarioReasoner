@@ -1,11 +1,14 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Types where
 
+import Ideas.Common.Library
 import Ideas.Service.Types
 
-import Domain.Scenarios.Services.StatementsInfo(StatementInfo, StatementText, MediaInfo)
-import Domain.Scenarios.Services.ScenarioInfo(ScenarioInfo, ParameterInfo)
-import Domain.Scenarios.Services.Score(ScoreResult)
+import Domain.Scenarios.Globals
+
+import Domain.Scenarios.Services.StatementsInfo
+import Domain.Scenarios.Services.ScenarioInfo
+import Domain.Scenarios.Services.Score
 
 -- | Ideas Framework type definitions for sending an object through a service
 
@@ -21,8 +24,10 @@ tScenarioInfo =
                         (Pair (Tag "model"          (tMaybe tString))
                         (Pair (Tag "parameters"     (tList tParameterInfo))
                         (Pair (Tag "location"        tString)
-                              (Tag "toggles"         tToggles))))))))))                              
-        where pairify (ScenarioInfo a b c d e f g h i j k l) = (a, (b, (c, (d, (e, (f, (g, (h, (i, (j, (k, l)))))))))))
+                              (Tag "toggles"        (tList tToggle)))))))))))                             
+      where 
+        pairify (ScenarioInfo id name descr diff bi ci model ps loc ts) = 
+            (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, ts)))))))))
                        
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
@@ -30,8 +35,10 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
                                            (Tag "emotion" (tMaybe tString))))                                           
         where pairify (ParameterInfo id name emotion) = (id, (name, emotion))
         
-tToggle :: Type a (Toggle n b) 
-tToggle = Iso (<-!) (Tag n (tBool))
+tToggle :: Type a Toggle
+tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
+                                  (Tag "bool" tBool)) 
+  where pairify (Toggle name boolean) = (name, boolean)
     
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 tScoreResult :: Type a ScoreResult

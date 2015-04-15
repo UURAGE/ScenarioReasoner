@@ -27,7 +27,7 @@ import Ideas.Text.XML.Interface(parseXML, findChildren, findChild, findAttribute
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScriptState
-import Domain.Scenarios.TypeDefs
+import Domain.Scenarios.Globals
 
 data Script = Script MetaData Dialogue
 
@@ -42,30 +42,24 @@ data MetaData = MetaData
         , scriptParameters     :: [Parameter]
         , scriptLocation       :: Name
         , scriptToggles        :: [Toggle]
+        , scriptScoringFunction :: ScoringFunction
+        , scriptScoreExtremes  :: Maybe (Score, Score)
         }
-        
-data Toggle = Toggle Name Bool
-    deriving (Show)
-
-toggleNames :: [Name]
-toggleNames = ["showscore"    --score at the end of the game
-              ,"showfeedback" --feedback at the end of the game
-              , "feedback"]   --feedback during the game
               
-parseMetaData :: ScriptElem -> MetaData
+parseMetaData :: ScriptElement -> MetaData
 parseMetaData scriptElem = MetaData    
-        { scriptID             = parseScriptID              scriptElem
-        , scriptName           = parseScriptName            scriptElem
-        , scriptDescription    = parseScriptDescription     scriptElem
-        , scriptDifficulty     = parseScriptDifficulty      scriptElem
-        , scriptBannerImage    = parseScriptBannerImage     scriptElem
-        , scriptCharacterImage = parseScriptCharacterImage  scriptElem 
-        , scriptModel          = parseScriptModel           scriptElem
-        , scriptParameters     = parseScriptParameters      scriptElem
-        , scriptLocation       = parseScriptLocation        scriptElem
-        , scriptToggles        = parseScriptToggles         scriptElem
-        , scriptScoringFunction = 
-        , scriptScoreExtremes =
+        { scriptID              = parseScriptID              scriptElem
+        , scriptName            = parseScriptName            scriptElem
+        , scriptDescription     = parseScriptDescription     scriptElem
+        , scriptDifficulty      = parseScriptDifficulty      scriptElem
+        , scriptBannerImage     = parseScriptBannerImage     scriptElem
+        , scriptCharacterImage  = parseScriptCharacterImage  scriptElem 
+        , scriptModel           = parseScriptModel           scriptElem
+        , scriptParameters      = parseScriptParameters      scriptElem
+        , scriptLocation        = parseScriptLocation        scriptElem
+        , scriptToggles         = parseScriptToggles         scriptElem
+        , scriptScoringFunction = parseScriptScoringFunction scriptElem
+        , scriptScoreExtremes   = parseScriptScoreExtremes   scriptElem
         }
         
 parseScriptToggles :: Element -> [Toggle]
@@ -100,7 +94,7 @@ data Statement = Statement
         , nextStatIDs       :: [ID]
         , statMedia         :: Media
         , statIntents       :: [String]
-        , statFeedback      :: String
+        , statFeedback      :: Maybe String
         }
     deriving(Eq)
     
@@ -134,50 +128,50 @@ data ConversationTextType = PlayerText | ComputerText | SituationText
 -----------------------------------------------------
 
 -- | Queries the given script for its ID.
-parseScriptID :: ScriptElem -> ID
+parseScriptID :: ScriptElement -> ID
 parseScriptID = parseMetaDataString "id"
 
 -- | Queries the given script for its name.
-parseScriptName :: ScriptElem -> Name
+parseScriptName :: ScriptElement -> Name
 parseScriptName = parseMetaDataString "name"
 
 -- | Queries the given script for its description.
-parseScriptDescription :: ScriptElem -> String
+parseScriptDescription :: ScriptElement -> String
 parseScriptDescription = parseMetaDataString "description"
 
-parseScriptLocation :: ScriptElem -> Name
+parseScriptLocation :: ScriptElement -> Name
 parseScriptLocation = parseMetaDataString "location"
 
 -- | Queries the given script for its difficulty.
-parseScriptDifficulty :: ScriptElem -> Difficulty
+parseScriptDifficulty :: ScriptElement -> Difficulty
 parseScriptDifficulty scriptElem = errorOnFail errorMsg (readDifficulty difficultyString)
  where 
     difficultyString = parseMetaDataString "difficulty" scriptElem
     errorMsg = "Could not read difficulty: " ++ difficultyString
 
 -- | Queries the given script for its banner image.
-parseScriptBannerImage :: ScriptElem -> Maybe ID
+parseScriptBannerImage :: ScriptElement -> Maybe ID
 parseScriptBannerImage scriptElem = nothingOnFail (
     findChild "metadata" scriptElem >>=
     findChild "bannerImage"         >>=
     findAttribute "extid")
 
 -- | Queries the given script for its character image.
-parseScriptCharacterImage :: ScriptElem -> Maybe ID
+parseScriptCharacterImage :: ScriptElement -> Maybe ID
 parseScriptCharacterImage scriptElem = nothingOnFail(
     findChild "metadata" scriptElem >>=
     findChild "characterImage"      >>=
     findAttribute "extid")
 
 -- | Queries the given script for its model.
-parseScriptModel :: ScriptElem -> Maybe ID
+parseScriptModel :: ScriptElement -> Maybe ID
 parseScriptModel scriptElem = nothingOnFail(
     findChild "metadata" scriptElem >>=
     findChild "model"               >>=
     findAttribute "extid")
 
 -- | Queries the given script for its startId.
-parseScriptStartId :: ScriptElem -> ID
+parseScriptStartId :: ScriptElement -> ID
 parseScriptStartId scriptElem = getAttribute "idref" startElem
   where
     metaDataElem = getChild "metadata" scriptElem
@@ -185,21 +179,23 @@ parseScriptStartId scriptElem = getAttribute "idref" startElem
     
 
 -- | Queries the given script for its parameters.
-parseScriptParameters :: ScriptElem -> [Parameter]
+parseScriptParameters :: ScriptElement -> [Parameter]
 parseScriptParameters scriptElem = map parseParameter (children parameterElem)
   where
     metaDataElem  = getChild "metadata" scriptElem
     parameterElem = getChild "parameters" metaDataElem
 
 -- | Queries the given script for its scoring function.
-parseScriptScoringFunction :: ScriptElem -> ScoringFunction
-parseScriptScoringFunction scriptElem = parseScoringFunction (getChild "sum" scoringFunctionElem)
+parseScriptScoringFunction :: ScriptElement -> ScoringFunction
+parseScriptScoringFunction scriptElem = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
   where 
     metaDataElem = getChild "metadata" scriptElem
     scoringFunctionElem = getChild "scoringFunction" metaDataElem
+    scoringFunctionChild [elem] = elem
+    scoringFunctionChild _      = error "could not parse scoringFunction" 
 
 -- | Queries the given script for its score extremes.
-parseScriptScoreExtremes :: ScriptElem -> Maybe (Score, Score)
+parseScriptScoreExtremes :: ScriptElement -> Maybe (Score, Score)
 parseScriptScoreExtremes scriptElem = 
     findChild "metadata" scriptElem >>=
     findChild "scoreExtremes"       >>= 
@@ -255,8 +251,8 @@ parseText statElem =
   where toConversationText textEl = (read (applyToFirst toUpper (name textEl)), getData textEl)
 
 -- | Parses the feedback of the given statement element
-parseFeedback :: StatElem -> String
-parseFeedback statElem = getData (getChild "feedback" statElem)
+parseFeedback :: StatElem -> Maybe String
+parseFeedback statElem = nothingOnFail (findChild "feedback" statElem >>= return . getData)
  
 -- | Takes a statement and returns the IDs of the statements following it. TODO!!!!
 parseNextStatIDs :: StatElem -> [ID]
@@ -280,7 +276,7 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
 
 -- | Takes a script and a statement or conversation ID and
 -- returns the corresponding element.
-findStatement :: Monad m => ScriptElem -> String -> m Element
+findStatement :: Monad m => ScriptElement -> String -> m Element
 findStatement scriptElem idVar = if null foundElems
                                             then fail $ "Cannot find statement with ID " ++ idVar
                                             else return $ head foundElems
@@ -304,21 +300,21 @@ findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "
                                                               then []
                                                               else concat [findStatementAt x idVar | x <- children scriptElem]
 
--- | Parses the XML script at "filepath" to a ScriptElem. hGetContent is NOT lazy.
-parseScriptElem :: String -> IO ScriptElem
-parseScriptElem filepath = do
+-- | Parses the XML script at "filepath" to a ScriptElement. hGetContent is NOT lazy.
+parseScriptElement :: String -> IO ScriptElement
+parseScriptElement filepath = do
     withBinaryFile filepath ReadMode $ \h ->
       hGetContents h >>= either fail return . parseXML
-                        -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElem) . parseXML b
+                        -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElement) . parseXML b
                         
 -- | Parses the script element
-parseScript :: ScriptElem -> Script
+parseScript :: ScriptElement -> Script
 parseScript scriptElem = Script (parseMetaData scriptElem) (parseDialogue scriptElem)
                         
 
 -- Functions to be used internally
 ------------------------------------------------------
-parseDialogue :: ScriptElem -> Dialogue
+parseDialogue :: ScriptElement -> Dialogue
 parseDialogue scriptElem = map parseInterleaveLevel interleaveElems
   where
     sequenceElem = getChild "sequence" scriptElem
@@ -442,7 +438,7 @@ parseMaybeBool boolStr = fromMaybe False (Just (boolStr == "true"))
 
 -- | Queries the given script for basic information. Which information being queried is specified
 --  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
-parseMetaDataString :: Name -> ScriptElem -> String
+parseMetaDataString :: Name -> ScriptElement -> String
 parseMetaDataString metaDataName scriptElem = getData dataElem
   where 
     metadata = getChild "metadata" scriptElem
@@ -469,23 +465,23 @@ getAttribute attributeName element = errorOnFail errorMsg mAttribute
 -- Definitions of data structures and related functions
 ---------------------------------------------------------
 
-type ScriptElem = Element
+
 type TreeElem = Element
 type StatElem = Element
 
-instance HasId ScriptElem where
+instance HasId ScriptElement where
     getId scriptElem = either error id $ do
                 let id = parseScriptID scriptElem
                 let descr = parseScriptDescription scriptElem
                 return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElem is determined externally."
+    changeId _ _ = error "The ID of a ScriptElement is determined externally."
 
 instance HasId Script where
     getId (Script metadata _) = either error id $ do
                 let id = scriptID metadata
                 let descr = scriptDescription metadata
                 return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElem is determined externally."
+    changeId _ _ = error "The ID of a ScriptElement is determined externally."
 
 instance HasId Statement where
     getId statement = either error id $ do
@@ -530,7 +526,7 @@ applyToFirst :: (a -> a) -> [a] -> [a]
 applyToFirst _ []     = []
 applyToFirst f (x:xs) = (f x) : xs
 
-findScript :: String -> [ScriptElem] -> Exercise a -> ScriptElem
+findScript :: String -> [ScriptElement] -> Exercise a -> ScriptElement
 findScript usage scripts ex =
     case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
             [foundScript] -> foundScript

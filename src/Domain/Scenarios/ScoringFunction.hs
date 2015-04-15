@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.ScoringFunction where
 
-import Domain.Scenarios.TypeDefs
+import Domain.Scenarios.Globals
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScriptState
 
@@ -11,14 +11,6 @@ data ScoringFunction = Constant Score
                      | Scale Int ScoringFunction
                      | ParamRef ID
                      | IntegeredCondition Condition
-                     
-data Parameter = Parameter
-        { parameterId           :: ID
-        , parameterName         :: Name
-        , parameterEmotion      :: Maybe Emotion
-        , parameterInitialValue :: ParameterValue
-        , parameterScored       :: Bool
-        }
                      
 -- | Calculates the value of a scoring function based on the given state.
 calculateScore :: ScoringFunction -> ScriptState -> Score

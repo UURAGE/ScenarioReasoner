@@ -2,7 +2,7 @@
 module Domain.Scenarios.Condition where
 
 import Domain.Scenarios.ScriptState
-import Domain.Scenarios.TypeDefs(ID)
+import Domain.Scenarios.Globals(ID)
 
 data Condition = And [Condition] -- ^ A list of conditions, all of which need to be satisfied 
                | Or [Condition] -- ^ A list of conditions, one of which needs to be satisfied

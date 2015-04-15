@@ -10,7 +10,7 @@ import Ideas.Common.Library
 import Ideas.Common.Utils 
 import Ideas.Text.JSON
 
-import Domain.Scenarios.TypeDefs(ID, ParameterValue, Emotion)
+import Domain.Scenarios.Globals(ID, ParameterValue)
 
 -- | ScriptState
 -- The state is affected by every step in a strategy.
