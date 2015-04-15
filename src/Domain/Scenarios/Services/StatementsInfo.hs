@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.Services.StatementsInfo where
 
 import Data.Maybe
@@ -8,6 +7,7 @@ import Ideas.Common.Library
 
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Globals(ID, Name, ScriptElement)
+import Domain.Scenarios.Id
           
 type StatementText = (Either String [(String, String)])
 

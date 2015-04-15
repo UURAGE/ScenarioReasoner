@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.Services.Score where
 
 import Data.Maybe
@@ -9,6 +8,7 @@ import Ideas.Service.State
 import Domain.Scenarios.Parser
 import Domain.Scenarios.ScoringFunction(calculateScore, calculateSubScores)
 import Domain.Scenarios.Globals(ID, Name, Score, ScriptElement)
+import Domain.Scenarios.Id(findScript)
 
 data ScoreResult = ScoreResult Score 
                                [SubScore] 

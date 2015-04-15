@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Types where
 
 import Ideas.Common.Library

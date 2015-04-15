@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Condition where
 
 import Domain.Scenarios.ScriptState

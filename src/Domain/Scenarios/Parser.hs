@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 -----------------------------------------------------------------------------
 {- |
 Basic functions to query a ScriptElemLanguage XML script as specified by the
@@ -45,26 +44,7 @@ data MetaData = MetaData
         , scriptScoringFunction :: ScoringFunction
         , scriptScoreExtremes  :: Maybe (Score, Score)
         }
-              
-parseMetaData :: ScriptElement -> MetaData
-parseMetaData scriptElem = MetaData    
-        { scriptID              = parseScriptID              scriptElem
-        , scriptName            = parseScriptName            scriptElem
-        , scriptDescription     = parseScriptDescription     scriptElem
-        , scriptDifficulty      = parseScriptDifficulty      scriptElem
-        , scriptBannerImage     = parseScriptBannerImage     scriptElem
-        , scriptCharacterImage  = parseScriptCharacterImage  scriptElem 
-        , scriptModel           = parseScriptModel           scriptElem
-        , scriptParameters      = parseScriptParameters      scriptElem
-        , scriptLocation        = parseScriptLocation        scriptElem
-        , scriptToggles         = parseScriptToggles         scriptElem
-        , scriptScoringFunction = parseScriptScoringFunction scriptElem
-        , scriptScoreExtremes   = parseScriptScoreExtremes   scriptElem
-        }
-        
-parseScriptToggles :: Element -> [Toggle]
-parseScriptToggles scriptElem = map parseToggle toggleNames
-    where parseToggle toggleName = Toggle toggleName (parseBool (parseMetaDataString toggleName scriptElem))
+    deriving(Show)
         
 type Dialogue = [InterleaveLevel]
 
@@ -122,7 +102,37 @@ data StatementType = ComputerStatement | PlayerStatement | Conversation
 -- | A value describing the type of a piece of text in a conversation
 data ConversationTextType = PlayerText | ComputerText | SituationText
     deriving (Show, Eq, Read)
-
+    
+-- | Parses the XML script at "filepath" to a ScriptElement. hGetContent is NOT lazy.
+parseScriptElement :: String -> IO ScriptElement
+parseScriptElement filepath = do
+    withBinaryFile filepath ReadMode $ \h ->
+      hGetContents h >>= either fail return . parseXML
+                        -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElement) . parseXML b
+                        
+-- | Parses the script element
+parseScript :: ScriptElement -> Script
+parseScript scriptElem = Script (parseMetaData scriptElem) (parseDialogue scriptElem)
+    
+parseMetaData :: ScriptElement -> MetaData
+parseMetaData scriptElem = MetaData    
+        { scriptID              = parseScriptID              scriptElem
+        , scriptName            = parseScriptName            scriptElem
+        , scriptDescription     = parseScriptDescription     scriptElem
+        , scriptDifficulty      = parseScriptDifficulty      scriptElem
+        , scriptBannerImage     = parseScriptBannerImage     scriptElem
+        , scriptCharacterImage  = parseScriptCharacterImage  scriptElem 
+        , scriptModel           = parseScriptModel           scriptElem
+        , scriptParameters      = parseScriptParameters      scriptElem
+        , scriptLocation        = parseScriptLocation        scriptElem
+        , scriptToggles         = parseScriptToggles         scriptElem
+        , scriptScoringFunction = parseScriptScoringFunction scriptElem
+        , scriptScoreExtremes   = parseScriptScoreExtremes   scriptElem
+        }
+        
+parseScriptToggles :: Element -> [Toggle]
+parseScriptToggles scriptElem = map parseToggle toggleNames
+    where parseToggle toggleName = Toggle toggleName (parseBool (parseMetaDataString toggleName scriptElem))
     
 -- Functions to be exposed as an interface
 -----------------------------------------------------
@@ -271,46 +281,7 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
             getNextComputerStatements =
                 case findChild "nextComputerStatements" element of
                       Just nextElem -> return $ children nextElem
-                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element
-
-
--- | Takes a script and a statement or conversation ID and
--- returns the corresponding element.
-findStatement :: Monad m => ScriptElement -> String -> m Element
-findStatement scriptElem idVar = if null foundElems
-                                            then fail $ "Cannot find statement with ID " ++ idVar
-                                            else return $ head foundElems
-                                          where
-                                            foundElems = concat [findStatementAt x idVar | x <- children scriptElem]
-
-    {-if null foundElems
-        then fail $ "Cannot find statement with ID " ++ idVar
-        else return $ Statement (head foundElems)
-    where foundElems = filter (idAttributeIs idVar) childElems
-          childElems = children scriptElem
-          idAttributeIs testId element = maybe False ((==)testId) (findAttribute "id" element)-}
-
-findStatementAt :: Element -> String -> [Element]
-findStatementAt scriptElem idVar =  if maybe False ((==) idVar) (findAttribute "id" scriptElem)
-                                        then (scriptElem : filteredChildren)
-                                        else filteredChildren
-                                    where
-                                        childElems = children scriptElem
-                                        filteredChildren = if null childElems
-                                                              then []
-                                                              else concat [findStatementAt x idVar | x <- children scriptElem]
-
--- | Parses the XML script at "filepath" to a ScriptElement. hGetContent is NOT lazy.
-parseScriptElement :: String -> IO ScriptElement
-parseScriptElement filepath = do
-    withBinaryFile filepath ReadMode $ \h ->
-      hGetContents h >>= either fail return . parseXML
-                        -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElement) . parseXML b
-                        
--- | Parses the script element
-parseScript :: ScriptElement -> Script
-parseScript scriptElem = Script (parseMetaData scriptElem) (parseDialogue scriptElem)
-                        
+                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element                        
 
 -- Functions to be used internally
 ------------------------------------------------------
@@ -410,14 +381,14 @@ parseScoringFunction :: Element -> ScoringFunction
 parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     "constant"           -> Constant            parseConstant
     "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
-    "scale"              -> Scale               parseScalar (parseScoringFunction childElem)
+    "scale"              -> Scale               parseScalar (parseScoringFunction paramElem)
     "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
     "integeredCondition" -> IntegeredCondition (parseCondition conditionElem)
   where 
     parseConstant = read (getAttribute "value" scoringFunctionElem)  :: Score
     parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
-    childElem     = getChild "scoringFunction" scoringFunctionElem   :: Element
     conditionElem = getChild "condition" scoringFunctionElem         :: Element
+    paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
             
 -- | Parses a parameter Element inside the parameters inside the metadata of the script.
 parseParameter :: Element -> Parameter
@@ -425,25 +396,9 @@ parseParameter paramElem = Parameter
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
         , parameterEmotion      = nothingOnFail (findAttribute "emotionid" paramElem)
-        , parameterInitialValue = read (getAttribute "initialValue" paramElem) :: Int
-        , parameterScored       = parseMaybeBool (getAttribute "scored" paramElem)
+        , parameterInitialValue = nothingOnFail (findAttribute "initialValue" paramElem >>= readM)
+        , parameterScored       = parseMaybeBool (findAttribute "scored" paramElem)
         }
-
--- | Parses a Bool.
-parseBool :: String -> Bool
-parseBool boolStr = errorOnFail "Failed to parse bool" (readM boolStr)
-
-parseMaybeBool :: String -> Bool
-parseMaybeBool boolStr = fromMaybe False (Just (boolStr == "true"))
-
--- | Queries the given script for basic information. Which information being queried is specified
---  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
-parseMetaDataString :: Name -> ScriptElement -> String
-parseMetaDataString metaDataName scriptElem = getData dataElem
-  where 
-    metadata = getChild "metadata" scriptElem
-    dataElem = getChild metaDataName metadata
-
     
 -- Functions that extend the XML parser
 ---------------------------------------------------------
@@ -461,75 +416,22 @@ getAttribute attributeName element = errorOnFail errorMsg mAttribute
   where 
     errorMsg = "Failed to find attribute: " ++ attributeName 
     mAttribute = findAttribute attributeName element
-
--- Definitions of data structures and related functions
----------------------------------------------------------
-
-
-type TreeElem = Element
-type StatElem = Element
-
-instance HasId ScriptElement where
-    getId scriptElem = either error id $ do
-                let id = parseScriptID scriptElem
-                let descr = parseScriptDescription scriptElem
-                return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElement is determined externally."
-
-instance HasId Script where
-    getId (Script metadata _) = either error id $ do
-                let id = scriptID metadata
-                let descr = scriptDescription metadata
-                return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElement is determined externally."
-
-instance HasId Statement where
-    getId statement = either error id $ do
-                let statementId = statID statement
-                let statementText = statText statement
-                let statementDescription = either id (intercalate " // " . map snd) statementText
-                return $ describe statementDescription $ newId statementId
-    changeId _ _ = error "The ID of a Statement is determined externally."
     
+    -- | Parses a Bool.
+parseBool :: String -> Bool
+parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
 
--- | Creates the full ID for the given statement in the context of the given script.
-createFullId :: Script -> Statement -> Id
-createFullId script statement = scriptId # typeSegment # statId # interleaveSegment
+parseMaybeBool :: Maybe String -> Bool
+parseMaybeBool (Just boolStr) = parseBool boolStr
+parseMaybeBool _              = False
+
+-- | Queries the given script for basic information. Which information being queried is specified
+--  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
+parseMetaDataString :: Name -> ScriptElement -> String
+parseMetaDataString metaDataName scriptElem = getData dataElem
   where 
-    scriptId = getId script
-    typeSegment = toIdTypeSegment $ statType statement
-    statId = statID statement 
-    
-    nextIDs = nextStatIDs statement
-    
-    interleaveSegment | jumpPoint statement                                 = "interleaved"
-                      | not (endOfConversation statement) && (null nextIDs) = "interleaved"
-                      | otherwise                                           = ""
-                      
--- | Returns the value to be used to represent a statement type in a rule ID.
-toIdTypeSegment :: StatementType -> String
-toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show
+    metadata = getChild "metadata" scriptElem
+    dataElem = getChild metaDataName metadata
 
--- | Extra error function for getting a type out of Monad
-errorOnFail :: String -> Maybe a -> a
-errorOnFail errorMsg ma = fromMaybe (error errorMsg) ma
 
-emptyOnFail :: Maybe [a] -> [a]
-emptyOnFail = fromMaybe []
-
-nothingOnFail :: Maybe a -> Maybe a
-nothingOnFail (Just a) = Just a
-nothingOnFail _        = Nothing
-
--- | Applies a function to the first element of a list, if there is one.
-applyToFirst :: (a -> a) -> [a] -> [a]
-applyToFirst _ []     = []
-applyToFirst f (x:xs) = (f x) : xs
-
-findScript :: String -> [ScriptElement] -> Exercise a -> ScriptElement
-findScript usage scripts ex =
-    case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
-            [foundScript] -> foundScript
-            _             ->
-                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.Services.ServiceList where
 
 import Ideas.Common.Library

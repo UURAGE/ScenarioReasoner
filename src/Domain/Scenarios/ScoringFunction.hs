@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.ScoringFunction where
 
 import Domain.Scenarios.Globals
@@ -11,6 +10,7 @@ data ScoringFunction = Constant Score
                      | Scale Int ScoringFunction
                      | ParamRef ID
                      | IntegeredCondition Condition
+    deriving(Show)
                      
 -- | Calculates the value of a scoring function based on the given state.
 calculateScore :: ScoringFunction -> ScriptState -> Score

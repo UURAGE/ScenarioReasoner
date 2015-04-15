@@ -16,6 +16,7 @@ import Domain.Scenarios.ScriptState
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
+import Domain.Scenarios.Id(toIdTypeSegment)
 
 --Framework code, try not to break your head.
 guardedRule :: IsId b => b -> String -> (ScriptState -> Bool) -> (ScriptState -> ScriptState) -> Rule ScriptState

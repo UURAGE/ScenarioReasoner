@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 module Domain.Scenarios.Services.ScenarioInfo where
 
 import Ideas.Common.Library
@@ -6,6 +5,7 @@ import Ideas.Common.Library
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Globals
+import Domain.Scenarios.Id(findScript)
 
 data ScenarioInfo = ScenarioInfo ID
                                  Name

@@ -26,7 +26,7 @@ getExercise path = do
 
 exerciseFromScript :: Monad m => ScriptElement -> m (Exercise ScriptState)
 exerciseFromScript scriptElem = do
-    let scriptMetaData = (\Script metaData _ -> metaData) parseScript scriptElem
+    let scriptMetaData = parseMetaData scriptElem
     scriptStrategy <- makeStrategy scriptElem
     let difficulty = scriptDifficulty scriptMetaData
     let parameters = scriptParameters scriptMetaData
