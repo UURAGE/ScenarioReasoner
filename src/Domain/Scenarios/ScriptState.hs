@@ -22,7 +22,11 @@ data Effect = Effect
         { effectIdref      :: ID
         , effectChangeType :: ChangeType
         , effectValue      :: ParameterValue
-        } deriving (Show, Eq)
+        } 
+        
+instance Show Effect where
+    show (Effect id ct value) = "\n\t\t" ++ show id ++ show ct ++ show value
+        
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
 -- | Applies the chosen effect to the state
@@ -87,3 +91,6 @@ isVal :: ParameterValue -> Bool -> ID -> ScriptState -> Bool
 isVal v d s m = case M.lookup s (fst m) of
  Nothing -> d
  Just x -> (x == v)
+ 
+fromList :: [(String, Int)] -> ScriptState
+fromList list = (M.fromList list, "")

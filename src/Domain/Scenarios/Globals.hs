@@ -6,8 +6,6 @@ import Ideas.Text.XML.Interface(Element)
 
 -- | Type definitions 
 type ScriptElement = Element
-type TreeElem = Element
-type StatElem = Element
 type ParameterValue = Int
 type Emotion = String
 type ID = String
@@ -17,7 +15,9 @@ type Score = Int
 -- global datastructures
 
 data Toggle = Toggle Name Bool
-    deriving (Show)
+    
+instance Show Toggle where
+    show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
     
 toggleNames :: [Name]
 toggleNames = ["showscore"    --score at the end of the game
@@ -32,13 +32,15 @@ data Parameter = Parameter
     , parameterInitialValue :: Maybe ParameterValue
     , parameterScored       :: Bool
     }
-    deriving(Show)
+    
+instance Show Parameter where
+    show (Parameter id name emo initvalue scored) = 
+        show id ++ "\t" ++ show name ++ "\t" ++ show emo ++ "\t" ++ show initvalue ++ "\t" ++ show scored ++ "\n"
     
 -- | Returns the initial value of a parameter, or zero if it does not have one.
 parameterInitialValueOrZero :: Parameter -> ParameterValue
 parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
-                      
-
+                     
 
 -- | Extra functions for getting a type out of Monad
 errorOnFail :: String -> Maybe a -> a

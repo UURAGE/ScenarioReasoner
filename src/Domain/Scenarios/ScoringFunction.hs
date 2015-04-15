@@ -10,7 +10,13 @@ data ScoringFunction = Constant Score
                      | Scale Int ScoringFunction
                      | ParamRef ID
                      | IntegeredCondition Condition
-    deriving(Show)
+    
+instance Show ScoringFunction where
+    show (Constant score)          = "Constant: "  ++ show score  ++ "\n"
+    show (Sum sflist)              = "Sum: "       ++ show sflist ++ "\n"
+    show (Scale scalar sf)         = "Scale: "     ++ show scalar ++ "\n\t" ++ show sf ++ "\n"
+    show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n"
+    show (IntegeredCondition cond) = "condition: " ++ show cond   ++ "\n"
                      
 -- | Calculates the value of a scoring function based on the given state.
 calculateScore :: ScoringFunction -> ScriptState -> Score
