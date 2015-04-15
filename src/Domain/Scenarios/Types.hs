@@ -36,7 +36,7 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
         
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
-                                  (Tag "bool" tBool)) 
+                                    (Tag "bool" tBool)) 
   where pairify (Toggle name boolean) = (name, boolean)
     
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
