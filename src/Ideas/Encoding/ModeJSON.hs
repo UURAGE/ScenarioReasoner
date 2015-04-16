@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: ModeJSON.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: ModeJSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.ModeJSON (processJSON) where
 
@@ -19,9 +19,9 @@ import Data.Char
 import Ideas.Common.Library hiding (exerciseId)
 import Ideas.Common.Utils (Some(..), timedSeconds)
 import Ideas.Encoding.DecoderJSON
+import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Encoding.EncoderJSON
 import Ideas.Encoding.Evaluator
-import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import Ideas.Text.JSON

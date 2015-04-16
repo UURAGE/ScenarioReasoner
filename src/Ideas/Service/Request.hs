@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Request.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: Request.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.Request where
 
@@ -29,7 +29,7 @@ data Request = Request
    , dataformat     :: DataFormat
    , encoding       :: [Encoding]
    }
-   
+
 emptyRequest :: Request
 emptyRequest = Request Nothing Nothing Nothing Nothing Nothing Nothing XML []
 
@@ -60,9 +60,9 @@ compactOutput req =
       (True, False) -> True
       (False, True) -> False
       _             -> isJust (cgiBinary req)
- where 
+ where
    xs = encoding req
-   
+
 useOpenMath :: Request -> Bool
 useOpenMath r = all (`notElem` encoding r) [EncString, EncHTML]
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: DecoderJSON.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: DecoderJSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.DecoderJSON
    ( JSONDecoder, jsonDecoder
@@ -99,7 +99,7 @@ decodeState = do
             a    <- decodeTerm        // term
             env  <- decodeEnvironment // jsonContext
             let loc = envToLoc env
-                ctx = navigateTowards loc $ deleteRef locRef $ 
+                ctx = navigateTowards loc $ deleteRef locRef $
                          setEnvironment env $ inContext ex a
                 prfx = replayPaths pts (strategy ex) ctx
             return $ makeState ex prfx ctx

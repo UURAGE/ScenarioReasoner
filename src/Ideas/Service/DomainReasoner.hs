@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: DomainReasoner.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: DomainReasoner.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.DomainReasoner
    ( DomainReasoner(..), tDomainReasoner, newDomainReasoner
@@ -66,8 +66,8 @@ instance HasId DomainReasoner where
 tDomainReasoner :: Type a DomainReasoner
 tDomainReasoner = Tag "DomainReasoner" $ Iso (f <-> g) tp
     where
-      tp = tTuple3 (tTuple3 tId (tList tSomeExercise) (tList tService)) 
-           (tPair (tList (tPair tId tId)) (tList (tPair tId tString))) 
+      tp = tTuple3 (tTuple3 tId (tList tSomeExercise) (tList tService))
+           (tPair (tList (tPair tId tId)) (tList (tPair tId tString)))
            (tPair tString tString)
       f ((rid, ex, serv), (al, scr), (v, fv)) =
          DR rid ex serv [] al scr mempty v fv

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ProblemDecomposition.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: ProblemDecomposition.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.ProblemDecomposition
    ( problemDecomposition, Reply(..), Answer, tAnswer, tReply
@@ -18,9 +18,9 @@ module Ideas.Service.ProblemDecomposition
 
 import Data.Maybe
 import Ideas.Common.Library
+import Ideas.Common.Utils (fst3)
 import Ideas.Service.State
 import Ideas.Service.Types
-import Ideas.Common.Utils (fst3)
 
 problemDecomposition :: Maybe Id -> State a -> Maybe (Answer a) -> Either String (Reply a)
 problemDecomposition msloc state maybeAnswer
@@ -30,7 +30,7 @@ problemDecomposition msloc state maybeAnswer
         Left "strategy error: not able to compute an expected answer"
    | otherwise = Right $
         case maybeAnswer of
-        
+
            Just (Answer answeredTerm) | not (null witnesses) ->
               Ok newLocation newState
             where
@@ -54,7 +54,7 @@ problemDecomposition msloc state maybeAnswer
    topId   = getId strat
    sloc    = fromMaybe topId msloc
    answers = runPrefixLocation sloc prefix
-   prefix  
+   prefix
       | withoutPrefix state = emptyPrefix strat (stateContext state)
       | otherwise           = statePrefix state
 
@@ -81,7 +81,7 @@ nextMajorForPrefix = listToMaybe . rec
  where
    rec prfx = do
       ((st, _), p) <- firsts prfx
-      case st of 
+      case st of
          Enter l -> [l]
          RuleStep _ r | isMajor r -> [getId r]
          _ -> rec p
@@ -104,7 +104,7 @@ tReply :: Type a (Reply a)
 tReply = Tag "DecompositionReply" (Iso (f <-> g) tp)
     where
       tp = tPair tId tState :|: tTuple4 tBool tId tState tEnvironment
-    
+
       f (Left (a, b))        = Ok a b
       f (Right (a, b, c, d)) = Incorrect a b c d
 

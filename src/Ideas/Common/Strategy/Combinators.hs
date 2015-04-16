@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- data types
 --
 -----------------------------------------------------------------------------
---  $Id: Combinators.hs 6759 2014-07-29 08:44:55Z bastiaan $
+--  $Id: Combinators.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Strategy.Combinators where
 
@@ -123,7 +123,7 @@ repeat1 s = s <*> repeat s
 try :: IsStrategy f => f a -> Strategy a
 try s = s |> succeed
 
--- | Choose between the two strategies, with a preference for steps from the 
+-- | Choose between the two strategies, with a preference for steps from the
 -- left hand-side strategy.
 (>|>) :: (IsStrategy f, IsStrategy g) => f a -> g a -> Strategy a
 (>|>) = liftCore2 (:>|>)

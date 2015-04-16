@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Run a feedbackscript
 --
 -----------------------------------------------------------------------------
---  $Id: Run.hs 6702 2014-07-21 09:30:12Z bastiaan $
+--  $Id: Run.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.FeedbackScript.Run
    ( Script

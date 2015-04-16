@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification, MultiParamTypeClasses,
        FunctionalDependencies, FlexibleInstances, UndecidableInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: RewriteRule.hs 6664 2014-06-30 14:25:20Z bastiaan $
+--  $Id: RewriteRule.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Rewriting.RewriteRule
    ( -- * Supporting type class
@@ -129,7 +129,7 @@ makeRewriteRule s f =
 termRewriteRule :: (IsId n, IsTerm a, Show a) => n -> RuleSpec Term -> RewriteRule a
 termRewriteRule s spec =
    R (newId s) spec show termView M.empty M.empty
-   
+
 symbolMatcher :: Symbol -> SymbolMatch -> RewriteRule a -> RewriteRule a
 symbolMatcher s f r = r {ruleMatchers = M.insert s f (ruleMatchers r)}
 

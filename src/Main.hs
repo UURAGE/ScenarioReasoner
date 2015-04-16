@@ -15,6 +15,8 @@ import Ideas.Service.Types (Service)
 import qualified Domain.Scenarios.Services.ServiceList as S
 import qualified Domain.Scenarios.Exercises as E
 
+-- changes were made in Ideas.Main.Default to the createDomainReasoner functions to adjust to load the scenario id 
+-- should not be adjusted, instead request exerciselist with list of scenarioIDs.. and send scenario id instead
 main :: IO ()
 main = defaultMain createDomainReasoner
 

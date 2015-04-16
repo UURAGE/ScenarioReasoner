@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Diagnose a term submitted by a student
 --
 -----------------------------------------------------------------------------
---  $Id: Diagnose.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: Diagnose.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.Diagnose
    ( Diagnosis(..), tDiagnosis, diagnose, restartIfNeeded, newState
@@ -157,10 +157,10 @@ restartIfNeeded state
 tDiagnosis :: Type a (Diagnosis a)
 tDiagnosis = Tag "Diagnosis" $ Iso (f <-> g) tp
     where
-      tp = (tPair tEnvironment tRule :|: (tString :|: tTuple3 tBool tState (tMaybe tRule))) 
-         :|: tPair tBool tState :|: tTuple3 tBool tState tRule 
+      tp = (tPair tEnvironment tRule :|: (tString :|: tTuple3 tBool tState (tMaybe tRule)))
+         :|: tPair tBool tState :|: tTuple3 tBool tState tRule
          :|: tTuple4 tBool tState tEnvironment tRule :|: tPair tBool tState :|: tPair tBool tState
-    
+
       f (Left (Left (as, r))) = Buggy as r
    --   f (Left (Right (Left ()))) = Missing
    --   f (Left (Right (Right (Left xs)))) = IncorrectPart xs

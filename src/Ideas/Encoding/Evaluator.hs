@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,14 +10,14 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Evaluator.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: Evaluator.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.Evaluator
    ( Evaluator(..), evalService
    ) where
 
-import Ideas.Service.Types
 import Ideas.Encoding.Encoder
+import Ideas.Service.Types
 
 data Evaluator a b c = Evaluator (TypedDecoder a b) (TypedEncoder a c)
 
@@ -32,7 +32,7 @@ eval opts f@(Evaluator dec enc) tv@(val ::: tp) b =
          either fail (\a -> eval opts f (a ::: t) b) val
       -- uncurry function if possible
       t1 :-> t2 :-> t3 ->
-         eval opts f (uncurry val ::: Pair t1 t2 :-> t3) b 
+         eval opts f (uncurry val ::: Pair t1 t2 :-> t3) b
       t1 :-> t2 -> do
          a <- run (dec t1) opts b
          eval opts f (val a ::: t2) b

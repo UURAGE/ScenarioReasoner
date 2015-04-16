@@ -13,8 +13,7 @@ import Ideas.Text.JSON
 import Domain.Scenarios.Globals(ID, ParameterValue)
 
 -- | ScriptState
--- The state is affected by every step in a strategy.
-
+-- The state is affected by every step (rule / statement) that has an effect in a strategy.
 type ScriptState = (M.Map ID ParameterValue, ID)
 
 -- | The effect of a statement on the current state
@@ -26,7 +25,10 @@ data Effect = Effect
         
 instance Show Effect where
     show (Effect id ct value) = "\n\t\t" ++ show id ++ show ct ++ show value
-        
+    
+-- This datatype specifies the type of change to be made to the parameter, 
+-- Set for setting the parameter to a specific value
+-- Delta for adding / subtracting the new value to / from the existing value     
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
 -- | Applies the chosen effect to the state
@@ -36,8 +38,10 @@ applyEffect effect state = case effectChangeType effect of
         Delta -> setParam idref ((getParamOrZero idref state) + value) state
     where idref = effectIdref effect
           value = effectValue effect
+          
 
--- ScriptState to JSON
+-- ScriptState to JSON for sending and receiving a Map datatype in JSON ---------------------------
+
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
         where kvpToJSON (key, value) = (key, toJSON value)
@@ -51,46 +55,24 @@ showJSON = compactJSON . toJSON
 readJSON :: String -> Either String ScriptState
 readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON
 
--- - -
 -- Instances of isTerm
 --   toTerm   :: a -> Term
 --   fromTerm :: MonadPlus m => Term -> m a
--- - -
 
 instance IsTerm (M.Map ID ParameterValue) where
  toTerm = toTerm . M.toAscList . (M.mapKeysMonotonic ShowString)
  fromTerm x = do 
    x' <- fromTerm x
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
+   
+---------------------------------------------------------------------------------------------------
 
+-- Functions for changing the ScriptState 
+
+-- If the parameter is in the state return its value otherwise return zero
 getParamOrZero :: ID -> ScriptState -> ParameterValue
-getParamOrZero name state = M.findWithDefault 0 name (fst state)
+getParamOrZero pID state = M.findWithDefault 0 pID (fst state)
 
-setZero, setOne :: ID -> ScriptState -> ScriptState
-setZero name state = (flip M.insert 1 name (fst state), snd state)
-setOne name state = (flip M.insert 1 name (fst state), snd state)
-
+-- Set the parameter to a specific value
 setParam :: ID -> ParameterValue -> ScriptState -> ScriptState
-setParam name value state = (M.insert name value (fst state), snd state)
-
-onlyOne :: ID -> ScriptState -> ScriptState
-onlyOne name state = ((flip M.insert 1 name).(M.map (\_-> 0)) $ (fst state), snd state)
-
-isZero, isOne :: ID -> ScriptState -> Bool
-isZero s cf = isVal 0 True s (cf)
-isOne s cf = isVal 1 False s (cf)
-
-isEmpty :: ScriptState -> Bool
-isEmpty cf = M.null (fst cf)
-
-eitherIsOne :: [ID] -> ScriptState -> Bool
-eitherIsOne [] _      = False
-eitherIsOne (x:xs) ck = (isOne x ck) || (eitherIsOne xs ck)
-
-isVal :: ParameterValue -> Bool -> ID -> ScriptState -> Bool
-isVal v d s m = case M.lookup s (fst m) of
- Nothing -> d
- Just x -> (x == v)
- 
-fromList :: [(String, Int)] -> ScriptState
-fromList list = (M.fromList list, "")
+setParam pID value state = (M.insert pID value (fst state), snd state)

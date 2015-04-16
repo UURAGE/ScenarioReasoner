@@ -23,7 +23,7 @@ data CompareOperator = LessThan
                      | NotEqualTo
                      deriving (Show, Eq, Read)
                      
-                     -- | Calculates the value of a condition based on the given state.
+-- | Evaluates the condition based on the given state.
 evaluateCondition :: Condition -> ScriptState -> Bool
 evaluateCondition mainCondition state = evaluate mainCondition
     where evaluate :: Condition -> Bool
@@ -32,14 +32,14 @@ evaluateCondition mainCondition state = evaluate mainCondition
             Or  subConditions    -> or  . map evaluate $ subConditions
             Condition comparison -> evaluateComparisonCondition comparison state
 
--- | Calculates the value of a comparison based on the given state.
+-- | Evaluates the comparison based on the given state.
 evaluateComparisonCondition :: ComparisonCondition -> ScriptState -> Bool
 evaluateComparisonCondition comparison state = operator tested value
     where operator = getCompareOperator (conditionTest comparison)
           tested = getParamOrZero (conditionIdref comparison) state
           value  = conditionValue comparison
 
--- | Calculates the value of a possible condition based on the given state.
+-- | Evaluates the possible condition based on the given state, if there is no condition evaluate to True
 evaluateMaybeCondition :: Maybe Condition -> ScriptState -> Bool
 evaluateMaybeCondition = maybe (const True) evaluateCondition
 

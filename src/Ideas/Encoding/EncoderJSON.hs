@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderJSON.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: EncoderJSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.EncoderJSON (jsonEncoder) where
 
@@ -91,16 +91,16 @@ encodeEnvironment = makeEncoder $ \env ->
    in Array [ f a | a <- bindings env ]
 
 encodeContext :: JSONEncoder a (Context a)
-encodeContext = exerciseEncoder $ \ex ctx -> 
+encodeContext = exerciseEncoder $ \ex ctx ->
    String $ prettyPrinterContext ex ctx
 
 encodeState :: JSONEncoder a (State a)
 encodeState = encoderFor $ \st ->
    let ctx = stateContext st
-       make pp env = Array 
+       make pp env = Array
           [ String $ showId (exercise st)
-          , String $ if withoutPrefix st 
-                     then "NoPrefix" 
+          , String $ if withoutPrefix st
+                     then "NoPrefix"
                      else show (statePrefix st)
           , pp
           , env

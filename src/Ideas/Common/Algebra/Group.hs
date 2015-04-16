@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Group.hs 7135 2014-11-03 12:40:28Z bastiaan $
+--  $Id: Group.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Algebra.Group
    ( -- * Monoids
@@ -64,10 +64,10 @@ newtype WithZero a = WZ { fromWithZero :: Maybe a }
 instance Monoid a => Monoid (WithZero a) where
    mempty = WZ (Just mempty)
    mappend x y = WZ (liftM2 mappend (fromWithZero x) (fromWithZero y))
-   
+
 instance Monoid a => MonoidZero (WithZero a) where
    mzero = WZ Nothing
- 
+
 instance Traversable WithZero where
    traverse f = liftA WZ . traverse f . fromWithZero
 

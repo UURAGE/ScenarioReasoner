@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Collection of common operation on XML documents
 --
 -----------------------------------------------------------------------------
---  $Id: Interface.hs 7022 2014-10-16 07:52:09Z bastiaan $
+--  $Id: Interface.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Text.XML.Interface
    ( Element(..), Content, Attribute(..), Attributes
@@ -123,14 +123,13 @@ findAttribute s (Element _ as _) =
 
 findChildren :: String -> Element -> [Element]
 findChildren s = filter ((==s) . name) . children
-      
+
 findChild :: Monad m => String -> Element -> m Element
 findChild s e =
    case findChildren s e of
       []  -> fail $ "Child not found: " ++ show s
       [a] -> return a
       _   -> fail $ "Multiple children found: " ++ show s
-      
 
 children :: Element -> [Element]
 children e = [ c | Right c <- content e ]

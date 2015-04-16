@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,13 +9,11 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: BlackBoxTests.hs 6992 2014-10-08 14:58:58Z bastiaan $
+--  $Id: BlackBoxTests.hs 7528 2015-04-08 09:44:10Z bastiaan $
 
 module Ideas.Main.BlackBoxTests (blackBoxTests) where
 
-import Control.Exception
 import Control.Monad
-import qualified Data.Algorithm.Diff as Diff
 import Data.Char
 import Data.List
 import Ideas.Common.Utils (useFixedStdGen, snd3)
@@ -26,6 +24,7 @@ import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import System.Directory
 import System.IO
+import qualified Data.Algorithm.Diff as Diff
 
 -- Returns the number of tests performed
 blackBoxTests :: DomainReasoner -> String -> IO TestSuite
@@ -79,7 +78,7 @@ force s | sum (map ord s) >= 0 = return ()
 
 prepare :: String -> [String]
 prepare = filter (not . null) . lines . filter (/= '\r') . noVersion
- where  
+ where
    noVersion s | "version\": \"" `isPrefixOf` s =
       "version\": \"X" ++ dropWhile (/='"') (drop 11 s)
    noVersion s | "version=\"" `isPrefixOf` s =

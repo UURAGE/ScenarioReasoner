@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,16 +11,16 @@
 -- Manages links to information
 --
 -----------------------------------------------------------------------------
---  $Id: Documentation.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: Documentation.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Main.Documentation (makeDocumentation) where
 
 import Control.Monad
 import Ideas.Common.Library
 import Ideas.Common.Utils
+import Ideas.Encoding.Encoder (run, simpleOptions)
 import Ideas.Encoding.EncoderHTML
 import Ideas.Encoding.LinkManager
-import Ideas.Encoding.Encoder (run, simpleOptions)
 import Ideas.Service.BasicServices
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Types

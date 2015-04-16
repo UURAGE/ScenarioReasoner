@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: DecoderXML.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: DecoderXML.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.DecoderXML
    ( XMLDecoder, xmlDecoder
@@ -24,9 +24,9 @@ import Ideas.Common.Library hiding ((<|>))
 import Ideas.Common.Traversal.Navigator
 import Ideas.Encoding.Encoder
 import Ideas.Encoding.OpenMathSupport
+import Ideas.Service.Request
 import Ideas.Service.State
 import Ideas.Service.Types
-import Ideas.Service.Request
 import Ideas.Text.OpenMath.Object
 import Ideas.Text.XML
 
@@ -36,13 +36,13 @@ xmlDecoder :: TypedDecoder a XML
 xmlDecoder tp =
    case tp of
       Tag s t
-         | s == "answer" -> do
+         | s == "answer" ->
               decodeChild "answer" (xmlDecoder t)
          | s == "Difficulty" -> do
               g <- equalM tDifficulty tp
               a <- decoderFor (findAttribute "difficulty")
               maybe (fail "unknown difficulty level") (return . g) (readDifficulty a)
-         | otherwise -> do
+         | otherwise ->
               decodeChild s (xmlDecoder t)
       Iso p t  -> liftM (from p) (xmlDecoder t)
       Pair t1 t2 -> do
@@ -64,8 +64,8 @@ xmlDecoder tp =
             StdGen      -> getStdGen
             Script      -> getScript
             Exercise    -> getExercise
-            Id          -> -- improve! 
-                           decodeChild "location" $ 
+            Id          -> -- improve!
+                           decodeChild "location" $
                               makeDecoder (newId . getData)
             _ -> fail $ "No support for argument type in XML: " ++ show tp
       _ -> fail $ "No support for argument type in XML: " ++ show tp
@@ -78,10 +78,10 @@ decodeRule = decodeChild "ruleid" $ do
 
 -- <location>
 decodeLocation :: XMLDecoder a Location
-decodeLocation = decodeChild "location" $ do
+decodeLocation = decodeChild "location" $
    makeDecoder (toLocation . read . getData)
 
--- <state> 
+-- <state>
 decodeState :: XMLDecoder a (State a)
 decodeState = decodeChild "state"  $ do
    ex  <- getExercise
@@ -109,12 +109,12 @@ decodeContext = do
    expr <- decodeTerm
    env  <- decodeEnvironment
    let ctx    = setEnvironment env (inContext ex expr)
-       locRef = makeRef "location" 
-   case locRef ? env of 
-      Just s  -> maybe (fail "invalid location") return $ do 
+       locRef = makeRef "location"
+   case locRef ? env of
+      Just s  -> maybe (fail "invalid location") return $ do
          loc <- liftM toLocation (readM s)
          navigateTo loc (deleteRef locRef ctx)
-      Nothing -> 
+      Nothing ->
          return ctx
 
 decodeTerm :: XMLDecoder a a
@@ -132,9 +132,9 @@ decodeOMOBJ = decodeChild "OMOBJ" $ decoderFor $ \xml -> do
    case fromOpenMath ex omobj of
       Just a  -> return a
       Nothing -> fail "Invalid OpenMath object for this exercise"
-                
+
 decodeEnvironment :: XMLDecoder a Environment
-decodeEnvironment = 
+decodeEnvironment =
    decodeChild "context" (decoderFor $ foldM add mempty . children)
    <|> return mempty
  where
@@ -158,7 +158,7 @@ decodeEnvironment =
 -- <configuration>
 decodeConfiguration :: XMLDecoder a StrategyCfg
 decodeConfiguration = decodeChild "configuration" $
-   decoderFor $ \xml -> 
+   decoderFor $ \xml ->
       liftM mconcat $
          mapM decodeAction (children xml)
  where
@@ -187,7 +187,7 @@ decodeBinding = decoderFor $ \xml -> do
  where
    termBinding :: String -> Term -> Binding
    termBinding = makeBinding . makeRef
-   
+
 decodeChild :: String -> XMLDecoder a b -> XMLDecoder a b
 decodeChild s m = split f >>= (m //)
  where

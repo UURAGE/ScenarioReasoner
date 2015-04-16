@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Analysis of a feedbackscript
 --
 -----------------------------------------------------------------------------
---  $Id: Analysis.hs 6540 2014-05-14 15:13:00Z bastiaan $
+--  $Id: Analysis.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.FeedbackScript.Analysis
    ( -- Analysis functions

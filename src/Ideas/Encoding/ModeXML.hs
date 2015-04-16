@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: ModeXML.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: ModeXML.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.ModeXML (processXML) where
 
@@ -21,9 +21,9 @@ import Data.Maybe
 import Ideas.Common.Library hiding (exerciseId, (:=))
 import Ideas.Common.Utils (Some(..), timedSeconds)
 import Ideas.Encoding.DecoderXML
+import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Encoding.EncoderHTML
 import Ideas.Encoding.EncoderXML
-import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Encoding.Evaluator
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
@@ -75,10 +75,10 @@ xmlReply :: DomainReasoner -> Request -> XML -> IO XML
 xmlReply dr request xml = do
    srv <- case serviceId request of
              Just a  -> findService dr a
-             Nothing -> fail "No service" 
-   
+             Nothing -> fail "No service"
+
    Some options <- makeOptions dr request
-   
+
    -- HTML evaluator
    if htmlOutput request
       then do

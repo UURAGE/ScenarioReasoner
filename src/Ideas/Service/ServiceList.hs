@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ServiceList.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: ServiceList.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.ServiceList (serviceList, metaServiceList) where
 
@@ -36,7 +36,7 @@ serviceList =
    , equivalenceS, similarityS, suitableS, finishedS, readyS
    , stepsremainingS, allapplicationsS
    , applyS, generateS, createS, applicableS
-   , examplesS, submitS, diagnoseS
+   , examplesS, exampleS, submitS, diagnoseS
    , findbuggyrulesS, problemdecompositionS
    -- textual services
    , onefirsttextS, submittextS
@@ -64,7 +64,7 @@ solutionS = makeService "basic.solution"
 derivationS :: Service
 derivationS = deprecate $ makeService "basic.derivation"
    "See 'solution' service." $
-   (serviceFunction solutionS)
+   serviceFunction solutionS
 
 allfirstsS :: Service
 allfirstsS = makeService "basic.allfirsts"
@@ -155,6 +155,19 @@ examplesS = makeService "basic.examples"
    \for each exercise. Also see the generate service, which returns a random \
    \start term." $
    examplesContext ::: tExercise .-> tExamples
+
+exampleS :: Service
+exampleS = makeService "basic.example"
+   "This services returns a specific (numbered) example expresssion that can be solved \
+   \with an exercise. These are the examples that appear at the page generated \
+   \for each exercise. Also see the generate service, which returns a random \
+   \start term." $
+   f ::: tExercise .-> tInt .-> tError tState
+ where
+   f ex nr =
+      case drop nr (examplesContext ex) of
+         []       -> Left "No such example"
+         (_,c ):_ -> Right (emptyStateContext ex c)
 
 findbuggyrulesS :: Service
 findbuggyrulesS = makeService "basic.findbuggyrules"
@@ -289,7 +302,7 @@ microstepsS = makeService "meta.microsteps" "Next (minor) steps." $
 
 examplederivationsS :: Service
 examplederivationsS = makeService "meta.examplederivations"
-   "Show example derivations" $ 
+   "Show example derivations" $
    exampleDerivations ::: tExercise .-> tError (tList (tDerivation (tPair tRule tEnvironment) tContext))
 
 testreportS :: Service

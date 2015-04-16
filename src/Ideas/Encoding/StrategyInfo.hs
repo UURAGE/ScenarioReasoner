@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -- Converting a strategy to XML, and the other way around.
 --
 -----------------------------------------------------------------------------
---  $Id: StrategyInfo.hs 6759 2014-07-29 08:44:55Z bastiaan $
+--  $Id: StrategyInfo.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.StrategyInfo (strategyToXML, xmlToStrategy) where
 
@@ -66,9 +66,9 @@ coreBuilder core =
                         ]
 
 cfgItem :: String -> XMLBuilder -> XMLBuilder
-cfgItem s a = 
+cfgItem s a =
    case fromBuilder a of
-      Just e | name e `elem` ["label", "rule"] -> 
+      Just e | name e `elem` ["label", "rule"] ->
          builder e { attributes = attributes e ++ [s := "true"] }
       _      -> tag s a
 

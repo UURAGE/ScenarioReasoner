@@ -2,10 +2,10 @@
 module Ideas.Main.Revision where
 
 ideasVersion :: String
-ideasVersion = "1.2.1"
+ideasVersion = "1.3"
 
 ideasRevision :: Int
-ideasRevision = 7007
+ideasRevision = 7519
 
 ideasLastChanged :: String
-ideasLastChanged = "Mon, 13 Oct 2014"
+ideasLastChanged = "wo, 08 apr 2015"

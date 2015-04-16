@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: BasicServices.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: BasicServices.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.BasicServices
    ( -- * Basic Services
@@ -83,7 +83,7 @@ tStepInfo = tTuple3 tRule tLocation tEnvironment
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
-   | otherwise = Right $ 
+   | otherwise = Right $
         noDuplicates $ map make $ firsts state
  where
    make ((s, ctx), st) = ((stepRule s, location ctx, stepEnvironment s), st)

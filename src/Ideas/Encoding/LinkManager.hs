@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Manages links to information
 --
 -----------------------------------------------------------------------------
---  $Id: LinkManager.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: LinkManager.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.LinkManager
    ( LinkManager(..)
@@ -28,9 +28,10 @@ module Ideas.Encoding.LinkManager
    , linkToMicrosteps
    ) where
 
+import Data.Maybe
 import Ideas.Common.Library
-import Ideas.Encoding.EncoderXML
 import Ideas.Encoding.Encoder
+import Ideas.Encoding.EncoderXML
 import Ideas.Service.State
 import Ideas.Service.Types
 import Ideas.Text.HTML
@@ -157,7 +158,7 @@ dynamicLinks cgiBinary = LinkManager
    , urlForFirsts       = url . stateRequest "allfirsts"
    , urlForApplications = url . stateRequest "allapplications"
    , urlForDerivation   = url . stateRequest "derivation"
-   , urlForMicrosteps   = url . stateRequest "microsteps" 
+   , urlForMicrosteps   = url . stateRequest "microsteps"
    }
  where
    prefix  = cgiBinary ++ "?input="
@@ -185,10 +186,8 @@ stateRequest s state =
 
 -- assume nothing goest wrong
 stateToXML :: State a -> XMLBuilder
-stateToXML st = 
-   case run encodeState (simpleOptions (exercise st)) st of
-      Just a  -> a
-      Nothing -> error "LinkManager: Invalid state"
+stateToXML st = fromMaybe (error "LinkManager: Invalid state") $
+   run encodeState (simpleOptions (exercise st)) st
 
 linkWith :: (a -> String) -> a -> HTMLBuilder -> HTMLBuilder
 linkWith f = link . escapeInURL . f

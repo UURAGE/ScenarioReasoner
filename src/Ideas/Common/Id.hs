@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -30,7 +30,7 @@
 -- The 'Id' datatype implements and re-exports the Monoid interface.
 --
 -----------------------------------------------------------------------------
---  $Id: Id.hs 6818 2014-08-25 13:10:25Z bastiaan $
+--  $Id: Id.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Id
    ( -- * Constructing identifiers

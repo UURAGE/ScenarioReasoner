@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Boolean.hs 6535 2014-05-14 11:05:06Z bastiaan $
+--  $Id: Boolean.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Algebra.Boolean
    ( -- * Boolean algebra

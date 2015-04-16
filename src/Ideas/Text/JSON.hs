@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- JSON. JSON is a lightweight alternative for XML.
 --
 -----------------------------------------------------------------------------
---  $Id: JSON.hs 7050 2014-10-21 12:54:27Z bastiaan $
+--  $Id: JSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Text.JSON
    ( JSON(..), Key, Number(..)            -- types
@@ -215,7 +215,7 @@ instance InJSON RPCRequest where
                 ij = fromMaybe Null (lookupM "id" json)
             in return (Request s pj ij)
          Just _  -> fail "expecting a string as method"
-         Nothing -> fail "no method specified" 
+         Nothing -> fail "no method specified"
 
 instance InJSON RPCResponse where
    toJSON resp = Object

@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- State monad for environments
 --
 -----------------------------------------------------------------------------
---  $Id: EnvironmentMonad.hs 6542 2014-05-14 19:03:09Z bastiaan $
+--  $Id: EnvironmentMonad.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Rule.EnvironmentMonad
    ( -- * Environment Monad

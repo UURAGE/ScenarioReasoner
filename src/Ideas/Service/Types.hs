@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, FlexibleContexts #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Types.hs 7109 2014-10-28 08:18:47Z bastiaan $
+--  $Id: Types.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.Types
    ( -- * Services
@@ -71,7 +71,7 @@ equalM t1 t2 = maybe (fail msg) return (equal t1 t2)
 instance Equal f => Equal (TypeRep f) where
    equal (Iso p a)  t2         = fmap (. to p) (equal a t2)
    equal t1         (Iso p b)  = fmap (from p .) (equal t1 b)
-   equal (a :-> b)  (c :-> d)  = liftM2 (\f g h -> g . h . f) 
+   equal (a :-> b)  (c :-> d)  = liftM2 (\f g h -> g . h . f)
                                         (equal c a) (equal b d)
    equal (Pair a b) (Pair c d) = liftM2 (***) (equal a c) (equal b d)
    equal (a :|: b)  (c :|: d)  = liftM2 biMap (equal a c) (equal b d)
@@ -255,7 +255,7 @@ tDerivation t1 t2 = Tag "Derivation" $ Iso (f <-> g) tp
    g d = (firstTerm d, [ (s, a) | (_, s, a) <- triples d ])
 
 tIO :: Type a t -> Type a (IO t)
-tIO t = IO t
+tIO = IO
 
 tText :: Type a Text
 tText = Const Text
@@ -326,7 +326,7 @@ tEnvironment :: Type a Environment
 tEnvironment = Const Environment
 
 tDifficulty :: Type a Difficulty
-tDifficulty = Tag "difficulty" (Iso (f <-> show) tString)
+tDifficulty = Tag "Difficulty" (Iso (f <-> show) tString)
     where
       f = fromMaybe Medium . readDifficulty
 
@@ -357,5 +357,5 @@ tTree t = Tag "Tree" $ Iso (f <-> g) (tPair t (tList (tTree t)))
       f = uncurry Node
       g (Node a xs) = (a, xs)
 
-tTestSuiteResult :: Type a (TestSuite.Result)
+tTestSuiteResult :: Type a TestSuite.Result
 tTestSuiteResult = Const Result

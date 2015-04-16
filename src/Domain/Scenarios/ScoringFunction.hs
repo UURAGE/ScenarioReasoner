@@ -18,7 +18,7 @@ instance Show ScoringFunction where
     show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n"
     show (IntegeredCondition cond) = "condition: " ++ show cond   ++ "\n"
                      
--- | Calculates the value of a scoring function based on the given state.
+-- | Calculates the score based on the given state with a scoring function
 calculateScore :: ScoringFunction -> ScriptState -> Score
 calculateScore mainScoringFunction state = calculate mainScoringFunction  
     where calculate scoringFunction = case scoringFunction of

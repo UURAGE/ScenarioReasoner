@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderXML.hs 7093 2014-10-25 09:39:24Z bastiaan $
+--  $Id: EncoderXML.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Encoding.EncoderXML
    ( XMLEncoder
@@ -57,7 +57,7 @@ xmlEncoder =
                  Just f  -> ruleShortInfo // f val
                  Nothing -> fail "rule short info"
            Tag "RulesInfo" _ ->
-              withExercise $ \ex -> 
+              withExercise $ \ex ->
               withOpenMath $ \useOM ->
                  pure (rulesInfoXML ex (buildTerm useOM ex))
            Tag "elem" t ->

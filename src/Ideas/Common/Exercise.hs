@@ -1,6 +1,6 @@
 {-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 -- "Ideas.Common.ExerciseTests" module.
 --
 -----------------------------------------------------------------------------
---  $Id: Exercise.hs 6672 2014-07-03 19:00:52Z bastiaan $
+--  $Id: Exercise.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Exercise
    ( -- * Exercise record
@@ -374,10 +374,10 @@ randomTerms rng ex mdif = rec rng
 -- | Shows the default derivation for a given start term. The specified rule ordering
 -- is used for selection.
 showDerivation :: Exercise a -> a -> String
-showDerivation ex a = 
-   case defaultDerivation ex a of 
+showDerivation ex a =
+   case defaultDerivation ex a of
       Just d  -> showThisDerivation d ex
-      Nothing -> "no derivation" 
+      Nothing -> "no derivation"
 
 -- | Shows all derivations for a given start term. Warning: there can be many
 -- derivations.
@@ -427,5 +427,5 @@ defaultDerivation :: Exercise a -> a -> Maybe (Derivation (Rule (Context a), Env
 defaultDerivation ex = listToMaybe . allDerivations ex
 
 allDerivations :: Exercise a -> a -> [Derivation (Rule (Context a), Environment) (Context a)]
-allDerivations ex = 
+allDerivations ex =
    derivationList (ruleOrdering ex) (strategy ex) . inContext ex

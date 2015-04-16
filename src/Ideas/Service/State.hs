@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 -- derivation.
 --
 -----------------------------------------------------------------------------
---  $Id: State.hs 7022 2014-10-16 07:52:09Z bastiaan $
+--  $Id: State.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Service.State
    ( -- * Exercise state
@@ -26,8 +26,8 @@ import Data.Function
 import Data.List
 import Data.Maybe
 import Ideas.Common.Library hiding (suitable, ready, (:~>))
-import Ideas.Common.Strategy.Sequence
 import Ideas.Common.Strategy.Choice
+import Ideas.Common.Strategy.Sequence
 
 data State a = State
    { exercise     :: Exercise a
@@ -52,7 +52,7 @@ instance HasEnvironment (State a) where
    setEnvironment env s =
       s { stateContext = setEnvironment env (stateContext s) }
 
-instance Firsts (State a) where 
+instance Firsts (State a) where
    type Elem (State a) = (Step (Context a), Context a)
 
    firsts st = firstsOrdered cmp st
@@ -103,7 +103,6 @@ stateLabels :: State a -> [[Id]]
 stateLabels st = map make (prefixPaths (statePrefix st))
  where
    ex = exercise st
-   make path = 
+   make path =
       let (xs, _) = replayPath path (strategy ex) (stateContext st)
       in nub [l | Enter l <- xs] \\ [l | Exit l <- xs]
-   

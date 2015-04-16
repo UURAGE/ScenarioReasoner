@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 -- directly on it.
 --
 -----------------------------------------------------------------------------
---  $Id: Core.hs 6761 2014-07-30 12:16:50Z bastiaan $
+--  $Id: Core.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Strategy.Core
    ( GCore(..), Core
@@ -70,7 +70,7 @@ instance Choice GCore where
    (<|>)  = (:|:)
    (>|>)  = (:>|>)
    (|>)   = (:|>:)
-   
+
 instance Sequence GCore where
    done  = Succeed
    (~>)  = (:*:) . Rule
@@ -101,7 +101,7 @@ instance Functor GCore where
             Var n      -> Var n
             Succeed    -> Succeed
             Fail       -> Fail
-            
+
 instance Uniplate (GCore a) where
    uniplate core =
       case core of

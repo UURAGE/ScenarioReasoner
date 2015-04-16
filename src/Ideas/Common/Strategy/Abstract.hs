@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -----------------------------------------------------------------------------
--- Copyright 2014, Open Universiteit Nederland. This file is distributed
+-- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
 -- see the file "LICENSE.txt", which is included in the distribution.
 -----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Abstract.hs 6992 2014-10-08 14:58:58Z bastiaan $
+--  $Id: Abstract.hs 7524 2015-04-08 07:31:15Z bastiaan $
 
 module Ideas.Common.Strategy.Abstract
    ( Strategy, IsStrategy(..)
@@ -33,8 +33,8 @@ import Ideas.Common.Id
 import Ideas.Common.Rewriting (RewriteRule)
 import Ideas.Common.Rule
 import Ideas.Common.Strategy.Core
-import Ideas.Common.Strategy.Sequence (Firsts(..), firstsOrdered)
 import Ideas.Common.Strategy.Parsing
+import Ideas.Common.Strategy.Sequence (Firsts(..), firstsOrdered)
 import Ideas.Common.Utils.Uniplate hiding (rewriteM)
 import Ideas.Common.View
 
@@ -107,7 +107,7 @@ replayPath path s a =
    let (xs, f) = replayCore path (toCore s)
    in (xs, f a)
 
--- | Construct a prefix for a list of paths and a labeled strategy. The third 
+-- | Construct a prefix for a list of paths and a labeled strategy. The third
 -- argument is the current term.
 replayPaths :: IsStrategy f => [Path] -> f a -> a -> Prefix a
 replayPaths paths s a = mconcat
@@ -129,16 +129,16 @@ derivationList :: IsStrategy f => (Rule a -> Rule a -> Ordering) -> f a -> a -> 
 derivationList cmpRule s a0 = rec a0 (toPrefix s)
  where
    toPrefix = majorPrefix . flip makePrefix a0 . toCore
- 
+
    rec a prfx = (if ready prfx then (emptyDerivation a:) else id)
       [ prepend (a, rEnv) d | (rEnv, b, new) <- firstsOrd prfx, d <- rec b new ]
- 
+
    firstsOrd = map f . firstsOrdered cmp
     where
       cmp = cmpRule `on` (fst . g . fst)
-      
+
       f ((stp, b), new) = (g stp, b, new)
-      
+
       g stp = (stepRule stp, stepEnvironment stp)
 
 -- | Returns a list of all major rules that are part of a labeled strategy
