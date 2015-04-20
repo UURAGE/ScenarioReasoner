@@ -1,13 +1,3 @@
------------------------------------------------------------------------------
-{- |
-Basic functions to query a ScriptElemLanguage XML script as specified by the
-Communicate!-team.
-
-This code doesn't do any error checking on the script. ScriptElems deviating
-from the specifications may lead to unspecified behaviour (most likely
-a Haskell-exception).
--}
------------------------------------------------------------------------------
 module Domain.Scenarios.Parser where
 
 import GHC.Exts (sortWith)
@@ -25,25 +15,28 @@ import Ideas.Text.XML.Interface(parseXML, findChildren, findChild, findAttribute
 
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
-import Domain.Scenarios.ScriptState
+import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 
-data Script = Script MetaData Dialogue
+data Scenario = Scenario 
+        { scenarioMetaData :: MetaData
+        , scenarioDialogue :: Dialogue        
+        }
     deriving(Show)
 
 data MetaData = MetaData    
-        { scriptID              :: ID
-        , scriptName            :: Name
-        , scriptDescription     :: String
-        , scriptDifficulty      :: Difficulty 
-        , scriptBannerImage     :: Maybe ID
-        , scriptCharacterImage  :: Maybe ID
-        , scriptModel           :: Maybe ID 
-        , scriptParameters      :: [Parameter]
-        , scriptLocation        :: Name
-        , scriptToggles         :: [Toggle]
-        , scriptScoringFunction :: ScoringFunction
-        , scriptScoreExtremes   :: Maybe (Score, Score)
+        { scenarioID              :: ID
+        , scenarioName            :: Name
+        , scenarioDescription     :: String
+        , scenarioDifficulty      :: Difficulty 
+        , scenarioBannerImage     :: Maybe ID
+        , scenarioCharacterImage  :: Maybe ID
+        , scenarioModel           :: Maybe ID 
+        , scenarioParameters      :: [Parameter]
+        , scenarioLocation        :: Name
+        , scenarioToggles         :: [Toggle]
+        , scenarioScoringFunction :: ScoringFunction
+        , scenarioScoreExtremes   :: Maybe (Score, Score)
         }
         
 type Dialogue = [InterleaveLevel]
@@ -85,94 +78,89 @@ data ConversationTextType = PlayerText | ComputerText | SituationText
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
    
--- | Parses the XML script at "filepath" to a ScriptElement. hGetContent is NOT lazy.
-parseScriptElement :: String -> IO ScriptElement
-parseScriptElement filepath = do
+-- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
+parseScript :: String -> IO Script
+parseScript filepath = do
     withBinaryFile filepath ReadMode $ \h ->
       hGetContents h >>= either fail return . parseXML
-      -- if parameter is Left a, do fail a, if it is Right b do (return . ScriptElement) . parseXML b
+      -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 
 -- | Parses a script from a script element
-parseScript :: ScriptElement -> Script
-parseScript scriptElem = Script (parseMetaData scriptElem) (parseDialogue scriptElem)
-    
+parseScenario :: Script -> Scenario
+parseScenario script = Scenario 
+        { scenarioMetaData = parseMetaData script
+        , scenarioDialogue = parseDialogue script     
+        }
  
 -- Functions to be used internally
 ----------------------------------------------------------------------------------------------------
 
 -- MetaData Parser ---------------------------------------------------------------------------------
 
-parseMetaData :: ScriptElement -> MetaData
-parseMetaData scriptElem = MetaData    
-        { scriptID              = parseScriptID              scriptElem
-        , scriptName            = parseScriptName            scriptElem
-        , scriptDescription     = parseScriptDescription     scriptElem
-        , scriptDifficulty      = parseScriptDifficulty      scriptElem
-        , scriptBannerImage     = parseScriptBannerImage     scriptElem
-        , scriptCharacterImage  = parseScriptCharacterImage  scriptElem 
-        , scriptModel           = parseScriptModel           scriptElem
-        , scriptParameters      = parseScriptParameters      scriptElem
-        , scriptLocation        = parseScriptLocation        scriptElem
-        , scriptToggles         = parseScriptToggles         scriptElem
-        , scriptScoringFunction = parseScriptScoringFunction scriptElem
-        , scriptScoreExtremes   = parseScriptScoreExtremes   scriptElem
+parseMetaData :: Script -> MetaData
+parseMetaData script = MetaData    
+        { scenarioID              = parseScenarioID              script
+        , scenarioName            = parseScenarioName            script
+        , scenarioDescription     = parseScenarioDescription     script
+        , scenarioDifficulty      = parseScenarioDifficulty      script
+        , scenarioBannerImage     = parseScenarioBannerImage     script
+        , scenarioCharacterImage  = parseScenarioCharacterImage  script 
+        , scenarioModel           = parseScenarioModel           script
+        , scenarioParameters      = parseScenarioParameters      script
+        , scenarioLocation        = parseScenarioLocation        script
+        , scenarioToggles         = parseScenarioToggles         script
+        , scenarioScoringFunction = parseScenarioScoringFunction script
+        , scenarioScoreExtremes   = parseScenarioScoreExtremes   script
         }
         
 -- | Queries the given script for its ID.
-parseScriptID :: ScriptElement -> ID
-parseScriptID = parseMetaDataString "id"
+parseScenarioID :: Script -> ID
+parseScenarioID = parseMetaDataString "id"
 
 -- | Queries the given script for its name.
-parseScriptName :: ScriptElement -> Name
-parseScriptName = parseMetaDataString "name"
+parseScenarioName :: Script -> Name
+parseScenarioName = parseMetaDataString "name"
 
 -- | Queries the given script for its description.
-parseScriptDescription :: ScriptElement -> String
-parseScriptDescription = parseMetaDataString "description"
+parseScenarioDescription :: Script -> String
+parseScenarioDescription = parseMetaDataString "description"
 
-parseScriptLocation :: ScriptElement -> Name
-parseScriptLocation = parseMetaDataString "location"
+parseScenarioLocation :: Script -> Name
+parseScenarioLocation = parseMetaDataString "location"
 
 -- | Queries the given script for its difficulty.
-parseScriptDifficulty :: ScriptElement -> Difficulty
-parseScriptDifficulty scriptElem = errorOnFail errorMsg (readDifficulty difficultyString)
+parseScenarioDifficulty :: Script -> Difficulty
+parseScenarioDifficulty script = errorOnFail errorMsg (readDifficulty difficultyString)
  where 
-    difficultyString = parseMetaDataString "difficulty" scriptElem
+    difficultyString = parseMetaDataString "difficulty" script
     errorMsg = "Could not read difficulty: " ++ difficultyString
 
 -- | Queries the given script for its banner image.
-parseScriptBannerImage :: ScriptElement -> Maybe ID
-parseScriptBannerImage scriptElem = nothingOnFail (
-    findChild "metadata" scriptElem >>=
+parseScenarioBannerImage :: Script -> Maybe ID
+parseScenarioBannerImage script = nothingOnFail (
+    findChild "metadata" script >>=
     findChild "bannerImage"         >>=
     findAttribute "extid")
 
 -- | Queries the given script for its character image.
-parseScriptCharacterImage :: ScriptElement -> Maybe ID
-parseScriptCharacterImage scriptElem = nothingOnFail(
-    findChild "metadata" scriptElem >>=
+parseScenarioCharacterImage :: Script -> Maybe ID
+parseScenarioCharacterImage script = nothingOnFail(
+    findChild "metadata" script >>=
     findChild "characterImage"      >>=
     findAttribute "extid")
 
 -- | Queries the given script for its model.
-parseScriptModel :: ScriptElement -> Maybe ID
-parseScriptModel scriptElem = nothingOnFail(
-    findChild "metadata" scriptElem >>=
+parseScenarioModel :: Script -> Maybe ID
+parseScenarioModel script = nothingOnFail(
+    findChild "metadata" script >>=
     findChild "model"               >>=
     findAttribute "extid")
 
--- | Queries the given script for its startId.
-parseScriptStartId :: ScriptElement -> ID
-parseScriptStartId scriptElem = getAttribute "idref" startElem
-  where
-    metaDataElem = getChild "metadata" scriptElem
-    startElem    = getChild "start" metaDataElem
-    
 -- | Queries the given script for its parameters.
-parseScriptParameters :: ScriptElement -> [Parameter]
-parseScriptParameters scriptElem = map parseParameter (children parameterElem)
+parseScenarioParameters :: Script -> [Parameter]
+parseScenarioParameters script = map parseParameter (children parameterElem)
   where
-    metaDataElem  = getChild "metadata" scriptElem
+    metaDataElem  = getChild "metadata" script
     parameterElem = getChild "parameters" metaDataElem
     
     -- | Parses a parameter Element inside the parameters inside the metadata of the script.
@@ -185,15 +173,15 @@ parseScriptParameters scriptElem = map parseParameter (children parameterElem)
         , parameterScored       = parseMaybeBool (findAttribute "scored" paramElem)
         }
 
-parseScriptToggles :: ScriptElement -> [Toggle]
-parseScriptToggles scriptElem = map parseToggle toggleNames
-    where parseToggle toggleName = Toggle toggleName (parseBool (parseMetaDataString toggleName scriptElem))
+parseScenarioToggles :: Script -> [Toggle]
+parseScenarioToggles script = map parseToggle toggleNames
+    where parseToggle toggleName = Toggle toggleName (parseBool (parseMetaDataString toggleName script))
 
 -- | Queries the given script for its scoring function.
-parseScriptScoringFunction :: ScriptElement -> ScoringFunction
-parseScriptScoringFunction scriptElem = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
+parseScenarioScoringFunction :: Script -> ScoringFunction
+parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
   where 
-    metaDataElem = getChild "metadata" scriptElem
+    metaDataElem = getChild "metadata" script
     scoringFunctionElem = getChild "scoringFunction" metaDataElem
     scoringFunctionChild [elem] = elem
     scoringFunctionChild _      = error "could not parse scoringFunction" 
@@ -213,9 +201,9 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
 -- | Queries the given script for its score extremes.
-parseScriptScoreExtremes :: ScriptElement -> Maybe (Score, Score)
-parseScriptScoreExtremes scriptElem = 
-    findChild "metadata" scriptElem >>=
+parseScenarioScoreExtremes :: Script -> Maybe (Score, Score)
+parseScenarioScoreExtremes script = 
+    findChild "metadata" script >>=
     findChild "scoreExtremes"       >>= 
     \scoreExtremesElem -> do
     minimumValue <- findAttribute "minimum" scoreExtremesElem
@@ -227,10 +215,10 @@ parseScriptScoreExtremes scriptElem =
     
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
-parseDialogue :: ScriptElement -> Dialogue
-parseDialogue scriptElem = map parseInterleaveLevel interleaveElems
+parseDialogue :: Script -> Dialogue
+parseDialogue script = map parseInterleaveLevel interleaveElems
   where
-    sequenceElem = getChild "sequence" scriptElem
+    sequenceElem = getChild "sequence" script
     interleaveElems = findChildren "interleave" sequenceElem    
     
 parseInterleaveLevel :: Element -> InterleaveLevel
@@ -417,10 +405,10 @@ parseValue elem = read (getAttribute "value" elem) :: ParameterValue
 
 -- | Queries the given script for basic information. Which information being queried is specified
 --  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
-parseMetaDataString :: Name -> ScriptElement -> String
-parseMetaDataString metaDataName scriptElem = getData dataElem
+parseMetaDataString :: Name -> Script -> String
+parseMetaDataString metaDataName script = getData dataElem
   where 
-    metadata = getChild "metadata" scriptElem
+    metadata = getChild "metadata" script
     dataElem = getChild metaDataName metadata
     
     

@@ -10,6 +10,7 @@ import Domain.Scenarios.Services.ScenarioInfo
 import Domain.Scenarios.Services.Score
 
 -- | Ideas Framework type definitions for sending an object through a service
+-- | for more explanation see Ideas.Service.Types and the documentation 
 
 -- ScenarioInfo types -----------------------------------------------------------------------------------------------------------
 tScenarioInfo :: Type a ScenarioInfo

@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
-module Domain.Scenarios.ScriptState where
+module Domain.Scenarios.ScenarioState where
 
 import Control.Monad
 import Data.Char
@@ -12,9 +12,9 @@ import Ideas.Text.JSON
 
 import Domain.Scenarios.Globals(ID, ParameterValue)
 
--- | ScriptState
+-- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy.
-type ScriptState = (M.Map ID ParameterValue, ID)
+type ScenarioState = (M.Map ID ParameterValue, ID)
 
 -- | The effect of a statement on the current state
 data Effect = Effect
@@ -32,7 +32,7 @@ instance Show Effect where
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
 -- | Applies the chosen effect to the state
-applyEffect :: Effect -> ScriptState -> ScriptState
+applyEffect :: Effect -> ScenarioState -> ScenarioState
 applyEffect effect state = case effectChangeType effect of
         Set   -> setParam idref value state
         Delta -> setParam idref ((getParamOrZero idref state) + value) state
@@ -40,7 +40,7 @@ applyEffect effect state = case effectChangeType effect of
           value = effectValue effect
           
 
--- ScriptState to JSON for sending and receiving a Map datatype in JSON ---------------------------
+-- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
 
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
@@ -49,10 +49,10 @@ instance InJSON a => InJSON (M.Map String a)  where
         where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue) 
     fromJSON _ = fail "expecting an object"
 
-showJSON :: ScriptState -> String
+showJSON :: ScenarioState -> String
 showJSON = compactJSON . toJSON
 
-readJSON :: String -> Either String ScriptState
+readJSON :: String -> Either String ScenarioState
 readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON
 
 -- Instances of isTerm
@@ -67,12 +67,12 @@ instance IsTerm (M.Map ID ParameterValue) where
    
 ---------------------------------------------------------------------------------------------------
 
--- Functions for changing the ScriptState 
+-- Functions for changing the ScenarioState 
 
 -- If the parameter is in the state return its value otherwise return zero
-getParamOrZero :: ID -> ScriptState -> ParameterValue
+getParamOrZero :: ID -> ScenarioState -> ParameterValue
 getParamOrZero pID state = M.findWithDefault 0 pID (fst state)
 
--- Set the parameter to a specific value
-setParam :: ID -> ParameterValue -> ScriptState -> ScriptState
+-- Set the parameter to a specific value and return the new state
+setParam :: ID -> ParameterValue -> ScenarioState -> ScenarioState
 setParam pID value state = (M.insert pID value (fst state), snd state)

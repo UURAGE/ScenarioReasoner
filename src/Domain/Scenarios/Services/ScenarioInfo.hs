@@ -9,13 +9,13 @@ import Domain.Scenarios.Id(findScript)
 
 data ScenarioInfo = ScenarioInfo ID
                                  Name
-                                 String          --Description
+                                 String           -- Description
                                  Difficulty 
-                                 (Maybe ID)       --BannerImage
-                                 (Maybe ID)       --CharacterImage
-                                 (Maybe ID)       --Model
+                                 (Maybe ID)       -- BannerImage
+                                 (Maybe ID)       -- CharacterImage
+                                 (Maybe ID)       -- Model
                                  [ParameterInfo]
-                                 Name            --Location
+                                 Name             -- Location
                                  [Toggle]
             
 instance Show ScenarioInfo where
@@ -32,28 +32,28 @@ data ParameterInfo = ParameterInfo ID
 instance Show ParameterInfo where
   show (ParameterInfo id name emotion) = show id ++ ", " ++ show name ++ ", " ++ show emotion
   
--- scenariolist service
-scenariolist :: [ScriptElement] -> [ScenarioInfo]
-scenariolist = map (getScenarioInfo . parseScript)
+-- Scenariolist service: lists all info for each scenario
+scenariolist :: [Script] -> [ScenarioInfo]
+scenariolist = map (getScenarioInfo . parseScenario)
 
--- scenarioinfo service
-scenarioinfo :: [ScriptElement] -> Exercise a -> ScenarioInfo
-scenarioinfo scripts ex = getScenarioInfo (parseScript (findScript "get info for" scripts ex))
+-- Scenarioinfo service: shows the info for a specific scenario (exercise)
+scenarioinfo :: [Script] -> Exercise a -> ScenarioInfo
+scenarioinfo scripts ex = getScenarioInfo (parseScenario (findScript "get info for" scripts ex))
 
-getScenarioInfo :: Script -> ScenarioInfo
-getScenarioInfo script@(Script metadata _) = ScenarioInfo
-                (show $ getId script)
-                (scriptName metadata)
-                (scriptDescription metadata)
-                (scriptDifficulty metadata)
-                (scriptBannerImage metadata)
-                (scriptCharacterImage metadata)
-                (scriptModel metadata)
-                (map describeParameter (scriptParameters metadata))
-                (scriptLocation metadata)
-                (scriptToggles metadata)
+getScenarioInfo :: Scenario -> ScenarioInfo
+getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
+                (show (getId scenario))
+                (scenarioName           metadata)
+                (scenarioDescription    metadata)
+                (scenarioDifficulty     metadata)
+                (scenarioBannerImage    metadata)
+                (scenarioCharacterImage metadata)
+                (scenarioModel          metadata)
+                (map describeParameter (scenarioParameters metadata))
+                (scenarioLocation       metadata)
+                (scenarioToggles        metadata)
   where 
     describeParameter param = ParameterInfo
-        (parameterId param)
-        (parameterName param)
+        (parameterId      param)
+        (parameterName    param)
         (parameterEmotion param)

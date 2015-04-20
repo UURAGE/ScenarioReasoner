@@ -6,7 +6,7 @@ import Data.Char
 import Ideas.Common.Library
 
 import Domain.Scenarios.Parser
-import Domain.Scenarios.Globals(ID, Name, ScriptElement)
+import Domain.Scenarios.Globals(ID, Name, Script)
 import Domain.Scenarios.Id
           
 type StatementText = (Either String [(String, String)])
@@ -18,23 +18,23 @@ data StatementInfo = StatementInfo ID
                                    (Maybe String) -- feedback
                                    MediaInfo
 
-data MediaInfo = MediaInfo [(Name, ID)] [ID] -- MediaInfo Video Audio
-        
-statementsinfo :: [ScriptElement] -> Exercise a -> [StatementInfo]
-statementsinfo scripts ex = map statementInfo (getScriptStatements script)
-  where script = parseScript (findScript "get info for" scripts ex)
+data MediaInfo = MediaInfo [(String, ID)] [ID] -- MediaInfo [(VisualType, VisualID)] AudioIDs where VisualType is either an "image" or a "video"
+     
+-- StatementsInfo service: for a scenario get all statements and return the info      
+statementsinfo :: [Script] -> Exercise a -> [StatementInfo]
+statementsinfo scripts ex = map statementInfo (getScriptStatements scenario)
+  where scenario = parseScenario (findScript "get info for" scripts ex)
         statementInfo statement = StatementInfo
-            (show $ createFullId script statement)
-            (toIdTypeSegment $ statType statement)
-            (either Left (Right . map showConversationTextTypeStringTuple) $
-                statText statement)
+            (show (createFullId scenario statement))
+            (toIdTypeSegment (statType statement))
+            (either Left (Right . map showConversationText) (statText statement))
             (statIntents statement)
             (statFeedback statement)
             ((\(Media vs as) -> MediaInfo vs as) (statMedia statement))              
-        showConversationTextTypeStringTuple (ctt, s) = (map toLower $ show ctt, s)
+        showConversationText (ct, s) = (map toLower (show ct), s)
 
-        getScriptStatements :: Script -> [Statement]
-        getScriptStatements (Script _ dialogue) =  concatMap treeStatements allTrees
+        getScriptStatements :: Scenario -> [Statement]
+        getScriptStatements (Scenario _ dialogue) =  concatMap treeStatements allTrees
           where 
             allTrees = concatMap (\(_, trees) -> trees) dialogue
 

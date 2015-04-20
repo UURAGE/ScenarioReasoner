@@ -6,25 +6,25 @@ import Data.List(intercalate)
 
 import Ideas.Common.Library
 
-import Domain.Scenarios.Globals(ScriptElement, applyToFirst)
+import Domain.Scenarios.Globals(Script, applyToFirst)
 import Domain.Scenarios.Parser
 
 -- Definitions of Id instances and functions (Id is a data structure from the Ideas framework)
----------------------------------------------------------
-
-instance HasId ScriptElement where
-    getId scriptElem = either error id $ do
-                let id = parseScriptID scriptElem
-                let descr = parseScriptDescription scriptElem
-                return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElement is determined externally."
 
 instance HasId Script where
-    getId (Script metadata _) = either error id $ do
-                let id = scriptID metadata
-                let descr = scriptDescription metadata
+    getId script = either error id $ do
+                let scenario = scenarioMetaData (parseScenario script)
+                let descr = scenarioDescription scenario
+                let id = scenarioID scenario
                 return $ describe descr $ "scenarios" # id
-    changeId _ _ = error "The ID of a ScriptElement is determined externally."
+    changeId _ _ = error "The ID of a Script is determined externally."
+
+instance HasId Scenario where
+    getId (Scenario metadata _) = either error id $ do
+                let id = scenarioID metadata
+                let descr = scenarioDescription metadata
+                return $ describe descr $ "scenarios" # id
+    changeId _ _ = error "The ID of a Script is determined externally."
 
 instance HasId Statement where
     getId statement = either error id $ do
@@ -36,10 +36,10 @@ instance HasId Statement where
     
 
 -- | Creates the full ID for the given statement in the context of the given script.
-createFullId :: Script -> Statement -> Id
-createFullId script statement = scriptId # typeSegment # statId # interleaveSegment
+createFullId :: Scenario -> Statement -> Id
+createFullId scenario statement = scenarioID # typeSegment # statId # interleaveSegment
   where 
-    scriptId = getId script
+    scenarioID = getId scenario
     typeSegment = toIdTypeSegment $ statType statement
     statId = statID statement 
     
@@ -53,7 +53,7 @@ createFullId script statement = scriptId # typeSegment # statId # interleaveSegm
 toIdTypeSegment :: StatementType -> String
 toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show                    
                       
-findScript :: String -> [ScriptElement] -> Exercise a -> ScriptElement
+findScript :: String -> [Script] -> Exercise a -> Script
 findScript usage scripts ex =
     case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
             [foundScript] -> foundScript

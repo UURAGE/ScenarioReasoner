@@ -12,54 +12,55 @@ import Ideas.Common.Library
 import Ideas.Common.Strategy.Combinators hiding (not)
 import Ideas.Text.XML.Interface(Element)
 
-import Domain.Scenarios.ScriptState
+import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Id(toIdTypeSegment)
 
---Framework code, try not to break your head.
-guardedRule :: IsId b => b -> String -> (ScriptState -> Bool) -> (ScriptState -> ScriptState) -> Rule ScriptState
+-- Make a rule with an identifier and a description, 
+-- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
+guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
 guardedRule identifier description precondCheck applyEffects =
     describe description $ makeRule identifier (\state -> do guard $ precondCheck state; Just $ applyEffects state)
-    --Make description and add it to the rule and make the rule if the precondition holds
    
-makeGuardedRule :: ID -> Statement -> Tree -> String -> Rule ScriptState
-makeGuardedRule scriptID statement tree interleaved = guardedRule
-    (["scenarios", scriptID, toIdTypeSegment (statType statement), statID statement, interleaved]) -- create an identifier for the rule
-    (either id (intercalate " // " . map snd) (statText statement))                         -- make a description of the rule
+makeGuardedRule :: ID -> Statement -> Tree -> String -> Rule ScenarioState
+makeGuardedRule scenarioID statement tree interleaved = guardedRule
+    (["scenarios", scenarioID, toIdTypeSegment (statType statement), statID statement, interleaved]) -- create an identifier for the rule
+    (either id (intercalate " // " . map snd) (statText statement))                                -- make a description for the rule
     (evaluateMaybeCondition (statPrecondition statement))                                          -- check if precondition is fulfilled
-    (\state -> foldr applyEffect (fst state, treeID tree) (statEffects statement))                 -- apply the effects of a statement to the emotional state
+    (\state -> foldr applyEffect (fst state, treeID tree) (statEffects statement))                 -- apply the effects of a statement to the state
     --The initial state is not generated here. 
     --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             
 
--- Takes the dialogue, sorts it with the level of interleaving and makes a strategy foreach level          
-makeStrategy :: Monad m => ScriptElement -> m (Strategy ScriptState)
+-- Parses the dialogue from the script, sorts it with the level of interleaving and makes a strategy for each level          
+makeStrategy :: Monad m => Script -> m (Strategy ScenarioState)
 makeStrategy script = do
-    let dialogue = parseDialogue script
+    let dialogue = (\(Scenario metaData dialogue) -> dialogue) (parseScenario script)
     let sortedDialogue = sortWith (\(level, _) -> level) dialogue
-    let scriptID = parseScriptID script
-    intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scriptID) sortedDialogue
+    let scenarioID = parseScenarioID script
+    intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scenarioID) sortedDialogue
     return (sequence' intLvlStrategies)
       where 
         sequence' = Ideas.Common.Strategy.Combinators.sequence
         
--- Foreach tree (subject) in an interleave level make a strategy 
-makeIntLvlStrategy :: Monad m => InterleaveLevel -> ID -> m (Strategy ScriptState) 
-makeIntLvlStrategy (_, trees) scriptID = do
-    treeStrategies <- mapM (\tree -> makeTreeStrategy tree scriptID) trees
+-- For each tree (subject) in an interleave level make a strategy 
+makeIntLvlStrategy :: Monad m => InterleaveLevel -> ID -> m (Strategy ScenarioState) 
+makeIntLvlStrategy (_, trees) scenarioID = do
+    treeStrategies <- mapM (\tree -> makeTreeStrategy tree scenarioID) trees
     return (interleave treeStrategies)
     
--- Recursively make a strategy for a tree by walking down the whole tree
-makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScriptState)
-makeTreeStrategy tree scriptID = do
+-- Recursively make a strategy for a tree by making a strategy for the starting statement,
+-- then get the next statements and make a strategy for those statements and so on.
+makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScenarioState)
+makeTreeStrategy tree scenarioID = do
     let startID = treeStartID tree    
-    strategy <- makeStatementStrategy tree scriptID startID    
+    strategy <- makeStatementStrategy tree scenarioID startID    
     return strategy
 
-makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScriptState)
-makeStatementStrategy tree scriptID statementID = do 
+makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScenarioState)
+makeStatementStrategy tree scenarioID statementID = do 
     -- Find the given statement in the tree with the id
     let statementErrorMsg = "Could not find statement: " ++ statementID ++ " in tree: " ++ treeID tree
     let maybeStatement = find (\stat -> statID stat == statementID) (treeStatements tree)
@@ -69,16 +70,17 @@ makeStatementStrategy tree scriptID statementID = do
     
     -- Make a rule for the statement and tell the framework if we want to interleave here or not. 
     -- (processed in Ideas.Common.Strategy.Parsing.hs in the switch function!)
-    let rule | jumpPoint statement                                 = makeGuardedRule scriptID statement tree "interleaved"
-             | not (endOfConversation statement) && null (nextIDs) = makeGuardedRule scriptID statement tree "interleaved"
-             | otherwise                                           = makeGuardedRule scriptID statement tree "" 
+    let rule | jumpPoint statement                                 = makeGuardedRule scenarioID statement tree "interleaved"
+             | not (endOfConversation statement) && null (nextIDs) = makeGuardedRule scenarioID statement tree "interleaved"
+             | otherwise                                           = makeGuardedRule scenarioID statement tree "" 
             
     case nextIDs of 
         [] -> return (toStrategy rule)
         _  -> do
-            -- Foreach next statement make a strategy
-            nextStrategyList <- mapM (makeStatementStrategy tree scriptID) nextIDs
+            -- For each next statement make a strategy
+            nextStrategyList <- mapM (makeStatementStrategy tree scenarioID) nextIDs
             
+            -- Combine all possible next strategies with the choice operator
             let nextStrategy = alternatives nextStrategyList
             
             let strategy = rule <*> nextStrategy

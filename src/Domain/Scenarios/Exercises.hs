@@ -7,33 +7,33 @@ import System.Directory
 
 import Ideas.Common.Library
 
-import Domain.Scenarios.Globals(ScriptElement, parameterId, parameterInitialValueOrZero)
+import Domain.Scenarios.Globals(Script, parameterId, parameterInitialValueOrZero)
 import Domain.Scenarios.Strategy(makeStrategy)
 import Domain.Scenarios.Parser
-import Domain.Scenarios.ScriptState
+import Domain.Scenarios.ScenarioState
 
-getExercises :: String ->  IO ([Exercise ScriptState], [ScriptElement])
+getExercises :: String ->  IO ([Exercise ScenarioState], [Script])
 getExercises scenarioId = do
     let scriptPath = "../../scenarios/scripts/" ++ (tail $ dropWhile (\x -> x/= '.') scenarioId) ++ ".xml" -- : The script directory.
     exercisePair <- getExercise scriptPath
     return $ (dummyExercise : [fst exercisePair], [snd exercisePair])
 
-getExercise :: String -> IO (Exercise ScriptState, ScriptElement)
+getExercise :: String -> IO (Exercise ScenarioState, Script)
 getExercise path = do
-    scriptElem <- parseScriptElement path
-    exercise <- exerciseFromScript scriptElem
-    return (exercise, scriptElem)
+    script <- parseScript path
+    exercise <- exerciseFromScript script
+    return (exercise, script)
 
-exerciseFromScript :: Monad m => ScriptElement -> m (Exercise ScriptState)
-exerciseFromScript scriptElem = do
-    let scriptMetaData = parseMetaData scriptElem
-    scriptStrategy <- makeStrategy scriptElem
-    let difficulty = scriptDifficulty scriptMetaData
-    let parameters = scriptParameters scriptMetaData
+exerciseFromScript :: Monad m => Script -> m (Exercise ScenarioState)
+exerciseFromScript script = do
+    let scriptMetaData = parseMetaData script
+    scriptStrategy <- makeStrategy script
+    let difficulty = scenarioDifficulty scriptMetaData
+    let parameters = scenarioParameters scriptMetaData
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = (fromList (map processParameter parameters), "") :: ScriptState --initial state for strategy generation
+        initialState = (fromList (map processParameter parameters), "") :: ScenarioState --initial state for strategy generation
     return makeExercise
-       { exerciseId     = getId scriptElem
+       { exerciseId     = getId script
        , status         = Alpha
        , parser         = readJSON
        , prettyPrinter  = showJSON
@@ -52,5 +52,5 @@ exerciseFromScript scriptElem = do
 
        
 -- A dummy exercise necessary for use with general services
-dummyExercise :: Exercise ScriptState
+dummyExercise :: Exercise ScenarioState
 dummyExercise = makeExercise { exerciseId = newId "scenarios-dummy" }

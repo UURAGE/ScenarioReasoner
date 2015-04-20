@@ -5,15 +5,17 @@ import Data.Maybe
 import Ideas.Text.XML.Interface(Element)
 
 -- | Type definitions 
-type ScriptElement = Element
+type Script = Element
 type ParameterValue = Int
 type Emotion = String
 type ID = String
 type Name = String
 type Score = Int
 
--- global datastructures
 
+-- Global datastructures and utility functions ---------------------------------------------------------------------------
+
+-- Specifies if a certain feature should be on or off
 data Toggle = Toggle Name Bool
     
 instance Show Toggle where
@@ -24,7 +26,7 @@ toggleNames = ["showscore"    --score at the end of the game
               ,"showfeedback" --feedback at the end of the game
               , "feedback"]   --feedback during the game
     
--- specifies a parameter that can be an emotion or a goal of a conversation like "structureren"
+-- Specifies a parameter that can be an emotion or a goal of a conversation like "inleven"
 data Parameter = Parameter
     { parameterId           :: ID
     , parameterName         :: Name
