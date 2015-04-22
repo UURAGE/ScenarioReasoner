@@ -26,12 +26,12 @@ getExercise path = do
 
 exerciseFromScript :: Monad m => Script -> m (Exercise ScenarioState)
 exerciseFromScript script = do
-    let scriptMetaData = parseMetaData script
-    scriptStrategy <- makeStrategy script
-    let difficulty = scenarioDifficulty scriptMetaData
-    let parameters = scenarioParameters scriptMetaData
+    let metadata = scenarioMetaData (parseScenario script)
+    scenarioStrategy <- makeStrategy script
+    let difficulty = scenarioDifficulty metadata
+    let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = (fromList (map processParameter parameters), "") :: ScenarioState --initial state for strategy generation
+        initialState = fromList (map processParameter parameters) :: ScenarioState --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
@@ -43,7 +43,7 @@ exerciseFromScript script = do
        , suitable       = true
        , hasTypeable    = useTypeable
        -- , extraRules     = undefined
-       , strategy       = liftToContext $ label "The One And Only Strategy" scriptStrategy
+       , strategy       = liftToContext $ label "The One And Only Strategy" scenarioStrategy
        -- , navigation     = undefined
        , testGenerator  = Nothing
        -- , randomExercise = undefined

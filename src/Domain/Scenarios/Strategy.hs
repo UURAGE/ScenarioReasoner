@@ -29,7 +29,7 @@ makeGuardedRule scenarioID statement tree interleaved = guardedRule
     (["scenarios", scenarioID, toIdTypeSegment (statType statement), statID statement, interleaved]) -- create an identifier for the rule
     (either id (intercalate " // " . map snd) (statText statement))                                -- make a description for the rule
     (evaluateMaybeCondition (statPrecondition statement))                                          -- check if precondition is fulfilled
-    (\state -> foldr applyEffect (fst state, treeID tree) (statEffects statement))                 -- apply the effects of a statement to the state
+    (\state -> foldr applyEffect state (statEffects statement))                 -- apply the effects of a statement to the state
     --The initial state is not generated here. 
     --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             
@@ -37,7 +37,7 @@ makeGuardedRule scenarioID statement tree interleaved = guardedRule
 -- Parses the dialogue from the script, sorts it with the level of interleaving and makes a strategy for each level          
 makeStrategy :: Monad m => Script -> m (Strategy ScenarioState)
 makeStrategy script = do
-    let dialogue = (\(Scenario metaData dialogue) -> dialogue) (parseScenario script)
+    let dialogue = scenarioDialogue (parseScenario script)
     let sortedDialogue = sortWith (\(level, _) -> level) dialogue
     let scenarioID = parseScenarioID script
     intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scenarioID) sortedDialogue
@@ -69,7 +69,7 @@ makeStatementStrategy tree scenarioID statementID = do
     let nextIDs = nextStatIDs statement    
     
     -- Make a rule for the statement and tell the framework if we want to interleave here or not. 
-    -- (processed in Ideas.Common.Strategy.Parsing.hs in the switch function!)
+    -- #WIKIREF: for information about the solution for interleaving, see code:haskellcode:ideas on the wiki
     let rule | jumpPoint statement                                 = makeGuardedRule scenarioID statement tree "interleaved"
              | not (endOfConversation statement) && null (nextIDs) = makeGuardedRule scenarioID statement tree "interleaved"
              | otherwise                                           = makeGuardedRule scenarioID statement tree "" 

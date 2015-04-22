@@ -14,7 +14,7 @@ import Domain.Scenarios.Globals(ID, ParameterValue)
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy.
-type ScenarioState = (M.Map ID ParameterValue, ID)
+type ScenarioState = M.Map ID ParameterValue
 
 -- | The effect of a statement on the current state
 data Effect = Effect
@@ -38,6 +38,17 @@ applyEffect effect state = case effectChangeType effect of
         Delta -> setParam idref ((getParamOrZero idref state) + value) state
     where idref = effectIdref effect
           value = effectValue effect
+          
+          
+-- Functions for changing the ScenarioState 
+
+-- If the parameter is in the state return its value otherwise return zero
+getParamOrZero :: ID -> ScenarioState -> ParameterValue
+getParamOrZero pID state = M.findWithDefault 0 pID state
+
+-- Set the parameter to a specific value and return the new state
+setParam :: ID -> ParameterValue -> ScenarioState -> ScenarioState
+setParam pID value state = M.insert pID value state
           
 
 -- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
@@ -65,14 +76,4 @@ instance IsTerm (M.Map ID ParameterValue) where
    x' <- fromTerm x
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
    
----------------------------------------------------------------------------------------------------
-
--- Functions for changing the ScenarioState 
-
--- If the parameter is in the state return its value otherwise return zero
-getParamOrZero :: ID -> ScenarioState -> ParameterValue
-getParamOrZero pID state = M.findWithDefault 0 pID (fst state)
-
--- Set the parameter to a specific value and return the new state
-setParam :: ID -> ParameterValue -> ScenarioState -> ScenarioState
-setParam pID value state = (M.insert pID value (fst state), snd state)
+----------------------------------------------------------------------------------------------------

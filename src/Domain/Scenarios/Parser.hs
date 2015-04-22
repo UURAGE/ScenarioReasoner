@@ -58,14 +58,11 @@ data Statement = Statement
         , jumpPoint         :: Bool
         , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
-        , statMedia         :: Media
+        , statMedia         :: MediaInfo
         , statIntents       :: [String]
         , statFeedback      :: Maybe String
         }
-    
-data Media = Media [(Name, ID)] [ID] -- Media Visuals Audios
-    deriving(Show)
-
+   
 -- | A value describing the type of a statement element 
 data StatementType = ComputerStatement | PlayerStatement | Conversation
     deriving (Show, Eq, Read)
@@ -324,8 +321,8 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
                       Nothing       -> liftM singleton $ findChild "nextComputerStatement" element         
 
 -- | Parses media of the statement element
-parseMedia :: Element -> Media
-parseMedia statElem = Media (parseMediaVisuals statElem) (parseMediaAudios statElem)
+parseMedia :: Element -> MediaInfo
+parseMedia statElem = MediaInfo (parseMediaVisuals statElem) (parseMediaAudios statElem)
   where 
     -- | Takes a statement and returns its visual media.
     parseMediaVisuals :: Element -> [(Name, ID)]
@@ -404,12 +401,14 @@ parseValue :: Element -> ParameterValue
 parseValue elem = read (getAttribute "value" elem) :: ParameterValue
 
 -- | Queries the given script for basic information. Which information being queried is specified
---  in the "metaDataName". This could be the name of the script, the difficulty, date, etc.
+--  in the "metaDataName". This could be the name of the script, the difficulty, location, etc.
 parseMetaDataString :: Name -> Script -> String
 parseMetaDataString metaDataName script = getData dataElem
   where 
     metadata = getChild "metadata" script
     dataElem = getChild metaDataName metadata
+    
+----------------------------------------------------------------------------------------------------
     
     
 -- Show instances for the datatypes defined at the top of Parser.hs

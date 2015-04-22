@@ -25,6 +25,10 @@ toggleNames :: [Name]
 toggleNames = ["showscore"    --score at the end of the game
               ,"showfeedback" --feedback at the end of the game
               , "feedback"]   --feedback during the game
+ 
+-- MediaInfo [(VisualType, VisualID)] AudioIDs where VisualType is either an "image" or a "video" 
+data MediaInfo = MediaInfo [(String, ID)] [ID] 
+    deriving(Show)
     
 -- Specifies a parameter that can be an emotion or a goal of a conversation like "inleven"
 data Parameter = Parameter
@@ -44,7 +48,8 @@ parameterInitialValueOrZero :: Parameter -> ParameterValue
 parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
                      
 
--- | Extra functions for getting a type out of Monad
+-- | Extra functions for getting a type out of Monad to catch the fail case, 
+-- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.
 errorOnFail :: String -> Maybe a -> a
 errorOnFail errorMsg ma = fromMaybe (error errorMsg) ma
 

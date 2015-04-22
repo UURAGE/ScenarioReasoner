@@ -21,7 +21,7 @@ type SubScore = (ID, Name, Score)
 -- merges a tuple into the main structure of the result
 score :: [Script] -> State a -> ScoreResult
 score scripts fstate = ScoreResult mainScore subScores mainScoreExtremes
-    where metaData = parseMetaData (findScript "score" scripts $ exercise fstate)
+    where metaData = scenarioMetaData (parseScenario (findScript "score" scripts $ exercise fstate))
           state = (fromMaybe (error "Cannot score exercise: casting failed.") $
                       castFrom (exercise fstate) (stateTerm fstate))
           mainScore = calculateScore (scenarioScoringFunction metaData) state
