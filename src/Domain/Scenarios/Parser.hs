@@ -188,7 +188,7 @@ parseScoringFunction :: Element -> ScoringFunction
 parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     "constant"           -> Constant            parseConstant
     "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
-    "scale"              -> Scale               parseScalar (parseScoringFunction paramElem)
+    "scale"              -> Scale parseScalar  (parseScoringFunction paramElem)
     "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
     "integeredCondition" -> IntegeredCondition (parseCondition conditionElem)
   where 
