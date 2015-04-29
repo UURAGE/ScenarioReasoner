@@ -356,7 +356,7 @@ parseMedia statElem = Media (parseMediaVisuals statElem) (parseMediaAudios statE
     parseMediaAudios statElem = map (getAttribute "extid") audioElems
       where audioElems =
                 findChild "media" statElem >>= 
-                findChild "audio"          >>= 
+                findChild "audios"          >>= 
                 children 
             
 -- | Takes a statement and returns its intents.
