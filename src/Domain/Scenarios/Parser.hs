@@ -272,11 +272,8 @@ parseText statElem =
 -- | Uses the monadic findChild for Maybe Monad
 parseMaybePrecondition :: Element -> Maybe Condition
 parseMaybePrecondition statElem =
-    maybe Nothing (Just . parseConditionRoot) (findChild "preconditions" statElem)
-  where  
-    -- | Parses a condition root if it contains exactly one condition.
-    parseConditionRoot :: Element -> Condition
-    parseConditionRoot conditionRootElem = parseCondition (getChild "condition" conditionRootElem)
+    maybe Nothing (Just . parseCondition . getExactlyOneChild) conditionElem
+      where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects.
 parseEffects :: Element -> [Effect]
@@ -387,6 +384,12 @@ getAttribute attributeName element = errorOnFail errorMsg mAttribute
   where 
     errorMsg = "Failed to find attribute: " ++ attributeName 
     mAttribute = findAttribute attributeName element
+    
+getExactlyOneChild :: Element -> Element
+getExactlyOneChild element = case children element of 
+    []      -> error "no children found"
+    [child] -> child
+    _       -> error "multiple children found"
     
 -- | Parses a Bool.
 parseBool :: String -> Bool
