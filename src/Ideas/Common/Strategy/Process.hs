@@ -13,21 +13,23 @@
 -- class, an implementation, and utility functions.
 --
 -----------------------------------------------------------------------------
---  $Id: Process.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Process.hs 7638 2015-04-30 13:23:05Z bastiaan $
 
 module Ideas.Common.Strategy.Process
    ( -- * IsProcess type class
-     IsProcess(..)
+     IsProcess(..), fromProcess
      -- * Process data type
    , Process, menu, eqProcessBy
      -- * Building sequences
    , Builder
      -- * Query functions on a Process
    , ready, stopped, firsts
+   , runProcess
      -- * Higher-order functions for iterating over a Process
    , fold, accum, scan, prune
    ) where
 
+import Ideas.Common.Classes
 import Ideas.Common.Strategy.Choice
 import Ideas.Common.Strategy.Sequence
 
@@ -37,6 +39,9 @@ import Ideas.Common.Strategy.Sequence
 class (Choice f, Sequence f) => IsProcess f where
    -- | Convert to the 'Process' data type.
    toProcess :: f a -> Process a
+
+fromProcess :: IsProcess f => Process a -> f a
+fromProcess = fold (~>) done
 
 ------------------------------------------------------------------------
 -- Process data type
@@ -93,6 +98,9 @@ eqProcessBy eq = rec
    eqStep Done      Done      = True
    eqStep _         _         = False
 
+runProcess :: Apply f => Process (f a) -> a -> [a]
+runProcess p a = bests (accum applyAll a p) 
+
 ------------------------------------------------------------------------
 -- Building sequences
 
@@ -102,6 +110,9 @@ eqProcessBy eq = rec
 -- it can be inspected in any way.
 
 newtype Builder a = B (Process a -> Process a)
+
+instance Functor Builder where
+   fmap f =  fromProcess . fmap f . toProcess -- inefficient
 
 instance Choice Builder where
    single a = B (a ~>)

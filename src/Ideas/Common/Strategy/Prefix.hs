@@ -17,80 +17,30 @@
 -- operation.
 --
 -----------------------------------------------------------------------------
---  $Id: Parsing.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Prefix.hs 7638 2015-04-30 13:23:05Z bastiaan $
 
-module Ideas.Common.Strategy.Parsing
-   ( -- * Running @Core@ strategies
-     runCore
-     -- * Prefix
-   , Prefix, noPrefix, makePrefix, replayCore
+module Ideas.Common.Strategy.Prefix
+   ( -- * Prefix
+     Prefix, noPrefix, makePrefix, Core, runCore, replayCore
    , isEmptyPrefix, majorPrefix, searchModePrefix, prefixPaths
-     -- * Step
-   , Step(..), stepRule, stepEnvironment
      -- * Path
    , Path, emptyPath, readPath, readPaths
    ) where
 
 import Control.Monad
 import Data.Function
-import Data.List
+import Data.List (intercalate)
 import Ideas.Common.Classes
-import Ideas.Common.Environment
 import Ideas.Common.Id
 import Ideas.Common.Rule
 import Ideas.Common.Strategy.Choice
-import Ideas.Common.Strategy.Core
+import Ideas.Common.CyclicTree
 import Ideas.Common.Strategy.Derived
 import Ideas.Common.Strategy.Process
+import Ideas.Common.Strategy.Def
 import Ideas.Common.Strategy.Sequence
+import Ideas.Common.Strategy.Step
 import Ideas.Common.Utils (fst3, splitsWithElem, readM)
-import Ideas.Common.Utils.Uniplate
-
---------------------------------------------------------------------------------
--- Running Core strategies
-
--- | Run a @Core@ strategy and return all results.
-runCore :: Core a -> a -> [a]
-runCore core a = bests $ accum applyAll a $ coreToProcess False core
-
-coreToProcess :: Bool -> Core a -> Process (Step a)
-coreToProcess useLabels = fromAtoms . toProcess . rec . coreSubstAll
- where
-   rec :: Core a -> Builder (Sym (Step a))
-   rec core =
-      case core of
-         a :*: b    -> rec a <*> rec b
-         a :|: b    -> rec a <|> rec b
-         a :>|> b   -> rec a >|> rec b
-         a :|>: b   -> rec a |> rec b
-         Rule r     -> single (Single (RuleStep mempty r))
-         Fail       -> empty
-         Succeed    -> done
-         Label l a
-            | useLabels -> Single (Enter l) ~> rec a
-                           <*> single (Single (Exit l))
-            | otherwise -> rec a
-         a :%: b    -> concurrent switch (rec a) (rec b)
-         a :@: b    -> rec a <@> rec b
-         Atomic a   -> atomic (rec a)
-         Not a      -> notCore a
-         Remove _   -> empty
-         Collapse a -> rec (collapse a)
-         Hide a     -> rec (fmap minor a)
-         Let _ _    -> error "not substituted: let"
-         Var _      -> error "not substituted: var"
-
-   switch (Single (Enter _)) = False
-   switch (Single (RuleStep _ r)) = isInfixOf "interleaved" (showId (getId r))
-   switch _ = True
-
-collapse :: Core a -> Core a
-collapse (Label l s) = Rule $ makeRule l (runCore s)
-collapse core = descend collapse core
-
-notCore :: Core a -> Builder (Sym (Step a))
-notCore core = single $ Single $ RuleStep mempty $
-   checkRule "core.not" $ null . runCore core
 
 --------------------------------------------------------------------------------
 -- Prefix datatype
@@ -116,6 +66,21 @@ instance Firsts (Prefix a) where
       f ((st, a, path) :~> p) = (st, a) :~> Prefix [path] p
 
 --------------------------------------------------------------------------------
+-- Running Core strategies
+
+type Core a = CyclicTree Def (Rule a)
+
+runCore :: Core a -> a -> [a]
+runCore = runProcess . coreToProcess
+
+coreToProcess :: Core a -> Process (Step a)
+coreToProcess = toProcess . foldUnwind emptyAlg 
+   { fNode  = useDef
+   , fLeaf  = single . RuleStep mempty
+   , fLabel = \l p -> Enter l ~> p <*> (Exit l ~> done)
+   }
+   
+--------------------------------------------------------------------------------
 -- Constructing a prefix
 
 -- | The error prefix (i.e., without a location in the strategy).
@@ -130,7 +95,7 @@ makePrefix = snd . replayCore emptyPath
 -- argument is the current term.
 replayCore :: Path -> Core a -> ([Step a], a -> Prefix a)
 replayCore path core =
-   let (acc, p) = runPath path (withPath (coreToProcess True core))
+   let (acc, p) = runPath path (withPath (coreToProcess core))
    in (map fst acc, Prefix [path] . applySteps p)
 
 runPath :: Path -> Process a -> ([a], Process a)
@@ -195,50 +160,6 @@ searchModePrefix eq prfx =
 -- | Returns the current @Path@.
 prefixPaths :: Prefix a -> [Path]
 prefixPaths = getPaths
-
---------------------------------------------------------------------------------
--- Step
-
--- | The steps during the parsing process: enter (or exit) a labeled
--- sub-strategy, or a rule.
-data Step a = Enter Id                      -- ^ Enter a labeled sub-strategy
-            | Exit Id                       -- ^ Exit a labeled sub-strategy
-            | RuleStep Environment (Rule a) -- ^ Rule that was applied
-   deriving Eq
-
-instance Show (Step a) where
-   show (Enter l) = "enter " ++ showId l
-   show (Exit l)  = "exit " ++ showId l
-   show (RuleStep _ r) = show r
-
-instance Apply Step where
-   applyAll (RuleStep _ r) = applyAll r
-   applyAll _              = return
-
-instance HasId (Step a) where
-   getId (Enter l)      = getId l
-   getId (Exit l)       = getId l
-   getId (RuleStep _ r) = getId r
-
-   changeId f (Enter l)        = Enter (changeId f l)
-   changeId f (Exit l)         = Exit  (changeId f l)
-   changeId f (RuleStep env r) = RuleStep env (changeId f r)
-
-instance Minor (Step a) where
-   setMinor b (RuleStep env r) = RuleStep env (setMinor b r)
-   setMinor _ st = st
-
-   isMinor (RuleStep _ r) = isMinor r
-   isMinor _ = True
-
-stepRule :: Step a -> Rule a
-stepRule (RuleStep _ r) = r
-stepRule (Enter l)      = idRule (l # "enter")
-stepRule (Exit l)       = idRule (l # "exit")
-
-stepEnvironment :: Step a -> Environment
-stepEnvironment (RuleStep env _) = env
-stepEnvironment _ = mempty
 
 --------------------------------------------------------------------------------
 -- Path

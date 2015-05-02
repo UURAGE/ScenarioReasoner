@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Traversal.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Traversal.hs 7606 2015-04-25 17:29:04Z bastiaan $
 
 module Ideas.Common.Strategy.Traversal
    ( layer, traverse, Option
@@ -18,7 +18,8 @@ module Ideas.Common.Strategy.Traversal
    , full, spine, stop, once, leftmost, rightmost
    , traversalFilter, parentFilter
      -- * One-pass traversals
-   , fulltd, fullbu, oncetd, oncebu, leftmostbu, leftmosttd, somewhere
+   , fulltd, fullbu, oncetd, oncebu, leftmostbu, leftmosttd
+   , somewhere, somewhereWhen
    , oncetdPref, oncebuPref
      -- * Fixpoint traversals
    , innermost, outermost
@@ -31,6 +32,7 @@ import Ideas.Common.Strategy.Abstract
 import Ideas.Common.Strategy.Combinators
 import Ideas.Common.Traversal.Navigator
 import Prelude hiding (repeat, not)
+import qualified Prelude
 
 ----------------------------------------------------------------------
 -- One-layer combinators
@@ -167,6 +169,11 @@ leftmosttd = traverse [setCombinator OrElse, setVisit VisitFirst, topdown]
 
 somewhere :: (IsStrategy f, Navigator a) => f a -> Strategy a
 somewhere = traverse []
+
+-- as long as the predicate does not hold, go to the next layer
+somewhereWhen :: (IsStrategy g, Navigator a) => (a -> Bool) -> g a -> Strategy a
+somewhereWhen p s = fix $ \this -> 
+   check p <*> s <|> check (Prelude.not . p) <*> layer [] this
 
 ----------------------------------------------------------------------
 -- fixpoint traverses
