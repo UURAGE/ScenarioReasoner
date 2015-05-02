@@ -336,7 +336,7 @@ parseMedia statElem = MediaInfo (parseMediaVisuals statElem) (parseMediaAudios s
         parseMediaVisual :: Element -> (Name, ID)
         parseMediaVisual e = (name e, getAttribute "extid" e)
 
-    -- | Takes a statement and returns its visual media.
+    -- | Takes a statement and returns its audio.
     parseMediaAudios :: Element -> [ID]
     parseMediaAudios statElem = map (getAttribute "extid") audioElems
       where audioElems =
