@@ -37,17 +37,11 @@ instance HasId Statement where
 
 -- | Creates the full ID for the given statement in the context of the given script.
 createFullId :: Scenario -> Statement -> Id
-createFullId scenario statement = scenarioID # typeSegment # statId # interleaveSegment
+createFullId scenario statement = scenarioID # typeSegment # statId
   where 
     scenarioID = getId scenario
     typeSegment = toIdTypeSegment $ statType statement
-    statId = statID statement 
-    
-    nextIDs = nextStatIDs statement
-    
-    interleaveSegment | jumpPoint statement                                 = "interleaved"
-                      | not (endOfConversation statement) && (null nextIDs) = "interleaved"
-                      | otherwise                                           = ""
+    statId = statID statement
 
 -- | Returns the value to be used to represent a statement type in a rule ID.
 toIdTypeSegment :: StatementType -> String
