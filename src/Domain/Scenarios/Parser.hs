@@ -45,7 +45,7 @@ type InterleaveLevel = (Int, [Tree])
 
 data Tree = Tree
         { treeID          :: ID
-        , treeStartID     :: ID
+        , treeStartIDs     :: [ID]
         , treeStatements  :: [Statement]
         }        
         
@@ -229,10 +229,13 @@ parseTree :: Element -> Tree
 parseTree treeElem = 
     Tree
     { treeID         = getAttribute "id" treeElem
-    , treeStartID    = getAttribute "idref" (getChild "start" treeElem)
+    , treeStartIDs   = parseStartIDs treeElem
     , treeStatements = parseStatements treeElem
     }
-
+    
+parseStartIDs :: Element -> [ID]
+parseStartIDs treeElem = map (getAttribute "idref") (findChildren "start" treeElem)
+    
 parseStatements :: Element -> [Statement]
 parseStatements treeElem = playerStats ++ computerStats ++ conversation
   where
