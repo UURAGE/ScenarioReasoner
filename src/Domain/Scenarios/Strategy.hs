@@ -80,7 +80,6 @@ makeStatementStrategy tree scenarioID statementID = do
             let nextStrategy = alternatives nextStrategyList
             
             let strategy | jumpPoint statement                                 = rule <*> nextStrategy
-                         | not (endOfConversation statement) && null (nextIDs) = rule <*> nextStrategy
                          | otherwise                                           = rule !~> nextStrategy -- the atomic prefix combinator, this combinator doesn't allow interleaving
                          
             return strategy
