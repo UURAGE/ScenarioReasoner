@@ -93,7 +93,7 @@ allfirsts state
            _ -> []
 
     mergeDuplicates = mapMaybe mergeSteps . groupWith eq
-    eq = similarity (exercise state) `on` (stateContext . snd)
+    eq ((r1, _,_), _) ((r2, _, _), _) = getId r1 == getId r2
       
     groupWith :: (a -> a -> Bool) -> [a] -> [[a]]
     groupWith _ []     = []
