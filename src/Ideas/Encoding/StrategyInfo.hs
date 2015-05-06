@@ -11,15 +11,15 @@
 -- Converting a strategy to XML, and the other way around.
 --
 -----------------------------------------------------------------------------
---  $Id: StrategyInfo.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: StrategyInfo.hs 7638 2015-04-30 13:23:05Z bastiaan $
 
-module Ideas.Encoding.StrategyInfo (strategyToXML, xmlToStrategy) where
+module Ideas.Encoding.StrategyInfo (strategyToXML) where
 
-import Control.Monad
-import Ideas.Common.Library hiding (Remove, Collapse, Hide, (:=))
+import Ideas.Common.Id
+import Ideas.Common.CyclicTree
 import Ideas.Common.Strategy.Abstract
-import Ideas.Common.Strategy.Core
-import Ideas.Common.Utils (readInt)
+import Ideas.Common.Strategy.Prefix
+import Ideas.Common.Strategy.Def
 import Ideas.Text.XML
 
 -----------------------------------------------------------------------
@@ -33,72 +33,46 @@ nameAttr info = "name" .=. showId info
 
 coreToXML :: Core a -> XML
 coreToXML core = makeXML "label" $
-   case core of
-      Label l a -> nameAttr l <> coreBuilder a
-      _         -> coreBuilder core
+   case isLabel core of
+      Just (l, a) -> nameAttr l <> coreBuilder a
+      _ -> coreBuilder core
 
 coreBuilder :: Core a -> XMLBuilder
-coreBuilder core =
-   case core of
-      _ :*:  _   -> asList "sequence"   isSequence
-      _ :|:  _   -> asList "choice"     isChoice
-      _ :>|> _   -> asList "preference" isPreference
-      _ :|>: _   -> asList "orelse"     isOrElse
-      _ :%: _    -> asList "interleave" isInterleave
-      a :@: b    -> tag "alternate" (coreBuilder a <> coreBuilder b)
-      Label l (Rule r) | getId l == getId r
-                 -> tag "rule"       (nameAttr l)
-      Label l a  -> tag "label"      (nameAttr l <> coreBuilder a)
-      Atomic a   -> tag "atomic"     (coreBuilder a)
-      Not a      -> tag "not"        (coreBuilder a)
-      Remove a   -> cfgItem "removed"     (coreBuilder a)
-      Collapse a -> cfgItem "collapsed" (coreBuilder a)
-      Hide a     -> cfgItem "hidden"      (coreBuilder a)
-      Let ds a   -> tag "let"        (decls ds <> coreBuilder a)
-      Rule r     -> tag "rule"       ("name" .=. show r)
-      Var n      -> tag "var"        ("var" .=. show n)
-      Succeed    -> emptyTag "succeed"
-      Fail       -> emptyTag "fail"
- where
-   asList s g = element s (map coreBuilder (collect g core))
-   decls ds   = mconcat [ tag "decl" (("var" .=. show n) <> coreBuilder a)
-                        | (n, a) <- ds
-                        ]
+coreBuilder = fold emptyAlg
+   { fNode = \def xs -> 
+        case xs of
+           [x] | isProperty def 
+             -> addProperty (show def) x
+           _ -> tag (show def) (mconcat xs)
+   , fLeaf = \r -> 
+        tag "rule" ("name" .=. show r)
+   , fLabel = \l a ->
+        tag "label" (nameAttr l <> a)
+   , fRec = \n a ->
+        tag "rec" (("var" .=. show n) <> a)
+   , fVar = \n -> 
+        tag "var" ("var" .=. show n)
+   } . flatten
 
-cfgItem :: String -> XMLBuilder -> XMLBuilder
-cfgItem s a =
+flatten :: Core a -> Core a
+flatten = replaceNode $ \def -> node def . concatMap (collect def)
+ where
+   collect def core = 
+      case isNode core of
+         Just (d, xs) | d == def -> xs
+         _ -> [core]
+
+addProperty :: String -> XMLBuilder -> XMLBuilder
+addProperty s a =
    case fromBuilder a of
       Just e | name e `elem` ["label", "rule"] ->
          builder e { attributes = attributes e ++ [s := "true"] }
       _      -> tag s a
 
-collect :: (a -> Maybe (a, a)) -> a -> [a]
-collect f = ($ []) . rec
- where rec a = maybe (a:) (\(x, y) -> rec x . rec y) (f a)
-
-isSequence :: Core a -> Maybe (Core a, Core a)
-isSequence (a :*: b) = Just (a, b)
-isSequence _ = Nothing
-
-isChoice :: Core a -> Maybe (Core a, Core a)
-isChoice (a :|: b) = Just (a, b)
-isChoice _ = Nothing
-
-isPreference :: Core a -> Maybe (Core a, Core a)
-isPreference (a :>|> b) = Just (a, b)
-isPreference _ = Nothing
-
-isOrElse :: Core a -> Maybe (Core a, Core a)
-isOrElse (a :|>: b) = Just (a, b)
-isOrElse _ = Nothing
-
-isInterleave :: Core a -> Maybe (Core a, Core a)
-isInterleave (a :%: b) = Just (a, b)
-isInterleave _ = Nothing
-
 -----------------------------------------------------------------------
 -- XML to strategy
 
+{-
 xmlToStrategy :: Monad m => (String -> Maybe (Rule a)) ->  XML -> m (Strategy a)
 xmlToStrategy f = liftM fromCore . readStrategy xmlToInfo g
  where
@@ -111,17 +85,17 @@ xmlToInfo xml = do
    n <- findAttribute "name" xml
    -- let boolAttr s = fromMaybe False (findBool s xml)
    return (newId n)
-{-
+
 findBool :: Monad m => String -> XML -> m Bool
 findBool attr xml = do
    s <- findAttribute attr xml
    case map toLower s of
       "true"  -> return True
       "false" -> return False
-      _       -> fail "not a boolean" -}
+      _       -> fail "not a boolean"
 
 readStrategy :: Monad m => (XML -> m Id) -> (Id -> m (Rule a)) -> XML -> m (Core a)
-readStrategy toLabel findRule xml = do
+readStrategy toLabel findRule xml = error "not implemented" do
    xs <- mapM (readStrategy toLabel findRule) (children xml)
    let s = name xml
    case lookup s table of
@@ -134,12 +108,12 @@ readStrategy toLabel findRule xml = do
       | otherwise = return (foldr1 (:*:) xs)
    buildChoice _ xs
       | null xs   = return Fail
-      | otherwise = return (foldr1 (:|:) xs)
+      | otherwise = return (foldr1 (:|:) xs) 
    buildOrElse _ xs
       | null xs   = return Fail
-      | otherwise = return (foldr1 (:|>:) xs)
+      | otherwise = return (foldr1 (:|>:) xs) 
    buildInterleave _ xs
-      | null xs   = return Succeed
+      | null xs   = return succeedCore
       | otherwise = return (foldr1 (:%:) xs)
    buildLabel x = do
       info <- toLabel xml
@@ -147,7 +121,7 @@ readStrategy toLabel findRule xml = do
    buildRule = do
       info <- toLabel xml
       r    <- findRule info
-      return (Label info (Rule r))
+      return (Label info (Sym r))
    buildVar = do
       s <- findAttribute "var" xml
       i <- maybe (fail "var: not an int") return (readInt s)
@@ -167,9 +141,11 @@ readStrategy toLabel findRule xml = do
       , ("orelse",     buildOrElse)
       , ("interleave", buildInterleave)
       , ("label",      join2 comb1 buildLabel)
-      , ("atomic",     comb1 Atomic)
+     -- , ("atomic",     comb1 Atomic)
       , ("rule",       join2 comb0 buildRule)
       , ("var",        join2 comb0 buildVar)
-      , ("succeed",    comb0 Succeed)
-      , ("fail",       comb0 Fail)
+--      , ("succeed",    comb0 Succeed)
+      --, ("fail",       comb0 Fail)
       ]
+
+-}

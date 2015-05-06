@@ -21,6 +21,7 @@ module Ideas.Service.BasicServices
 import Control.Monad
 import Data.List
 import Data.Maybe
+import Data.Function
 import Ideas.Common.Library hiding (applicable, apply, ready)
 import Ideas.Common.Traversal.Navigator (downs, navigateTo)
 import Ideas.Common.Utils (fst3)
@@ -83,17 +84,33 @@ tStepInfo = tTuple3 tRule tLocation tEnvironment
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
-   | otherwise = Right $
-        noDuplicates $ map make $ firsts state
- where
-   make ((s, ctx), st) = ((stepRule s, location ctx, stepEnvironment s), st)
+   | otherwise = Right $ 
+        mergeDuplicates $ concatMap make $ firsts state                 
+  where 
+    make ((stp, ctx), st) =
+       case stp of
+           RuleStep env r -> [((r, location ctx, env), st)]
+           _ -> []
 
-   noDuplicates []     = []
-   noDuplicates (x:xs) = x : noDuplicates (filter (not . eq x) xs)
-
-   eq (x1, s1) (x2, s2) =
-      x1 == x2 && exercise s1 == exercise s2
-      && similarity (exercise s1) (stateContext s1) (stateContext s2)
+    mergeDuplicates = mapMaybe mergeSteps . groupWith eq
+    eq ((r1, _,_), _) ((r2, _, _), _) = getId r1 == getId r2
+      
+    groupWith :: (a -> a -> Bool) -> [a] -> [[a]]
+    groupWith _ []     = []
+    groupWith f (x:xs) = 
+       let (ys, zs) = partition (f x) xs
+       in  (x:ys) : groupWith f zs
+                         
+    mergeSteps :: [(StepInfo a, State a)] -> Maybe (StepInfo a, State a)
+    mergeSteps xs = do
+        (step, state) <- safeHead xs 
+        return (step, state { statePrefix = newPrefix })
+      where
+        newPrefix = mconcat [ statePrefix st | (_, st) <- xs ]
+        
+    safeHead :: [a] -> Maybe a
+    safeHead (x:_) = Just x
+    safeHead []    = Nothing
 
 onefirst :: State a -> Either String (StepInfo a, State a)
 onefirst state =

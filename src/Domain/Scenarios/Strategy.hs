@@ -24,9 +24,9 @@ guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioStat
 guardedRule identifier description precondCheck applyEffects =
     describe description $ makeRule identifier (\state -> do guard $ precondCheck state; Just $ applyEffects state)
    
-makeGuardedRule :: ID -> Statement -> Tree -> String -> Rule ScenarioState
-makeGuardedRule scenarioID statement tree interleaved = guardedRule
-    (["scenarios", scenarioID, toIdTypeSegment (statType statement), statID statement, interleaved]) -- create an identifier for the rule
+makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
+makeGuardedRule scenarioID statement tree = guardedRule
+    (["scenarios", scenarioID, toIdTypeSegment (statType statement), statID statement]) -- create an identifier for the rule
     (either id (intercalate " // " . map snd) (statText statement))                                -- make a description for the rule
     (evaluateMaybeCondition (statPrecondition statement))                                          -- check if precondition is fulfilled
     (\state -> foldr applyEffect state (statEffects statement))                 -- apply the effects of a statement to the state
@@ -68,12 +68,8 @@ makeStatementStrategy tree scenarioID statementID = do
     
     let nextIDs = nextStatIDs statement    
     
-    -- Make a rule for the statement and tell the framework if we want to interleave here or not. 
-    -- #WIKIREF: for information about the solution for interleaving, see code:haskellcode:ideas on the wiki
-    let rule | jumpPoint statement                                 = makeGuardedRule scenarioID statement tree "interleaved"
-             | not (endOfConversation statement) && null (nextIDs) = makeGuardedRule scenarioID statement tree "interleaved"
-             | otherwise                                           = makeGuardedRule scenarioID statement tree "" 
-            
+    let rule = makeGuardedRule scenarioID statement tree
+    
     case nextIDs of 
         [] -> return (toStrategy rule)
         _  -> do
@@ -83,6 +79,7 @@ makeStatementStrategy tree scenarioID statementID = do
             -- Combine all possible next strategies with the choice operator
             let nextStrategy = alternatives nextStrategyList
             
-            let strategy = rule <*> nextStrategy
+            let strategy | jumpPoint statement                                 = rule <*> nextStrategy
+                         | otherwise                                           = rule !~> nextStrategy -- the atomic prefix combinator, this combinator doesn't allow interleaving
                          
             return strategy
