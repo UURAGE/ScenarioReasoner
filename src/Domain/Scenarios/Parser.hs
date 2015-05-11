@@ -56,6 +56,7 @@ data Statement = Statement
         , statPrecondition  :: Maybe Condition
         , statEffects       :: [Effect]
         , jumpPoint         :: Bool
+        , statInits         :: Bool
         , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
         , statMedia         :: MediaInfo
@@ -249,6 +250,7 @@ parseStatement statElem =
     , statPrecondition  = parseMaybePrecondition    statElem
     , statEffects       = parseEffects              statElem
     , jumpPoint         = parseJumpPoint            statElem
+    , statInits         = parseInits                statElem
     , endOfConversation = parseEnd                  statElem
     , nextStatIDs       = parseNextStatIDs          statElem
     , statMedia         = parseMedia                statElem
@@ -294,6 +296,9 @@ parseEffect effectElem = Effect
             
 parseJumpPoint :: Element -> Bool    
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
+
+parseInits :: Element -> Bool
+parseInits statElem = parseMaybeBool (findAttribute "inits" statElem)
 
 parseEnd :: Element -> Bool    
 parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
@@ -436,13 +441,14 @@ instance Show Tree where
         " statements: " ++ show stats ++ "\n"
         
 instance Show Statement where
-    show (Statement id t desc pc es jp end nexts media is fb) = "\n  " ++
+    show (Statement id t desc pc es jp inits end nexts media is fb) = "\n  " ++
         "statement: "     ++ show id    ++ "\n\t" ++
         " type: "         ++ show t     ++ "\n\t" ++
         " description: "  ++ show desc  ++ "\n\t" ++ 
         " precondition: " ++ show pc    ++ "\n\t" ++
         " effects: "      ++ show es    ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
+        " inits: "        ++ show inits ++ "\n\t" ++
         " end: "          ++ show end   ++ "\n\t" ++
         " nextIDs: "      ++ show nexts ++ "\n\t" ++
         " media: "        ++ show media ++ "\n\t" ++

@@ -5,7 +5,7 @@ import GHC.Exts(sortWith)
 import Data.Maybe
 
 import Control.Monad hiding (sequence)
-import Data.List
+import Data.List hiding (inits)
 import qualified Data.Map as M
 
 import Ideas.Common.Library
@@ -79,7 +79,9 @@ makeStatementStrategy tree scenarioID statementID = do
             -- Combine all possible next strategies with the choice operator
             let nextStrategy = alternatives nextStrategyList
             
-            let strategy | jumpPoint statement                                 = rule <*> nextStrategy
-                         | otherwise                                           = rule !~> nextStrategy -- the atomic prefix combinator, this combinator doesn't allow interleaving
+            let strategy | jumpPoint statement && statInits statement = rule <*> inits nextStrategy
+                         | jumpPoint statement                        = rule <*> nextStrategy
+                         | statInits statement                        = rule !~> inits nextStrategy
+                         | otherwise                                  = rule !~> nextStrategy -- the atomic prefix combinator, this combinator doesn't allow interleaving
             
             return strategy
