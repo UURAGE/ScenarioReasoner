@@ -27,10 +27,9 @@ instance Show ScenarioInfo where
 
 data ParameterInfo = ParameterInfo ID
                                    Name
-                                   (Maybe Emotion)
     
 instance Show ParameterInfo where
-  show (ParameterInfo id name emotion) = show id ++ ", " ++ show name ++ ", " ++ show emotion
+  show (ParameterInfo id name) = show id ++ ", " ++ show name
   
 -- Scenariolist service: lists all info for each scenario
 scenariolist :: [Script] -> [ScenarioInfo]
@@ -56,4 +55,3 @@ getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
     describeParameter param = ParameterInfo
         (parameterId      param)
         (parameterName    param)
-        (parameterEmotion param)

@@ -36,8 +36,14 @@ evaluateCondition mainCondition state = evaluate mainCondition
 evaluateComparisonCondition :: ComparisonCondition -> ScenarioState -> Bool
 evaluateComparisonCondition comparison state = operator tested value
     where operator = getCompareOperator (conditionTest comparison)
-          tested = getParamOrZero (conditionIdref comparison) state
+          tested = getParameterValue state
           value  = conditionValue comparison
+          
+          getParameterValue (ScenarioState paramMap emotionMap) | paramValue /= 0 = paramValue
+                                                                | otherwise       = emotionValue            
+            where
+              paramValue = getParamOrZero (conditionIdref comparison) paramMap
+              emotionValue = getParamOrZero (conditionIdref comparison) emotionMap
 
 -- | Evaluates the possible condition based on the given state, if there is no condition evaluate to True
 evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool

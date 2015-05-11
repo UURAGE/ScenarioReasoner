@@ -34,14 +34,13 @@ data MediaInfo = MediaInfo [(String, ID)] [ID]
 data Parameter = Parameter
     { parameterId           :: ID
     , parameterName         :: Name
-    , parameterEmotion      :: Maybe Emotion
     , parameterInitialValue :: Maybe ParameterValue
     , parameterScored       :: Bool
     }
     
 instance Show Parameter where
-    show (Parameter id name emo initvalue scored) = 
-        show id ++ "\t" ++ show name ++ "\t" ++ show emo ++ "\t" ++ show initvalue ++ "\t" ++ show scored ++ "\n"
+    show (Parameter id name initvalue scored) = 
+        show id ++ "\t" ++ show name ++ "\t" ++ "\t" ++ show initvalue ++ "\t" ++ show scored ++ "\n"
     
 -- | Returns the initial value of a parameter, or zero if it does not have one.
 parameterInitialValueOrZero :: Parameter -> ParameterValue

@@ -31,9 +31,8 @@ tScenarioInfo =
                        
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
-                                     (Pair (Tag "name"     tString)
-                                           (Tag "emotion" (tMaybe tString))))                                           
-        where pairify (ParameterInfo id name emotion) = (id, (name, emotion))
+                                     (Tag "name"     tString))                                        
+        where pairify (ParameterInfo id name) = (id,name)
         
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
@@ -67,3 +66,9 @@ tMediaInfo =
     Iso ((<-!) pairify) (Pair (Tag "visuals" (tList (tPair tString tString)))
                               (Tag "audios"  (tList tString)))
         where pairify (MediaInfo visuals audios) = (visuals, audios)
+        
+        
+        
+        
+        
+

@@ -54,7 +54,8 @@ data Statement = Statement
         , statType          :: StatementType
         , statText          :: Either String [(ConversationTextType, String)]
         , statPrecondition  :: Maybe Condition
-        , statEffects       :: [Effect]
+        , statParamEffects  :: [Effect]
+        , statEmotionEffects:: [Effect]
         , jumpPoint         :: Bool
         , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
@@ -165,7 +166,6 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
     parseParameter paramElem = Parameter
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
-        , parameterEmotion      = nothingOnFail (findAttribute "emotionid" paramElem)
         , parameterInitialValue = nothingOnFail (findAttribute "initialValue" paramElem >>= readM)
         , parameterScored       = parseMaybeBool (findAttribute "scored" paramElem)
         }
@@ -247,7 +247,8 @@ parseStatement statElem =
     , statType          = parseType                 statElem       
     , statText          = parseText                 statElem
     , statPrecondition  = parseMaybePrecondition    statElem
-    , statEffects       = parseEffects              statElem
+    , statParamEffects  = parseParameterEffects     statElem
+    , statEmotionEffects= parseEmotionEffects       statElem
     , jumpPoint         = parseJumpPoint            statElem
     , endOfConversation = parseEnd                  statElem
     , nextStatIDs       = parseNextStatIDs          statElem
@@ -276,21 +277,33 @@ parseMaybePrecondition statElem =
       where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects.
-parseEffects :: Element -> [Effect]
-parseEffects statElem = map parseEffect effectElems 
-  where effectElems = emptyOnFail (findChild "effects" statElem >>= return . children)
-
-parseEffect :: Element -> Effect
-parseEffect effectElem = Effect
+parseParameterEffects :: Element -> [Effect]
+parseParameterEffects statElem = map parseParameterEffect paramElems
+  where paramElems = emptyOnFail (findChild "parameterEffects" statElem >>= return . children)
+    
+parseEmotionEffects :: Element -> [Effect]
+parseEmotionEffects statElem = map parseEmotionEffect emotionElems
+  where emotionElems = emptyOnFail (findChild "emotionEffects" statElem >>= return . children)
+  
+parseParameterEffect :: Element -> Effect
+parseParameterEffect effectElem = Effect
             { effectIdref      = getAttribute "idref" effectElem
             , effectChangeType = parseChangeType      effectElem
             , effectValue      = parseValue           effectElem
             }
-  where 
-    -- | Parses a string to a Changetype. Gives an exception on invalid input.
-    parseChangeType :: Element -> ChangeType
-    parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
-      where changeTypeStr = getAttribute "changeType" effectElem
+            
+parseEmotionEffect :: Element -> Effect
+parseEmotionEffect effectElem = Effect
+            { effectIdref      = getAttribute "emotionid" effectElem
+            , effectChangeType = parseChangeType      effectElem
+            , effectValue      = parseValue           effectElem
+            }
+            
+            
+-- | Parses a string to a Changetype. Gives an exception on invalid input.
+parseChangeType :: Element -> ChangeType
+parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
+  where changeTypeStr = getAttribute "changeType" effectElem
             
 parseJumpPoint :: Element -> Bool    
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
@@ -436,12 +449,13 @@ instance Show Tree where
         " statements: " ++ show stats ++ "\n"
         
 instance Show Statement where
-    show (Statement id t desc pc es jp end nexts media is fb) = "\n  " ++
+    show (Statement id t desc pc pes ees jp end nexts media is fb) = "\n  " ++
         "statement: "     ++ show id    ++ "\n\t" ++
         " type: "         ++ show t     ++ "\n\t" ++
         " description: "  ++ show desc  ++ "\n\t" ++ 
         " precondition: " ++ show pc    ++ "\n\t" ++
-        " effects: "      ++ show es    ++ "\n\t" ++
+        " paramEffects: " ++ show pes   ++ "\n\t" ++
+        " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
         " end: "          ++ show end   ++ "\n\t" ++
         " nextIDs: "      ++ show nexts ++ "\n\t" ++

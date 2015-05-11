@@ -2,7 +2,7 @@ module Domain.Scenarios.Exercises where
 
 import Control.Monad
 import Data.List
-import Data.Map(findWithDefault, fromList)
+import Data.Map(findWithDefault, fromList, empty)
 import System.Directory
 
 import Ideas.Common.Library
@@ -31,7 +31,7 @@ exerciseFromScript script = do
     let difficulty = scenarioDifficulty metadata
     let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = fromList (map processParameter parameters) :: ScenarioState --initial state for strategy generation
+        initialState = ScenarioState (fromList (map processParameter parameters)) empty --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
