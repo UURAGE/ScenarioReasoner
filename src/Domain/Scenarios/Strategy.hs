@@ -55,9 +55,9 @@ makeIntLvlStrategy (_, trees) scenarioID = do
 -- then get the next statements and make a strategy for those statements and so on.
 makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScenarioState)
 makeTreeStrategy tree scenarioID = do
-    let startIDs = treeStartIDs tree    
-    strategies <- mapM (makeStatementStrategy tree scenarioID) startIDs    
-    return (alternatives strategies)
+    let startID = treeStartID tree    
+    strategy <- makeStatementStrategy tree scenarioID startID   
+    return strategy
 
 makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScenarioState)
 makeStatementStrategy tree scenarioID statementID = do 
