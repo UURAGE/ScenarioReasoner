@@ -1,12 +1,13 @@
 module Domain.Scenarios.Strategy where
 
 import GHC.Exts(sortWith)
+import Prelude hiding (sequence)
 
 import Data.Maybe
-
-import Control.Monad hiding (sequence)
 import Data.List hiding (inits)
 import qualified Data.Map as M
+
+import Control.Monad hiding (sequence)
 
 import Ideas.Common.Library
 import Ideas.Common.Strategy.Combinators hiding (not)
@@ -41,9 +42,7 @@ makeStrategy script = do
     let sortedDialogue = sortWith (\(level, _) -> level) dialogue
     let scenarioID = parseScenarioID script
     intLvlStrategies <- mapM (\intLvl -> makeIntLvlStrategy intLvl scenarioID) sortedDialogue
-    return (sequence' intLvlStrategies)
-      where 
-        sequence' = Ideas.Common.Strategy.Combinators.sequence
+    return (sequence intLvlStrategies)
         
 -- For each tree (subject) in an interleave level make a strategy 
 makeIntLvlStrategy :: Monad m => InterleaveLevel -> ID -> m (Strategy ScenarioState) 
@@ -55,9 +54,14 @@ makeIntLvlStrategy (_, trees) scenarioID = do
 -- then get the next statements and make a strategy for those statements and so on.
 makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScenarioState)
 makeTreeStrategy tree scenarioID = do
+
     let startID = treeStartID tree    
     strategy <- makeStatementStrategy tree scenarioID startID   
-    return strategy
+    
+    if (treeOptional tree)
+        then return (inits strategy)
+    else
+        return strategy
 
 makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScenarioState)
 makeStatementStrategy tree scenarioID statementID = do 
@@ -82,6 +86,6 @@ makeStatementStrategy tree scenarioID statementID = do
             let strategy | jumpPoint statement && statInits statement = rule <*> inits nextStrategy
                          | jumpPoint statement                        = rule <*> nextStrategy
                          | statInits statement                        = rule !~> inits nextStrategy
-                         | otherwise                                  = rule !~> nextStrategy -- the atomic prefix combinator, this combinator doesn't allow interleaving
-            
+                         | otherwise                                  = rule !~> nextStrategy 
+                         
             return strategy

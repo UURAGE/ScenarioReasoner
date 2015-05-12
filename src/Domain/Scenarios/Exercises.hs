@@ -15,8 +15,8 @@ import Domain.Scenarios.ScenarioState
 getExercises :: String ->  IO ([Exercise ScenarioState], [Script])
 getExercises scenarioId = do
     let scriptPath = "../../scenarios/scripts/" ++ (tail $ dropWhile (\x -> x/= '.') scenarioId) ++ ".xml" -- : The script directory.
-    exercisePair <- getExercise scriptPath
-    return $ (dummyExercise : [fst exercisePair], [snd exercisePair])
+    (exercise, script) <- getExercise scriptPath
+    return $ (dummyExercise : [exercise], [script])
 
 getExercise :: String -> IO (Exercise ScenarioState, Script)
 getExercise path = do

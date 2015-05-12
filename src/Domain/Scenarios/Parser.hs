@@ -11,7 +11,7 @@ import System.IO (withBinaryFile, hGetContents, IOMode(..))
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
-import Ideas.Text.XML.Interface(parseXML, findChildren, findChild, findAttribute, children, name, getData, Element)
+import Ideas.Text.XML.Interface
 
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
@@ -46,6 +46,7 @@ type InterleaveLevel = (Int, [Tree])
 data Tree = Tree
         { treeID          :: ID
         , treeStartID     :: ID
+        , treeOptional    :: Bool
         , treeStatements  :: [Statement]
         }        
         
@@ -231,6 +232,7 @@ parseTree treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
     , treeStartID    = (getAttribute "idref") (getChild "start" treeElem)
+    , treeOptional   = parseMaybeBool (findAttribute "optional" treeElem)
     , treeStatements = parseStatements treeElem
     }
   
@@ -435,9 +437,10 @@ instance Show MetaData where
         "scoreExtremes: "   ++ show se    ++ "\n"
 
 instance Show Tree where
-    show (Tree id start stats) = "\n" ++
+    show (Tree id start opt stats) = "\n" ++
         "tree: "        ++ show id    ++ 
         " start: "      ++ show start ++
+        " optional: "   ++ show opt   ++
         " statements: " ++ show stats ++ "\n"
         
 instance Show Statement where
