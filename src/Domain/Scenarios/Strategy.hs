@@ -59,7 +59,7 @@ makeTreeStrategy tree scenarioID = do
     strategy <- makeStatementStrategy tree scenarioID startID   
     
     if (treeOptional tree)
-        then return (inits strategy)
+        then return (option strategy)
     else
         return strategy
 
