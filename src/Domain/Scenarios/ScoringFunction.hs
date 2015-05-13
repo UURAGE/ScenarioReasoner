@@ -20,7 +20,7 @@ instance Show ScoringFunction where
                      
 -- | Calculates the score based on the given state with a scoring function
 calculateScore :: ScoringFunction -> ScenarioState -> Score
-calculateScore mainScoringFunction state@(ScenarioState paramMap _) = calculate mainScoringFunction  
+calculateScore mainScoringFunction state@(ScenarioState paramMap _ _) = calculate mainScoringFunction  
     where calculate scoringFunction = case scoringFunction of
             Constant           score        -> score
             Sum                subFunctions -> sum . map calculate $ subFunctions
@@ -30,7 +30,7 @@ calculateScore mainScoringFunction state@(ScenarioState paramMap _) = calculate 
 
 -- | Calculates the values of the scored parameters in the given state.
 calculateSubScores :: [Parameter] -> ScenarioState -> [(ID, Name, Score)]
-calculateSubScores parameters (ScenarioState paramMap _) = 
+calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
                    , parameterName   param
                    , getParamOrZero (parameterId param) paramMap)

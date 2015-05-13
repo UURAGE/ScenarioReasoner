@@ -31,7 +31,7 @@ exerciseFromScript script = do
     let difficulty = scenarioDifficulty metadata
     let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = ScenarioState (fromList (map processParameter parameters)) empty --initial state for strategy generation
+        initialState = ScenarioState (fromList (map processParameter parameters)) empty False --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha

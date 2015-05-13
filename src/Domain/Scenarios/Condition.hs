@@ -39,8 +39,8 @@ evaluateComparisonCondition comparison state = operator tested value
           tested = getParameterValue state
           value  = conditionValue comparison
           
-          getParameterValue (ScenarioState paramMap emotionMap) | paramValue /= 0 = paramValue
-                                                                | otherwise       = emotionValue            
+          getParameterValue (ScenarioState paramMap emotionMap _) | paramValue /= 0 = paramValue
+                                                                  | otherwise       = emotionValue            
             where
               paramValue = getParamOrZero (conditionIdref comparison) paramMap
               emotionValue = getParamOrZero (conditionIdref comparison) emotionMap

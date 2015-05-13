@@ -15,11 +15,11 @@ import Domain.Scenarios.Globals(ID, ParameterValue, Emotion)
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy.
-data ScenarioState = ScenarioState ParameterMap EmotionMap
+data ScenarioState = ScenarioState ParameterMap EmotionMap Bool 
     deriving (Eq, Typeable)
 
 instance Show ScenarioState where
-    show (ScenarioState pmap emap) = show pmap ++ show emap
+    show (ScenarioState pmap emap end) = show pmap ++ show emap ++ show end
 
 type ParameterMap = M.Map ID ParameterValue
 type EmotionMap = M.Map Emotion ParameterValue
@@ -40,8 +40,8 @@ instance Show Effect where
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
 applyEffects :: ScenarioState -> [Effect] -> [Effect] -> ScenarioState
-applyEffects (ScenarioState paramMap emotionMap) paramEffects emotionEffects = 
-    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects)
+applyEffects (ScenarioState paramMap emotionMap end) paramEffects emotionEffects = 
+    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) end
 
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
@@ -65,14 +65,16 @@ setParam pID value state = M.insert pID value state
 -- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
 
 instance InJSON ScenarioState where
-    toJSON (ScenarioState params emos) = Object [parametersToJSON params, emotionsToJSON emos]
+    toJSON (ScenarioState params emos e) = Object [parametersToJSON params, emotionsToJSON emos, endToJSON e]
         where
             emotionsToJSON emotions = ("emotions", toJSON emotions)
             parametersToJSON parameters =  ("parameters", toJSON parameters)
-    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON):[])) = 
+            endToJSON end = ("end", toJSON end)
+    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : ("end", endJSON) : [])) = 
         do params <- fromJSON paramsJSON
            emotions <- fromJSON emotionsJSON
-           return (ScenarioState params emotions)
+           end <- fromJSON endJSON
+           return (ScenarioState params emotions end)
 
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
@@ -92,10 +94,11 @@ readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fr
 --   fromTerm :: MonadPlus m => Term -> m a
 
 instance IsTerm ScenarioState where
-    toTerm (ScenarioState paramMap emotionMap) = toTerm (paramMap, emotionMap)
+    toTerm (ScenarioState paramMap emotionMap end) = toTerm (paramMap, toTerm (emotionMap, end))
     fromTerm term = do
-        statePair <- fromTerm term 
-        return (ScenarioState (fst statePair) (snd statePair))
+        (params, emotionAndEndTerm) <- fromTerm term 
+        (emotions, end) <- fromTerm emotionAndEndTerm
+        return (ScenarioState params emotions end)
     
 
 instance IsTerm (M.Map ID ParameterValue) where
@@ -103,5 +106,12 @@ instance IsTerm (M.Map ID ParameterValue) where
  fromTerm x = do 
    x' <- fromTerm x
    return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
+   
+instance IsTerm Bool where
+ toTerm True = toTerm $ ShowString "true"
+ toTerm False = toTerm $ ShowString "false"
+ fromTerm boolTerm = do
+    bool <- fromTerm boolTerm
+    return (fromShowString bool == "true")
    
 ----------------------------------------------------------------------------------------------------
