@@ -39,9 +39,9 @@ instance Show Effect where
 -- Delta for adding / subtracting the new value to / from the existing value     
 data ChangeType = Set | Delta deriving (Show, Eq, Read)
 
-applyEffects :: ScenarioState -> [Effect] -> [Effect] -> ScenarioState
-applyEffects (ScenarioState paramMap emotionMap end) paramEffects emotionEffects = 
-    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) end
+applyEffects :: ScenarioState -> [Effect] -> [Effect] -> Bool -> ScenarioState
+applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects ending = 
+    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) ending
 
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
