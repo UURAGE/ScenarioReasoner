@@ -58,10 +58,12 @@ makeTreeStrategy tree scenarioID = do
     let startID = treeStartID tree    
     strategy <- makeStatementStrategy tree scenarioID startID   
     
-    if (treeOptional tree)
-        then return (option strategy)
-    else
-        return strategy
+    let treeStrategy | treeOptional tree && treeAtomic tree = option (atomic strategy)
+                     | treeOptional tree                    = option strategy
+                     | treeAtomic tree                      = atomic strategy
+                     | otherwise                            = strategy
+    
+    return treeStrategy
 
 makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScenarioState)
 makeStatementStrategy tree scenarioID statementID = do 
@@ -83,9 +85,10 @@ makeStatementStrategy tree scenarioID statementID = do
             -- Combine all possible next strategies with the choice operator
             let nextStrategy = alternatives nextStrategyList
             
-            let strategy | jumpPoint statement && statInits statement = rule <*> inits nextStrategy
-                         | jumpPoint statement                        = rule <*> nextStrategy
-                         | statInits statement                        = rule !~> inits nextStrategy
-                         | otherwise                                  = rule !~> nextStrategy 
+            let strategy | jumpPoint statement && statInits statement   = rule <*> inits nextStrategy
+                         | jumpPoint statement                          = rule <*> nextStrategy
+                         | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
+                         | treeAtomic tree                              = rule <*> nextStrategy 
+                         | otherwise                                    = rule !~> nextStrategy
                          
             return strategy

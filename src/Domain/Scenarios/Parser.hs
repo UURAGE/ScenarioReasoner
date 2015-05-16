@@ -46,6 +46,7 @@ type InterleaveLevel = (Int, [Tree])
 data Tree = Tree
         { treeID          :: ID
         , treeStartID     :: ID
+        , treeAtomic      :: Bool -- for optimisation
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
         }        
@@ -169,7 +170,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterName         = getAttribute "name" paramElem
         , parameterEmotion      = nothingOnFail (findAttribute "emotionid" paramElem)
         , parameterInitialValue = nothingOnFail (findAttribute "initialValue" paramElem >>= readM)
-        , parameterScored       = parseMaybeBool (findAttribute "scored" paramElem)
+        , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         }
 
 parseScenarioToggles :: Script -> [Toggle]
@@ -232,9 +233,11 @@ parseTree treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
     , treeStartID    = (getAttribute "idref") (getChild "start" treeElem)
-    , treeOptional   = parseMaybeBool (findAttribute "optional" treeElem)
-    , treeStatements = parseStatements treeElem
+    , treeAtomic     = null (filter jumpPoint statements)
+    , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
+    , treeStatements = statements
     }
+  where statements = parseStatements treeElem
   
 parseStatements :: Element -> [Statement]
 parseStatements treeElem = playerStats ++ computerStats ++ conversation
@@ -300,7 +303,7 @@ parseJumpPoint :: Element -> Bool
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
 
 parseInits :: Element -> Bool
-parseInits statElem = parseMaybeBool (findAttribute "inits" statElem)
+parseInits statElem = tryParseBool (findAttribute "inits" statElem)
 
 parseEnd :: Element -> Bool    
 parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
@@ -402,9 +405,9 @@ getExactlyOneChild element = case children element of
 parseBool :: String -> Bool
 parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
 
-parseMaybeBool :: Maybe String -> Bool
-parseMaybeBool (Just boolStr) = parseBool boolStr
-parseMaybeBool _              = False
+tryParseBool :: Maybe String -> Bool
+tryParseBool (Just boolStr) = parseBool boolStr
+tryParseBool _              = False
 
 -- | Parses a value attribute from an element
 parseValue :: Element -> ParameterValue
@@ -437,9 +440,10 @@ instance Show MetaData where
         "scoreExtremes: "   ++ show se    ++ "\n"
 
 instance Show Tree where
-    show (Tree id start opt stats) = "\n" ++
+    show (Tree id start atom opt stats) = "\n" ++
         "tree: "        ++ show id    ++ 
         " start: "      ++ show start ++
+        " atomic: "     ++ show atom  ++
         " optional: "   ++ show opt   ++
         " statements: " ++ show stats ++ "\n"
         
