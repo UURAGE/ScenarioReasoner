@@ -19,6 +19,8 @@ import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Id(toIdTypeSegment)
 
+type StrategyMap = M.Map ID (Strategy ScenarioState)
+
 -- Make a rule with an identifier and a description, 
 -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
 guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
@@ -56,7 +58,7 @@ makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScenarioState)
 makeTreeStrategy tree scenarioID = do
 
     let startID = treeStartID tree    
-    strategy <- makeStatementStrategy tree scenarioID startID   
+    (strategy, _) <- makeStatementStrategy M.empty tree scenarioID startID
     
     let treeStrategy | treeOptional tree && treeAtomic tree = option (atomic strategy)
                      | treeOptional tree                    = option strategy
@@ -65,30 +67,39 @@ makeTreeStrategy tree scenarioID = do
     
     return treeStrategy
 
-makeStatementStrategy :: Monad m => Tree -> ID -> ID -> m (Strategy ScenarioState)
-makeStatementStrategy tree scenarioID statementID = do 
-    -- Find the given statement in the tree with the id
-    let statementErrorMsg = "Could not find statement: " ++ statementID ++ " in tree: " ++ treeID tree
-    let maybeStatement = find (\stat -> statID stat == statementID) (treeStatements tree)
-    let statement = errorOnFail statementErrorMsg maybeStatement
+makeStatementStrategy :: Monad m => StrategyMap -> Tree -> ID -> ID -> m (Strategy ScenarioState, StrategyMap)
+makeStatementStrategy strategyMap tree scenarioID statementID = do 
+    case M.lookup statementID strategyMap of
+        Just strategy -> return (strategy, strategyMap)
+        Nothing       -> do
+            -- Find the given statement in the tree with the id
+            let statementErrorMsg = "Could not find statement: " ++ statementID ++ " in tree: " ++ treeID tree
+            let maybeStatement = find (\stat -> statID stat == statementID) (treeStatements tree)
+            let statement = errorOnFail statementErrorMsg maybeStatement
+        
+            let nextIDs = nextStatIDs statement        
+            let rule = makeGuardedRule scenarioID statement tree
     
-    let nextIDs = nextStatIDs statement    
-    
-    let rule = makeGuardedRule scenarioID statement tree
-    
-    case nextIDs of 
-        [] -> return (toStrategy rule)
-        _  -> do
-            -- For each next statement make a strategy
-            nextStrategyList <- mapM (makeStatementStrategy tree scenarioID) nextIDs
-            
-            -- Combine all possible next strategies with the choice operator
-            let nextStrategy = alternatives nextStrategyList
-            
-            let strategy | jumpPoint statement && statInits statement   = rule <*> inits nextStrategy
-                         | jumpPoint statement                          = rule <*> nextStrategy
-                         | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
-                         | treeAtomic tree                              = rule <*> nextStrategy 
-                         | otherwise                                    = rule !~> nextStrategy
-                         
-            return strategy
+            case nextIDs of 
+                [] -> do 
+                    let statementStrategy = toStrategy rule
+                    return (statementStrategy, M.insert statementID statementStrategy strategyMap)
+                    
+                (firstNextID : tailNextIDs)  -> do
+                    firstStrategyTuple <- makeStatementStrategy strategyMap tree scenarioID firstNextID
+                
+                    -- For each next statement make a strategy and fold with choice
+                    (nextStrategy, nextStrategyMap) <- foldM foldAlternatives firstStrategyTuple tailNextIDs
+                    
+                    let statementStrategy | jumpPoint statement && statInits statement   = rule <*> inits nextStrategy
+                                 | jumpPoint statement                          = rule <*> nextStrategy
+                                 | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
+                                 | treeAtomic tree                              = rule <*> nextStrategy 
+                                 | otherwise                                    = rule !~> nextStrategy
+                                 
+                    return (statementStrategy, M.insert statementID statementStrategy nextStrategyMap)
+  where 
+    foldAlternatives :: Monad m => (Strategy ScenarioState, StrategyMap) -> ID -> m (Strategy ScenarioState, StrategyMap)
+    foldAlternatives (strategySoFar, strategyMap) nextID = do
+        (nextStrategy, newStrategyMap) <- makeStatementStrategy strategyMap tree scenarioID nextID 
+        return (strategySoFar <|> nextStrategy, newStrategyMap)
