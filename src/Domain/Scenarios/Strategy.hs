@@ -56,9 +56,10 @@ makeIntLvlStrategy (_, trees) scenarioID = do
 -- then get the next statements and make a strategy for those statements and so on.
 makeTreeStrategy :: Monad m => Tree -> ID -> m (Strategy ScenarioState)
 makeTreeStrategy tree scenarioID = do
-
-    let startID = treeStartID tree    
-    (strategy, _) <- makeStatementStrategy M.empty tree scenarioID startID
+    let (startID:startIDs) = treeStartIDs tree
+    
+    firstStrategyTuple <- makeStatementStrategy M.empty tree scenarioID startID    
+    (strategy, _) <- foldM (foldAlternatives tree scenarioID) firstStrategyTuple startIDs
     
     let treeStrategy | treeOptional tree && treeAtomic tree = option (atomic strategy)
                      | treeOptional tree                    = option strategy
@@ -76,30 +77,29 @@ makeStatementStrategy strategyMap tree scenarioID statementID = do
             let statementErrorMsg = "Could not find statement: " ++ statementID ++ " in tree: " ++ treeID tree
             let maybeStatement = find (\stat -> statID stat == statementID) (treeStatements tree)
             let statement = errorOnFail statementErrorMsg maybeStatement
-        
-            let nextIDs = nextStatIDs statement        
+                
             let rule = makeGuardedRule scenarioID statement tree
     
-            case nextIDs of 
+            case nextStatIDs statement of 
                 [] -> do 
                     let statementStrategy = toStrategy rule
                     return (statementStrategy, M.insert statementID statementStrategy strategyMap)
                     
-                (firstNextID : tailNextIDs)  -> do
+                (firstNextID : nextIDs)  -> do
                     firstStrategyTuple <- makeStatementStrategy strategyMap tree scenarioID firstNextID
-                
                     -- For each next statement make a strategy and fold with choice
-                    (nextStrategy, nextStrategyMap) <- foldM foldAlternatives firstStrategyTuple tailNextIDs
+                    (nextStrategy, nextStrategyMap) <- foldM (foldAlternatives tree scenarioID) firstStrategyTuple nextIDs
                     
                     let statementStrategy | jumpPoint statement && statInits statement   = rule <*> inits nextStrategy
-                                 | jumpPoint statement                          = rule <*> nextStrategy
-                                 | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
-                                 | treeAtomic tree                              = rule <*> nextStrategy 
-                                 | otherwise                                    = rule !~> nextStrategy
+                                          | jumpPoint statement                          = rule <*> nextStrategy
+                                          | statInits statement && treeAtomic tree       = rule <*> inits nextStrategy
+                                          | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
+                                          | treeAtomic tree                              = rule <*> nextStrategy 
+                                          | otherwise                                    = rule !~> nextStrategy
                                  
                     return (statementStrategy, M.insert statementID statementStrategy nextStrategyMap)
-  where 
-    foldAlternatives :: Monad m => (Strategy ScenarioState, StrategyMap) -> ID -> m (Strategy ScenarioState, StrategyMap)
-    foldAlternatives (strategySoFar, strategyMap) nextID = do
-        (nextStrategy, newStrategyMap) <- makeStatementStrategy strategyMap tree scenarioID nextID 
-        return (strategySoFar <|> nextStrategy, newStrategyMap)
+  
+foldAlternatives :: Monad m => Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> m (Strategy ScenarioState, StrategyMap)
+foldAlternatives tree scenarioID (strategySoFar, strategyMap) nextID = do
+    (nextStrategy, newStrategyMap) <- makeStatementStrategy strategyMap tree scenarioID nextID 
+    return (strategySoFar <|> nextStrategy, newStrategyMap)

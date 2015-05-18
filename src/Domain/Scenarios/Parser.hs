@@ -45,7 +45,7 @@ type InterleaveLevel = (Int, [Tree])
 
 data Tree = Tree
         { treeID          :: ID
-        , treeStartID     :: ID
+        , treeStartIDs    :: [ID]
         , treeAtomic      :: Bool -- for optimisation
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
@@ -232,7 +232,7 @@ parseTree :: Element -> Tree
 parseTree treeElem = 
     Tree
     { treeID         = getAttribute "id" treeElem
-    , treeStartID    = (getAttribute "idref") (getChild "start" treeElem)
+    , treeStartIDs   = map (getAttribute "idref") (findChildren "start" treeElem)
     , treeAtomic     = null (filter jumpPoint statements)
     , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
     , treeStatements = statements
