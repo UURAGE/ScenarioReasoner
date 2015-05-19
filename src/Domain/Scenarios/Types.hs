@@ -5,7 +5,6 @@ import Ideas.Service.Types
 
 import Domain.Scenarios.Globals
 
-import Domain.Scenarios.Services.StatementsInfo
 import Domain.Scenarios.Services.ScenarioInfo
 import Domain.Scenarios.Services.Score
 
@@ -46,29 +45,3 @@ tScoreResult =
                         (Pair (Tag "subscores"         (tList (tTuple3 tString tString tInt)))
                               (Tag "extremes"          (tMaybe (tList tInt)))))
         where pairify (ScoreResult score subscores extremes) = (score, (subscores, extremes))        
-
--- StatementInfo types ----------------------------------------------------------------------------------------------------------
-tStatementInfo :: Type a StatementInfo
-tStatementInfo = 
-    Iso ((<-!) pairify) (Pair (Tag "id"        tString)
-                        (Pair (Tag "type"      tString)
-                        (Pair (Tag "text"      tStatementText)
-                        (Pair (Tag "intents"  (tList tString))
-                        (Pair (Tag "feedback" (tMaybe tString))
-                              (Tag "media"     tMediaInfo))))))
-        where pairify (StatementInfo id tp text ints fb media) = (id, (tp, (text, (ints, (fb, media)))))
-
-tStatementText :: Type a StatementText
-tStatementText = tString :|: (tList (tPair tString tString))
-
-tMediaInfo :: Type a MediaInfo
-tMediaInfo = 
-    Iso ((<-!) pairify) (Pair (Tag "visuals" (tList (tPair tString tString)))
-                              (Tag "audios"  (tList tString)))
-        where pairify (MediaInfo visuals audios) = (visuals, audios)
-        
-        
-        
-        
-        
-

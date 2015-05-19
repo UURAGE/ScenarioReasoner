@@ -1,12 +1,11 @@
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Id where
 
-import Data.Char(isLower, toLower)
 import Data.List(intercalate)
 
 import Ideas.Common.Library
 
-import Domain.Scenarios.Globals(Script, applyToFirst)
+import Domain.Scenarios.Globals
 import Domain.Scenarios.Parser
 
 -- Definitions of Id instances and functions (Id is a data structure from the Ideas framework)
@@ -29,7 +28,7 @@ instance HasId Scenario where
 instance HasId Statement where
     getId statement = either error id $ do
                 let statementId = statID statement
-                let statementText = statText statement
+                let statementText = statText (statInfo statement)
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementId
     changeId _ _ = error "The ID of a Statement is determined externally."
@@ -40,13 +39,9 @@ createFullId :: Scenario -> Statement -> Id
 createFullId scenario statement = scenarioID # typeSegment # statId
   where 
     scenarioID = getId scenario
-    typeSegment = toIdTypeSegment $ statType statement
+    typeSegment = statType (statInfo statement)
     statId = statID statement
-
--- | Returns the value to be used to represent a statement type in a rule ID.
-toIdTypeSegment :: StatementType -> String
-toIdTypeSegment = takeWhile isLower . applyToFirst toLower . show                    
-                      
+      
 findScript :: String -> [Script] -> Exercise a -> Script
 findScript usage scripts ex =
     case filter (\testScript -> (getId testScript) == (getId ex)) scripts of

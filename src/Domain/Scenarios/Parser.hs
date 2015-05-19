@@ -51,27 +51,14 @@ data Tree = Tree
         
 data Statement = Statement
         { statID            :: ID
-        , statType          :: StatementType
-        , statText          :: Either String [(ConversationTextType, String)]
+        , statInfo          :: StatementInfo
         , statPrecondition  :: Maybe Condition
         , statParamEffects  :: [Effect]
         , statEmotionEffects:: [Effect]
         , jumpPoint         :: Bool
-        , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
-        , statMedia         :: MediaInfo
-        , statIntents       :: [String]
-        , statFeedback      :: Maybe String
         }
-   
--- | A value describing the type of a statement element 
-data StatementType = ComputerStatement | PlayerStatement | Conversation
-    deriving (Show, Eq, Read)
-
--- | A value describing the type of a piece of text in a conversation
-data ConversationTextType = PlayerText | ComputerText | SituationText
-    deriving (Show, Eq, Read)
-   
+        
 
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
@@ -243,31 +230,36 @@ parseStatements treeElem = playerStats ++ computerStats ++ conversation
 parseStatement :: Element -> Statement
 parseStatement statElem = 
     Statement
-    { statID            = getAttribute "id"         statElem
-    , statType          = parseType                 statElem       
-    , statText          = parseText                 statElem
-    , statPrecondition  = parseMaybePrecondition    statElem
-    , statParamEffects  = parseParameterEffects     statElem
-    , statEmotionEffects= parseEmotionEffects       statElem
-    , jumpPoint         = parseJumpPoint            statElem
-    , endOfConversation = parseEnd                  statElem
-    , nextStatIDs       = parseNextStatIDs          statElem
-    , statMedia         = parseMedia                statElem
-    , statIntents       = parseIntents              statElem
-    , statFeedback      = parseFeedback             statElem
+    { statID             = getAttribute "id"         statElem
+    , statInfo           = parseStatementInfo        statElem
+    , statPrecondition   = parseMaybePrecondition    statElem
+    , statParamEffects   = parseParameterEffects     statElem
+    , statEmotionEffects = parseEmotionEffects       statElem
+    , jumpPoint          = parseJumpPoint            statElem
+    , nextStatIDs        = parseNextStatIDs          statElem
+    }
+    
+parseStatementInfo :: Element -> StatementInfo
+parseStatementInfo statElem =
+    StatementInfo
+    {   statType        = parseType     statElem
+    ,   statText        = parseText     statElem
+    ,   statIntents     = parseIntents  statElem
+    ,   statFeedback    = parseFeedback statElem
+    ,   statMedia       = parseMedia    statElem
+    ,   statEnd         = parseEnd      statElem
     }
 
 -- | Takes a statement and returns its type.
 parseType :: Element -> StatementType
-parseType statElem = read (applyToFirst toUpper (name statElem))
+parseType statElem = takeWhile isLower (name statElem)
 
 -- | Takes a statement and returns its text.
-parseText :: Element -> Either String [(ConversationTextType, String)]
-parseText statElem =
-    case name statElem of
+parseText :: Element -> StatementText
+parseText statElem = case name statElem of
         "conversation" -> Right (map toConversationText (filter (isSuffixOf "Text" . name) (children statElem)))
         _              -> Left (getData (getChild "text" statElem))
-  where toConversationText textEl = (read (applyToFirst toUpper (name textEl)), getData textEl)
+  where toConversationText textEl = (map toLower (name textEl), getData textEl)
 
 -- | Takes a statement element and returns its precondition, if it has one.
 -- | Uses the monadic findChild for Maybe Monad
@@ -449,16 +441,11 @@ instance Show Tree where
         " statements: " ++ show stats ++ "\n"
         
 instance Show Statement where
-    show (Statement id t desc pc pes ees jp end nexts media is fb) = "\n  " ++
-        "statement: "     ++ show id    ++ "\n\t" ++
-        " type: "         ++ show t     ++ "\n\t" ++
-        " description: "  ++ show desc  ++ "\n\t" ++ 
+    show (Statement id info pc pes ees jp nexts) = "\n  " ++
+        "statement: "     ++ show id    ++ "\n\t" ++ 
+        " info: "         ++ show info  ++ "\n\t" ++
         " precondition: " ++ show pc    ++ "\n\t" ++
         " paramEffects: " ++ show pes   ++ "\n\t" ++
         " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
-        " end: "          ++ show end   ++ "\n\t" ++
-        " nextIDs: "      ++ show nexts ++ "\n\t" ++
-        " media: "        ++ show media ++ "\n\t" ++
-        " intents: "      ++ show is    ++ "\n\t" ++
-        " feedback: "     ++ show fb    ++ "\n  " 
+        " nextIDs: "      ++ show nexts ++ "\n  " 

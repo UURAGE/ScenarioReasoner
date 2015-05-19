@@ -16,7 +16,7 @@ import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
-import Domain.Scenarios.Id(toIdTypeSegment)
+import Domain.Scenarios.Id
 
 -- Make a rule with an identifier and a description, 
 -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
@@ -26,10 +26,10 @@ guardedRule identifier description precondCheck applyEffects =
    
 makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
 makeGuardedRule scenarioID statement tree = guardedRule
-    (["scenarios", scenarioID, toIdTypeSegment (statType statement), statID statement]) -- create an identifier for the rule
-    (either id (intercalate " // " . map snd) (statText statement))                                -- make a description for the rule
+    (["scenarios", scenarioID, statType (statInfo statement), statID statement]) -- create an identifier for the rule
+    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                -- make a description for the rule
     (evaluateMaybeCondition (statPrecondition statement))                                          -- check if precondition is fulfilled
-    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (endOfConversation statement))     -- apply the effects of a statement to the state
+    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))    -- apply the effects of a statement to the state
     --The initial state is not generated here. 
     --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             

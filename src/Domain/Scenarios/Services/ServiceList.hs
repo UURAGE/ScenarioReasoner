@@ -5,7 +5,6 @@ import Ideas.Service.Types
 import Ideas.Service.State
 
 import Domain.Scenarios.Services.ScenarioInfo
-import Domain.Scenarios.Services.StatementsInfo
 import Domain.Scenarios.Services.Score
 
 import Domain.Scenarios.Globals(Script)
@@ -14,7 +13,7 @@ import Domain.Scenarios.Types
 -- A list of all custom services available
 customServices :: [Script] -> [Service]
 customServices scripts = map (flip ($) scripts)
-    [scenariolistS, scenarioinfoS, statementsinfoS, scoreS]
+    [scenariolistS, scenarioinfoS, scoreS]
 
 scenariolistS :: [Script] -> Service
 scenariolistS scripts = makeService "scenarios.scenariolist"
@@ -25,11 +24,6 @@ scenarioinfoS :: [Script] -> Service
 scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     (scenarioinfo scripts) ::: tExercise .-> tScenarioInfo
-
-statementsinfoS :: [Script] -> Service
-statementsinfoS scripts = makeService "scenarios.statementsinfo"
-    "Returns information for all statements of the scenario." $
-    (statementsinfo scripts) ::: tExercise .-> (tList tStatementInfo)
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
