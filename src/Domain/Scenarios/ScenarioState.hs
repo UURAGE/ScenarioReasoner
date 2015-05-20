@@ -107,7 +107,10 @@ instance InJSON StatementInfo  where
 instance InJSON StatementText where
     toJSON (Left string) = listToJSON string
     toJSON (Right conversation) = toJSON conversation
-    fromJSON text = return (Left (fromJSON text))
+    toJSON _ = error "wrong conversationtext"
+    fromJSON stringJSON@(String _) = return (Left (fromJSON stringJSON))
+    fromJSON listJSON@(Array _)    = return (Right (fromJSON listJSON))
+    fromJSON _    = fail "expecting a string or a list of tuples"
     
 instance InJSON MediaInfo where
     toJSON (MediaInfo visuals audios) = Object [("visuals", toJSON visuals), ("audios", toJSON audios)]
