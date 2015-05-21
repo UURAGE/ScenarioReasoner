@@ -80,6 +80,8 @@ makeStatementStrategy strategyMap tree scenarioID statementID =
             rule = makeGuardedRule scenarioID statement tree
              
 makeAlternativesStrategy :: StrategyMap -> Tree -> ID -> [ID] -> (Strategy ScenarioState, StrategyMap)   
+makeAlternativesStrategy strategyMap tree scenarioID (statID : []) = 
+    makeStatementStrategy strategyMap tree scenarioID statID
 makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) = 
     foldl (foldAlternatives tree scenarioID) firstStrategy statIDs
   where firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
