@@ -14,9 +14,9 @@ import Domain.Scenarios.ScenarioState
 
 getExercises :: String ->  IO ([Exercise ScenarioState], [Script])
 getExercises scenarioId = do
-    let scriptPath = "../../scenarios/scripts/" ++ (tail $ dropWhile (\x -> x/= '.') scenarioId) ++ ".xml" -- : The script directory.
+    let scriptPath = "../../scenarios/scripts/" ++ tail (dropWhile (/= '.') scenarioId) ++ ".xml" -- : The script directory.
     (exercise, script) <- getExercise scriptPath
-    return $ (dummyExercise : [exercise], [script])
+    return (dummyExercise : [exercise], [script])
 
 getExercise :: String -> IO (Exercise ScenarioState, Script)
 getExercise path = do
@@ -27,7 +27,7 @@ getExercise path = do
 exerciseFromScript :: Monad m => Script -> m (Exercise ScenarioState)
 exerciseFromScript script = do
     let metadata = scenarioMetaData (parseScenario script)
-    scenarioStrategy <- makeStrategy script
+    let scenarioStrategy = makeStrategy script
     let difficulty = scenarioDifficulty metadata
     let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
@@ -37,8 +37,8 @@ exerciseFromScript script = do
        , status         = Alpha
        , parser         = readJSON
        , prettyPrinter  = showJSON
-       , equivalence    = (\_ _-> True)
-       , similarity     = (\_ _-> True)
+       , equivalence    = \_ _-> True
+       , similarity     = \_ _-> True
        , ready          = true
        , suitable       = true
        , hasTypeable    = useTypeable

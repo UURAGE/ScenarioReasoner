@@ -44,7 +44,7 @@ createFullId scenario statement = scenarioID # typeSegment # statId
       
 findScript :: String -> [Script] -> Exercise a -> Script
 findScript usage scripts ex =
-    case filter (\testScript -> (getId testScript) == (getId ex)) scripts of
+    case filter (\testScript -> getId testScript == getId ex) scripts of
             [foundScript] -> foundScript
             _             ->
                 error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a Scenario."

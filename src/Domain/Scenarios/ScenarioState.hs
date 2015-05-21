@@ -48,7 +48,7 @@ applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects s
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
 applyEffect effect stateMap = case effectChangeType effect of
         Set   -> setParam idref value stateMap
-        Delta -> setParam idref ((getParamOrZero idref stateMap) + value) stateMap
+        Delta -> setParam idref (getParamOrZero idref stateMap + value) stateMap
     where idref = effectIdref effect
           value = effectValue effect          
           
@@ -56,11 +56,11 @@ applyEffect effect stateMap = case effectChangeType effect of
 
 -- If the parameter is in the state return its value otherwise return zero
 getParamOrZero :: String -> M.Map String ParameterValue -> ParameterValue
-getParamOrZero pID state = M.findWithDefault 0 pID state
+getParamOrZero = M.findWithDefault 0
 
 -- Set the parameter to a specific value and return the new state
 setParam :: String -> ParameterValue -> M.Map String ParameterValue -> M.Map String ParameterValue
-setParam pID value state = M.insert pID value state
+setParam = M.insert
           
 
 -- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
@@ -128,7 +128,7 @@ instance IsTerm ScenarioState where
     
 
 instance IsTerm (M.Map ID ParameterValue) where
-    toTerm = toTerm . M.toAscList . (M.mapKeysMonotonic ShowString)
+    toTerm = toTerm . M.toAscList . M.mapKeysMonotonic ShowString
     fromTerm x = do 
         x' <- fromTerm x
         return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))

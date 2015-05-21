@@ -145,7 +145,7 @@ process dr cgiBin input = do
 -- | this method gets the scenario id from the cgi input string. necessary to prevent parsing every scenario for every request
 getScenarioId :: String -> Maybe String
 getScenarioId input = case index of
-                  Just foundIndex -> Just $ takeWhile (\x -> x /= '\"') $ drop (foundIndex+11) input --10 is length of hardcoded string the precedes the scenario id
+                  Just foundIndex -> Just $ takeWhile (/= '\"') $ drop (foundIndex+11) input --10 is length of hardcoded string the precedes the scenario id
                   Nothing -> Nothing
                   where 
                     index = subStringIndex "params\":[[\"" input

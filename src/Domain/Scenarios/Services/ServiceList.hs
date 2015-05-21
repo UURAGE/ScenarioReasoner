@@ -12,21 +12,21 @@ import Domain.Scenarios.Types
 
 -- A list of all custom services available
 customServices :: [Script] -> [Service]
-customServices scripts = map (flip ($) scripts)
+customServices scripts = map ($ scripts)
     [scenariolistS, scenarioinfoS, scoreS]
 
 scenariolistS :: [Script] -> Service
 scenariolistS scripts = makeService "scenarios.scenariolist"
     "Lists all available scenarios." $
-    (scenariolist scripts) ::: (tList tScenarioInfo)
+    scenariolist scripts ::: tList tScenarioInfo
 
 scenarioinfoS :: [Script] -> Service
 scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
-    (scenarioinfo scripts) ::: tExercise .-> tScenarioInfo
+    scenarioinfo scripts ::: tExercise .-> tScenarioInfo
 
 scoreS :: [Script] -> Service
 scoreS scripts = makeService "scenarios.score"
     "Calculates the score of a given state." $
-    (score scripts) ::: tState .-> tScoreResult
+    score scripts ::: tState .-> tScoreResult
 

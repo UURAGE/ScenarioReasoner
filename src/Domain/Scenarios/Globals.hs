@@ -70,7 +70,7 @@ parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.
 errorOnFail :: String -> Maybe a -> a
-errorOnFail errorMsg ma = fromMaybe (error errorMsg) ma
+errorOnFail errorMsg = fromMaybe (error errorMsg) 
 
 emptyOnFail :: Maybe [a] -> [a]
 emptyOnFail = fromMaybe []
@@ -82,4 +82,4 @@ nothingOnFail _        = Nothing
 -- | Applies a function to the first element of a list, if there is one.
 applyToFirst :: (a -> a) -> [a] -> [a]
 applyToFirst _ []     = []
-applyToFirst f (x:xs) = (f x) : xs
+applyToFirst f (x:xs) = f x : xs

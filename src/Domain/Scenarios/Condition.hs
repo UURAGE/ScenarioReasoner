@@ -28,8 +28,8 @@ evaluateCondition :: Condition -> ScenarioState -> Bool
 evaluateCondition mainCondition state = evaluate mainCondition
     where evaluate :: Condition -> Bool
           evaluate condition = case condition of
-            And    subConditions -> and . map evaluate $ subConditions
-            Or     subConditions -> or  . map evaluate $ subConditions
+            And    subConditions -> all evaluate $ subConditions
+            Or     subConditions -> any evaluate $ subConditions
             Condition comparison -> evaluateComparisonCondition comparison state
 
 -- | Evaluates the comparison based on the given state.
@@ -50,7 +50,7 @@ evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
 evaluateMaybeCondition = maybe (const True) evaluateCondition
 
 -- | Returns the binary predicate corresponding to the given operator type.
-getCompareOperator :: CompareOperator -> (Int -> Int -> Bool)
+getCompareOperator :: CompareOperator -> Int -> Int -> Bool
 getCompareOperator operator = case operator of
             LessThan           -> (<)
             LessThanEqualTo    -> (<=)

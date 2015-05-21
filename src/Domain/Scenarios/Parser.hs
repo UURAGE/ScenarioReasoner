@@ -68,10 +68,10 @@ data Statement = Statement
    
 -- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
 parseScript :: String -> IO Script
-parseScript filepath = do
-    withBinaryFile filepath ReadMode $ \h ->
-      hGetContents h >>= either fail return . parseXML
-      -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
+parseScript filepath =
+    withBinaryFile filepath ReadMode 
+        (hGetContents >=> (either fail return . parseXML))
+        -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 
 -- | Parses a script from a script element
 parseScenario :: Script -> Scenario
@@ -272,17 +272,17 @@ parseText statElem = case name statElem of
 -- | Uses the monadic findChild for Maybe Monad
 parseMaybePrecondition :: Element -> Maybe Condition
 parseMaybePrecondition statElem =
-    maybe Nothing (Just . parseCondition . getExactlyOneChild) conditionElem
+    fmap (parseCondition . getExactlyOneChild) conditionElem
       where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects.
 parseParameterEffects :: Element -> [Effect]
 parseParameterEffects statElem = map parseParameterEffect paramElems
-  where paramElems = emptyOnFail (findChild "parameterEffects" statElem >>= return . children)
+  where paramElems = emptyOnFail (liftM children (findChild "parameterEffects" statElem))
     
 parseEmotionEffects :: Element -> [Effect]
 parseEmotionEffects statElem = map parseEmotionEffect emotionElems
-  where emotionElems = emptyOnFail (findChild "emotionEffects" statElem >>= return . children)
+  where emotionElems = emptyOnFail (liftM children (findChild "emotionEffects" statElem))
   
 parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
@@ -324,7 +324,7 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
             "computerStatement" -> getResponses >>= getIdrefs
             "playerStatement"   -> getNextComputerStatements >>= getIdrefs
             _                   -> fail $
-                "Cannot get nexts of statement represented by element named " ++ (name element)
+                "Cannot get nexts of statement represented by element named " ++ name element
       where getIdrefs = mapM (findAttribute "idref")
             getResponses = liftM children $ findChild "responses" element
             getNextComputerStatements =
@@ -362,7 +362,7 @@ parseIntents statElem = map getData (findChild "intents" statElem >>= children)
 
 -- | Parses the feedback of the given statement element
 parseFeedback :: Element -> Maybe String
-parseFeedback statElem = nothingOnFail (findChild "feedback" statElem >>= return . getData)
+parseFeedback statElem = nothingOnFail (liftM getData (findChild "feedback" statElem))
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 
@@ -372,7 +372,8 @@ parseCondition :: Element -> Condition
 parseCondition conditionElem = case name conditionElem of
     "and"       -> And (map parseCondition (children conditionElem))
     "or"        -> Or  (map parseCondition (children conditionElem))
-    "condition" -> Condition $ ComparisonCondition
+    "condition" -> Condition 
+        ComparisonCondition
         { conditionIdref = getAttribute "idref" conditionElem
         , conditionTest  = parseCompareOperator conditionElem
         , conditionValue = parseValue           conditionElem

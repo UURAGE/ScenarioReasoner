@@ -1,5 +1,7 @@
 module Domain.Scenarios.Services.Score where
 
+import Control.Monad
+
 import Data.Maybe
 
 import Ideas.Common.Library
@@ -22,8 +24,8 @@ type SubScore = (ID, Name, Score)
 score :: [Script] -> State a -> ScoreResult
 score scripts fstate = ScoreResult mainScore subScores mainScoreExtremes
     where metaData = scenarioMetaData (parseScenario (findScript "score" scripts $ exercise fstate))
-          state = (fromMaybe (error "Cannot score exercise: casting failed.") $
-                      castFrom (exercise fstate) (stateTerm fstate))
+          state = fromMaybe (error "Cannot score exercise: casting failed.") $
+                      castFrom (exercise fstate) (stateTerm fstate)
           mainScore = calculateScore (scenarioScoringFunction metaData) state
           subScores = calculateSubScores (scenarioParameters metaData) state
-          mainScoreExtremes = scenarioScoreExtremes metaData >>= return . (\(min, max) -> [min, max]) --Maybe Monad
+          mainScoreExtremes = liftM (\(min, max) -> [min, max]) (scenarioScoreExtremes metaData)  --Maybe Monad
