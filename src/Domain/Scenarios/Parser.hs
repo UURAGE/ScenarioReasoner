@@ -53,27 +53,15 @@ data Tree = Tree
         
 data Statement = Statement
         { statID            :: ID
-        , statType          :: StatementType
-        , statText          :: Either String [(ConversationTextType, String)]
+        , statInfo          :: StatementInfo
         , statPrecondition  :: Maybe Condition
-        , statEffects       :: [Effect]
+        , statParamEffects  :: [Effect]
+        , statEmotionEffects:: [Effect]
         , jumpPoint         :: Bool
         , statInits         :: Bool
-        , endOfConversation :: Bool
         , nextStatIDs       :: [ID]
-        , statMedia         :: MediaInfo
-        , statIntents       :: [String]
-        , statFeedback      :: Maybe String
         }
-   
--- | A value describing the type of a statement element 
-data StatementType = ComputerStatement | PlayerStatement | Conversation
-    deriving (Show, Eq, Read)
-
--- | A value describing the type of a piece of text in a conversation
-data ConversationTextType = PlayerText | ComputerText | SituationText
-    deriving (Show, Eq, Read)
-   
+        
 
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
@@ -168,7 +156,6 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
     parseParameter paramElem = Parameter
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
-        , parameterEmotion      = nothingOnFail (findAttribute "emotionid" paramElem)
         , parameterInitialValue = nothingOnFail (findAttribute "initialValue" paramElem >>= readM)
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         }
@@ -249,31 +236,37 @@ parseStatements treeElem = playerStats ++ computerStats ++ conversation
 parseStatement :: Element -> Statement
 parseStatement statElem = 
     Statement
-    { statID            = getAttribute "id"         statElem
-    , statType          = parseType                 statElem       
-    , statText          = parseText                 statElem
-    , statPrecondition  = parseMaybePrecondition    statElem
-    , statEffects       = parseEffects              statElem
-    , jumpPoint         = parseJumpPoint            statElem
-    , statInits         = parseInits                statElem
-    , endOfConversation = parseEnd                  statElem
-    , nextStatIDs       = parseNextStatIDs          statElem
-    , statMedia         = parseMedia                statElem
-    , statIntents       = parseIntents              statElem
-    , statFeedback      = parseFeedback             statElem
+    { statID             = getAttribute "id"         statElem
+    , statInfo           = parseStatementInfo        statElem
+    , statPrecondition   = parseMaybePrecondition    statElem
+    , statParamEffects   = parseParameterEffects     statElem
+    , statEmotionEffects = parseEmotionEffects       statElem
+    , jumpPoint          = parseJumpPoint            statElem
+    , statInits          = parseInits                statElem
+    , nextStatIDs        = parseNextStatIDs          statElem
+    }
+    
+parseStatementInfo :: Element -> StatementInfo
+parseStatementInfo statElem =
+    StatementInfo
+    {   statType        = parseType     statElem
+    ,   statText        = parseText     statElem
+    ,   statIntents     = parseIntents  statElem
+    ,   statFeedback    = parseFeedback statElem
+    ,   statMedia       = parseMedia    statElem
+    ,   statEnd         = parseEnd      statElem
     }
 
 -- | Takes a statement and returns its type.
 parseType :: Element -> StatementType
-parseType statElem = read (applyToFirst toUpper (name statElem))
+parseType statElem = takeWhile isLower (name statElem)
 
 -- | Takes a statement and returns its text.
-parseText :: Element -> Either String [(ConversationTextType, String)]
-parseText statElem =
-    case name statElem of
+parseText :: Element -> StatementText
+parseText statElem = case name statElem of
         "conversation" -> Right (map toConversationText (filter (isSuffixOf "Text" . name) (children statElem)))
         _              -> Left (getData (getChild "text" statElem))
-  where toConversationText textEl = (read (applyToFirst toUpper (name textEl)), getData textEl)
+  where toConversationText textEl = (map toLower (name textEl), getData textEl)
 
 -- | Takes a statement element and returns its precondition, if it has one.
 -- | Uses the monadic findChild for Maybe Monad
@@ -283,21 +276,33 @@ parseMaybePrecondition statElem =
       where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects.
-parseEffects :: Element -> [Effect]
-parseEffects statElem = map parseEffect effectElems 
-  where effectElems = emptyOnFail (findChild "effects" statElem >>= return . children)
-
-parseEffect :: Element -> Effect
-parseEffect effectElem = Effect
+parseParameterEffects :: Element -> [Effect]
+parseParameterEffects statElem = map parseParameterEffect paramElems
+  where paramElems = emptyOnFail (findChild "parameterEffects" statElem >>= return . children)
+    
+parseEmotionEffects :: Element -> [Effect]
+parseEmotionEffects statElem = map parseEmotionEffect emotionElems
+  where emotionElems = emptyOnFail (findChild "emotionEffects" statElem >>= return . children)
+  
+parseParameterEffect :: Element -> Effect
+parseParameterEffect effectElem = Effect
             { effectIdref      = getAttribute "idref" effectElem
             , effectChangeType = parseChangeType      effectElem
             , effectValue      = parseValue           effectElem
             }
-  where 
-    -- | Parses a string to a Changetype. Gives an exception on invalid input.
-    parseChangeType :: Element -> ChangeType
-    parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
-      where changeTypeStr = getAttribute "changeType" effectElem
+            
+parseEmotionEffect :: Element -> Effect
+parseEmotionEffect effectElem = Effect
+            { effectIdref      = getAttribute "emotionid" effectElem
+            , effectChangeType = parseChangeType      effectElem
+            , effectValue      = parseValue           effectElem
+            }
+            
+            
+-- | Parses a string to a Changetype. Gives an exception on invalid input.
+parseChangeType :: Element -> ChangeType
+parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
+  where changeTypeStr = getAttribute "changeType" effectElem
             
 parseJumpPoint :: Element -> Bool    
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
@@ -448,16 +453,12 @@ instance Show Tree where
         " statements: " ++ show stats ++ "\n"
         
 instance Show Statement where
-    show (Statement id t desc pc es jp inits end nexts media is fb) = "\n  " ++
-        "statement: "     ++ show id    ++ "\n\t" ++
-        " type: "         ++ show t     ++ "\n\t" ++
-        " description: "  ++ show desc  ++ "\n\t" ++ 
+    show (Statement id info pc pes ees jp inits nexts) = "\n  " ++
+        "statement: "     ++ show id    ++ "\n\t" ++ 
+        " info: "         ++ show info  ++ "\n\t" ++
         " precondition: " ++ show pc    ++ "\n\t" ++
-        " effects: "      ++ show es    ++ "\n\t" ++
+        " paramEffects: " ++ show pes   ++ "\n\t" ++
+        " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
         " inits: "        ++ show inits ++ "\n\t" ++
-        " end: "          ++ show end   ++ "\n\t" ++
-        " nextIDs: "      ++ show nexts ++ "\n\t" ++
-        " media: "        ++ show media ++ "\n\t" ++
-        " intents: "      ++ show is    ++ "\n\t" ++
-        " feedback: "     ++ show fb    ++ "\n  " 
+        " nextIDs: "      ++ show nexts ++ "\n\t"

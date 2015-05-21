@@ -2,12 +2,12 @@ module Domain.Scenarios.Exercises where
 
 import Control.Monad
 import Data.List
-import Data.Map(findWithDefault, fromList)
+import Data.Map(findWithDefault, fromList, empty)
 import System.Directory
 
 import Ideas.Common.Library
 
-import Domain.Scenarios.Globals(Script, parameterId, parameterInitialValueOrZero)
+import Domain.Scenarios.Globals
 import Domain.Scenarios.Strategy(makeStrategy)
 import Domain.Scenarios.Parser
 import Domain.Scenarios.ScenarioState
@@ -31,7 +31,7 @@ exerciseFromScript script = do
     let difficulty = scenarioDifficulty metadata
     let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = fromList (map processParameter parameters) :: ScenarioState --initial state for strategy generation
+        initialState = ScenarioState (fromList (map processParameter parameters)) empty emptyStatementInfo --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
@@ -49,7 +49,6 @@ exerciseFromScript script = do
        -- , randomExercise = undefined
        , examples = [(difficulty, initialState)]
        }
-
        
 -- A dummy exercise necessary for use with general services
 dummyExercise :: Exercise ScenarioState
