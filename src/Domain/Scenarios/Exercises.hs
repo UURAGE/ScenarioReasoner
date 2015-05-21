@@ -31,7 +31,7 @@ exerciseFromScript script = do
     let difficulty = scenarioDifficulty metadata
     let parameters = scenarioParameters metadata
     let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = ScenarioState (fromList (map processParameter parameters)) empty defaultStatementInfo --initial state for strategy generation
+        initialState = ScenarioState (fromList (map processParameter parameters)) empty emptyStatementInfo --initial state for strategy generation
     return makeExercise
        { exerciseId     = getId script
        , status         = Alpha
@@ -49,8 +49,6 @@ exerciseFromScript script = do
        -- , randomExercise = undefined
        , examples = [(difficulty, initialState)]
        }
-  where defaultStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False
-
        
 -- A dummy exercise necessary for use with general services
 dummyExercise :: Exercise ScenarioState

@@ -44,6 +44,8 @@ type StatementType = String                                         -- Conversat
 type StatementText = Either String [(ConversationTextType, String)] -- Either Text [(Type, Text)] 
 type ConversationTextType = String                                  -- Player / Computer / Situation
 
+emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False                          
+
 -- MediaInfo [(VisualType, VisualID)] AudioIDs where VisualType is either an "image" or a "video" 
 data MediaInfo = MediaInfo [(String, ID)] [ID] 
     deriving(Show, Eq)

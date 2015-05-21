@@ -26,10 +26,10 @@ guardedRule identifier description precondCheck applyEffects =
    
 makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
 makeGuardedRule scenarioID statement tree = guardedRule
-    (["scenarios", scenarioID, statType (statInfo statement), statID statement]) -- create an identifier for the rule
-    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                -- make a description for the rule
-    (evaluateMaybeCondition (statPrecondition statement))                                          -- check if precondition is fulfilled
-    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))    -- apply the effects of a statement to the state
+    (["scenarios", scenarioID, statType (statInfo statement), statID statement])                                        -- create an identifier for the rule
+    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                          -- make a description for the rule
+    (evaluateMaybeCondition (statPrecondition statement))                                                               -- check if precondition is fulfilled
+    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))     -- apply the effects of a statement to the state
     --The initial state is not generated here. 
     --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
             

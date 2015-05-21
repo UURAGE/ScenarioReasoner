@@ -71,11 +71,10 @@ instance InJSON ScenarioState where
             emotionsToJSON = ("emotions", toJSON emos)
             parametersToJSON  =  ("parameters", toJSON params)
             statInfoToJSON = ("statement", toJSON stat)
-    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : ("statement", statInfoJSON) : [])) = 
+    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : ("statement", _) : [])) = 
         do params <- fromJSON paramsJSON
            emotions <- fromJSON emotionsJSON
-           statInfo <- fromJSON statInfoJSON
-           return (ScenarioState params emotions statInfo)
+           return (ScenarioState params emotions emptyStatementInfo)
     fromJSON _ = fail "expecting an object"
 
 instance InJSON a => InJSON (M.Map String a)  where
@@ -90,41 +89,25 @@ instance InJSON StatementInfo  where
       where 
         typeToJSON      = ("type",      toJSON (statType        statInfo))
         textToJSON      = ("text",      toJSON (statText        statInfo))
-        intentsToJSON   = ("intentions",   toJSON (statIntents     statInfo))
+        intentsToJSON   = ("intentions", toJSON (statIntents     statInfo))
         feedbackToJSON  = ("feedback",  toJSON (statFeedback    statInfo))
         mediaToJSON     = ("media",     toJSON (statMedia       statInfo))
         endToJSON       = ("end",       toJSON (statEnd         statInfo))
-    fromJSON (Object (typeTuple : textTuple : intentsTuple : feedbackTuple : mediaTuple : endTuple : [])) = do
-        statType <- (\("type", typeJSON) -> fromJSON typeJSON) typeTuple
-        text     <- (\("text", textJSON) -> fromJSON textJSON) textTuple
-        intents  <- (\("intentions", intentsJSON) -> fromJSON intentsJSON) intentsTuple
-        feedback <- (\("feedback", feedbackJSON) -> fromJSON feedbackJSON) feedbackTuple
-        media    <- (\("media", mediaJSON) -> fromJSON mediaJSON) mediaTuple
-        end      <- (\("end", endJSON) -> fromJSON endJSON) endTuple
-        return (StatementInfo statType text intents feedback media end)
     fromJSON _ = fail "expecting an object"
     
-instance InJSON StatementText where
-    toJSON (Left string) = listToJSON string
-    toJSON (Right conversation) = toJSON conversation
-    toJSON _ = error "wrong conversationtext"
-    fromJSON stringJSON@(String _) = return (Left (fromJSON stringJSON))
-    fromJSON listJSON@(Array _)    = return (Right (fromJSON listJSON))
-    fromJSON _    = fail "expecting a string or a list of tuples"
+instance InJSON (Either String [(String, String)]) where
+    toJSON (Left string) = toJSON string
+    toJSON (Right list) = toJSON list
+    fromJSON _ = fail "fail: the response is a default value in the statement info"
     
 instance InJSON MediaInfo where
     toJSON (MediaInfo visuals audios) = Object [("visuals", toJSON visuals), ("audios", toJSON audios)]
-    fromJSON (Object (("visuals", visualsJSON) : ("audios", audiosJSON) : [])) =
-        return (MediaInfo (fromJSON visualsJSON) (fromJSON audiosJSON))
-    fromJSON _                     = fail "expecting an object"
+    fromJSON _ = fail "fail: the response is a default value in the statement info"
     
 instance InJSON (Maybe String) where
     toJSON (Just string) = toJSON string 
     toJSON Nothing = Null
-    
-    fromJSON stringJSON@(String _) = fromJSON stringJSON
-    fromJSON (Null)                = return Nothing
-    fromJSON _                     = fail "expecting a string or null"
+    fromJSON _ = fail "fail: the response is a default value in the statement info"
     
 showJSON :: ScenarioState -> String
 showJSON = compactJSON . toJSON
