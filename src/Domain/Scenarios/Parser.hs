@@ -17,51 +17,7 @@ import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
-
-data Scenario = Scenario 
-        { scenarioMetaData :: MetaData
-        , scenarioDialogue :: Dialogue        
-        }
-    deriving(Show)
-
-data MetaData = MetaData    
-        { scenarioID              :: ID
-        , scenarioName            :: Name
-        , scenarioDescription     :: String
-        , scenarioDifficulty      :: Difficulty 
-        , scenarioBannerImage     :: Maybe ID
-        , scenarioCharacterImage  :: Maybe ID
-        , scenarioModel           :: Maybe ID 
-        , scenarioParameters      :: [Parameter]
-        , scenarioLocation        :: Name
-        , scenarioToggles         :: [Toggle]
-        , scenarioScoringFunction :: ScoringFunction
-        , scenarioScoreExtremes   :: Maybe (Score, Score)
-        }
-        
-type Dialogue = [InterleaveLevel]
-
-type InterleaveLevel = (Int, [Tree])
-
-data Tree = Tree
-        { treeID          :: ID
-        , treeStartIDs    :: [ID]
-        , treeAtomic      :: Bool -- for optimisation
-        , treeOptional    :: Bool
-        , treeStatements  :: [Statement]
-        }        
-        
-data Statement = Statement
-        { statID            :: ID
-        , statInfo          :: StatementInfo
-        , statPrecondition  :: Maybe Condition
-        , statParamEffects  :: [Effect]
-        , statEmotionEffects:: [Effect]
-        , jumpPoint         :: Bool
-        , statInits         :: Bool
-        , nextStatIDs       :: [ID]
-        }
-        
+import Domain.Scenarios.Scenario
 
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
@@ -103,24 +59,24 @@ parseMetaData script = MetaData
         
 -- | Queries the given script for its ID.
 parseScenarioID :: Script -> ID
-parseScenarioID = parseMetaDataString "id"
+parseScenarioID = getMetaDataString "id"
 
 -- | Queries the given script for its name.
 parseScenarioName :: Script -> Name
-parseScenarioName = parseMetaDataString "name"
+parseScenarioName = getMetaDataString "name"
 
 -- | Queries the given script for its description.
 parseScenarioDescription :: Script -> String
-parseScenarioDescription = parseMetaDataString "description"
+parseScenarioDescription = getMetaDataString "description"
 
 parseScenarioLocation :: Script -> Name
-parseScenarioLocation = parseMetaDataString "location"
+parseScenarioLocation = getMetaDataString "location"
 
 -- | Queries the given script for its difficulty.
 parseScenarioDifficulty :: Script -> Difficulty
 parseScenarioDifficulty script = errorOnFail errorMsg (readDifficulty difficultyString)
  where 
-    difficultyString = parseMetaDataString "difficulty" script
+    difficultyString = getMetaDataString "difficulty" script
     errorMsg = "Could not read difficulty: " ++ difficultyString
 
 -- | Queries the given script for its banner image.
@@ -162,7 +118,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
 
 parseScenarioToggles :: Script -> [Toggle]
 parseScenarioToggles script = map parseToggle toggleNames
-    where parseToggle toggleName = Toggle toggleName (parseBool (parseMetaDataString toggleName script))
+    where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
 
 -- | Queries the given script for its scoring function.
 parseScenarioScoringFunction :: Script -> ScoringFunction
@@ -288,14 +244,14 @@ parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
             { effectIdref      = getAttribute "idref" effectElem
             , effectChangeType = parseChangeType      effectElem
-            , effectValue      = parseValue           effectElem
+            , effectValue      = getValue           effectElem
             }
             
 parseEmotionEffect :: Element -> Effect
 parseEmotionEffect effectElem = Effect
             { effectIdref      = getAttribute "emotionid" effectElem
             , effectChangeType = parseChangeType      effectElem
-            , effectValue      = parseValue           effectElem
+            , effectValue      = getValue           effectElem
             }
             
             
@@ -366,6 +322,13 @@ parseFeedback statElem = nothingOnFail (liftM getData (findChild "feedback" stat
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 
+-- | Parses a Bool.
+parseBool :: String -> Bool
+parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
+
+tryParseBool :: Maybe String -> Bool
+tryParseBool (Just boolStr) = parseBool boolStr
+tryParseBool _              = False
 
 -- | Parses a condition and recursively parses ands and ors. Used in both parsers (metadata and dialogue)
 parseCondition :: Element -> Condition
@@ -376,7 +339,7 @@ parseCondition conditionElem = case name conditionElem of
         ComparisonCondition
         { conditionIdref = getAttribute "idref" conditionElem
         , conditionTest  = parseCompareOperator conditionElem
-        , conditionValue = parseValue           conditionElem
+        , conditionValue = getValue           conditionElem
         }
   where
     -- | Parses a compare operator. Gives an exception on invalid input.
@@ -407,59 +370,15 @@ getExactlyOneChild element = case children element of
     [child] -> child
     _       -> error "multiple children found"
     
--- | Parses a Bool.
-parseBool :: String -> Bool
-parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
-
-tryParseBool :: Maybe String -> Bool
-tryParseBool (Just boolStr) = parseBool boolStr
-tryParseBool _              = False
-
--- | Parses a value attribute from an element
-parseValue :: Element -> ParameterValue
-parseValue elem = read (getAttribute "value" elem) :: ParameterValue
-
 -- | Queries the given script for basic information. Which information being queried is specified
 --  in the "metaDataName". This could be the name of the script, the difficulty, location, etc.
-parseMetaDataString :: Name -> Script -> String
-parseMetaDataString metaDataName script = getData dataElem
+getMetaDataString :: Name -> Script -> String
+getMetaDataString metaDataName script = getData dataElem
   where 
     metadata = getChild "metadata" script
     dataElem = getChild metaDataName metadata
     
-----------------------------------------------------------------------------------------------------
-    
-    
--- Show instances for the datatypes defined at the top of Parser.hs
-instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model ps loc ts sf se) =
-        "id: "              ++ show id    ++ "  name: " ++ show name         ++ "\n" ++ 
-        "description: "     ++ show desc  ++ "\n" ++ 
-        "difficulty: "      ++ show diff  ++ "\n" ++
-        "bannerImage: "     ++ show bi    ++ "\n" ++ 
-        "characterImage: "  ++ show ci    ++ "\n" ++ 
-        "model: "           ++ show model ++ "\n" ++ 
-        "parameters: "      ++ show ps    ++ "\n" ++ 
-        "location: "        ++ show loc   ++ "\n" ++
-        "toggles: "         ++ show ts    ++ "\n" ++ 
-        "scoringFunction: " ++ show sf    ++ "\n" ++ 
-        "scoreExtremes: "   ++ show se    ++ "\n"
+-- | Parses a value attribute from an element
+getValue :: Element -> ParameterValue
+getValue elem = read (getAttribute "value" elem) :: ParameterValue
 
-instance Show Tree where
-    show (Tree id start atom opt stats) = "\n" ++
-        "tree: "        ++ show id    ++ 
-        " start: "      ++ show start ++
-        " atomic: "     ++ show atom  ++
-        " optional: "   ++ show opt   ++
-        " statements: " ++ show stats ++ "\n"
-        
-instance Show Statement where
-    show (Statement id info pc pes ees jp inits nexts) = "\n  " ++
-        "statement: "     ++ show id    ++ "\n\t" ++ 
-        " info: "         ++ show info  ++ "\n\t" ++
-        " precondition: " ++ show pc    ++ "\n\t" ++
-        " paramEffects: " ++ show pes   ++ "\n\t" ++
-        " emotionEffects: " ++ show ees ++ "\n\t" ++
-        " jumpPoint: "    ++ show jp    ++ "\n\t" ++
-        " inits: "        ++ show inits ++ "\n\t" ++
-        " nextIDs: "      ++ show nexts ++ "\n\t"

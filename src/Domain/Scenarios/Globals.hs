@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-} 
 module Domain.Scenarios.Globals where
 
 import Data.Maybe
 import Data.Char(isLower, toLower)
 
+import Ideas.Common.Library
 import Ideas.Text.JSON
 import Ideas.Text.XML.Interface(Element)
 
@@ -15,20 +15,6 @@ type ID = String
 type Name = String
 type Score = Int
 
--- Global datastructures and utility functions ---------------------------------------------------------------------------
-
--- Specifies if a certain feature should be on or off
-data Toggle = Toggle Name Bool
-    
-instance Show Toggle where
-    show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
-    
-toggleNames :: [Name]
-toggleNames = ["showscore"    --score at the end of the game
-              ,"showfeedback" --feedback at the end of the game
-              , "feedback"]   --feedback during the game
-              
--- StatementInfo ---------------------------------------------------------------------------------------------------------
 data StatementInfo = StatementInfo 
     { statType     :: StatementType  
     , statText     :: StatementText
@@ -44,11 +30,24 @@ type StatementType = String                                         -- Conversat
 type StatementText = Either String [(ConversationTextType, String)] -- Either Text [(Type, Text)] 
 type ConversationTextType = String                                  -- Player / Computer / Situation
 
-emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False                          
-
--- MediaInfo [(VisualType, VisualID)] AudioIDs where VisualType is either an "image" or a "video" 
+-- MediaInfo [(VisualType, VisualID)] [AudioID] where VisualType is either an "image" or a "video" 
 data MediaInfo = MediaInfo [(String, ID)] [ID] 
     deriving(Show, Eq)
+    
+emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False 
+                
+-- Specifies if a certain feature should be on or off
+data Toggle = Toggle Name Bool
+    
+instance Show Toggle where
+    show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
+    
+toggleNames :: [Name]
+toggleNames = ["showscore"    --score at the end of the game
+              ,"showfeedback" --feedback at the end of the game
+              , "feedback"]   --feedback during the game
+              
+
 --------------------------------------------------------------------------------------------------------------------------
     
 -- Specifies a parameter that can be an emotion or a goal of a conversation like "inleven"
@@ -63,10 +62,6 @@ instance Show Parameter where
     show (Parameter id name initvalue scored) = 
         show id ++ "\t" ++ show name ++ "\t" ++ "\t" ++ show initvalue ++ "\t" ++ show scored ++ "\n"
     
--- | Returns the initial value of a parameter, or zero if it does not have one.
-parameterInitialValueOrZero :: Parameter -> ParameterValue
-parameterInitialValueOrZero = fromMaybe 0 . parameterInitialValue
-           
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.
 errorOnFail :: String -> Maybe a -> a

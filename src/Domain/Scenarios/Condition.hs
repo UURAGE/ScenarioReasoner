@@ -23,6 +23,10 @@ data CompareOperator = LessThan
                      | NotEqualTo
                      deriving (Show, Eq, Read)
                      
+-- | Evaluates the possible condition based on the given state, if there is no condition evaluate to True
+evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
+evaluateMaybeCondition = maybe (const True) evaluateCondition
+                     
 -- | Evaluates the condition based on the given state.
 evaluateCondition :: Condition -> ScenarioState -> Bool
 evaluateCondition mainCondition state = evaluate mainCondition
@@ -44,10 +48,6 @@ evaluateComparisonCondition comparison state = operator tested value
             where
               paramValue = getParamOrZero (conditionIdref comparison) paramMap
               emotionValue = getParamOrZero (conditionIdref comparison) emotionMap
-
--- | Evaluates the possible condition based on the given state, if there is no condition evaluate to True
-evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
-evaluateMaybeCondition = maybe (const True) evaluateCondition
 
 -- | Returns the binary predicate corresponding to the given operator type.
 getCompareOperator :: CompareOperator -> Int -> Int -> Bool

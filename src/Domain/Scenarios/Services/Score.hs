@@ -7,10 +7,11 @@ import Data.Maybe
 import Ideas.Common.Library
 import Ideas.Service.State
 
-import Domain.Scenarios.Parser
+import Domain.Scenarios.Parser(parseScenario)
 import Domain.Scenarios.ScoringFunction(calculateScore, calculateSubScores)
 import Domain.Scenarios.Globals(ID, Name, Score, Script)
-import Domain.Scenarios.Id(findScript)
+import Domain.Scenarios.Scenario
+import Domain.Scenarios.Script(findScript)
 
 data ScoreResult = ScoreResult Score           -- Total score
                                [SubScore]      -- All subscores for all parameters

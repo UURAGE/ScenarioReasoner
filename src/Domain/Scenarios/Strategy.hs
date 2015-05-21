@@ -15,39 +15,21 @@ import Ideas.Text.XML.Interface(Element)
 
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Parser
+import Domain.Scenarios.Scenario
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
-import Domain.Scenarios.Id
 
 type StrategyMap = M.Map ID (Strategy ScenarioState)
 
--- Make a rule with an identifier and a description, 
--- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
-guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
-guardedRule identifier description precondCheck applyEffects =
-    describe description $ makeRule identifier (\state -> do guard $ precondCheck state; Just $ applyEffects state)
-   
-makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
-makeGuardedRule scenarioID statement tree = guardedRule
-    ["scenarios", scenarioID, statType (statInfo statement), statID statement]                                          -- create an identifier for the rule
-    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                          -- make a description for the rule
-    (evaluateMaybeCondition (statPrecondition statement))                                                               -- check if precondition is fulfilled
-    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))     -- apply the effects of a statement to the state
-    --The initial state is not generated here. 
-    --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
-            
-
--- Parses the dialogue from the script, sorts it with the level of interleaving and makes a strategy for each level          
-makeStrategy :: Script -> Strategy ScenarioState
-makeStrategy script = sequence (map (makeIntLvlStrategy scenarioID) sortedDialogue)
+-- Sorts the dialogue with the level of interleaving and makes a strategy for each level          
+makeStrategy :: ID -> Dialogue -> Strategy ScenarioState
+makeStrategy scenarioID dialogue = sequence (map (makeInterleaveStrategy scenarioID) sortedDialogue)
   where
-    dialogue = scenarioDialogue (parseScenario script)
     sortedDialogue = sortWith fst dialogue
-    scenarioID = parseScenarioID script
         
 -- For each tree (subject) in an interleave level make a strategy 
-makeIntLvlStrategy :: ID -> InterleaveLevel -> Strategy ScenarioState
-makeIntLvlStrategy scenarioID (_, trees) = interleave (map (makeTreeStrategy scenarioID) trees)
+makeInterleaveStrategy :: ID -> InterleaveLevel -> Strategy ScenarioState
+makeInterleaveStrategy scenarioID (_, trees) = interleave (map (makeTreeStrategy scenarioID) trees)
     
 -- Recursively make a strategy for a tree by making a strategy for the starting statement,
 -- then get the next statements and make a strategy for those statements and so on.
@@ -84,7 +66,27 @@ makeAlternativesStrategy strategyMap tree scenarioID (statID : []) =
     makeStatementStrategy strategyMap tree scenarioID statID
 makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) = 
     foldl (foldAlternatives tree scenarioID) firstStrategy statIDs
-  where firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
+  where 
+    firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
+    
+    foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> (Strategy ScenarioState, StrategyMap)
+    foldAlternatives tree scenarioID (strategySoFar, strategyMap) statementID = (strategySoFar <|> nextStrategy, newStrategyMap)
+      where  (nextStrategy, newStrategyMap) = makeStatementStrategy strategyMap tree scenarioID statementID 
+      
+makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
+makeGuardedRule scenarioID statement tree = guardedRule
+    ["scenarios", scenarioID, statType (statInfo statement), statID statement]                                          -- create an identifier for the rule
+    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                          -- make a description for the rule
+    (evaluateMaybeCondition (statPrecondition statement))                                                               -- check if precondition is fulfilled
+    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))     -- apply the effects of a statement to the state
+    --The initial state is not generated here. 
+    --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
+  where
+    -- Make a rule with an identifier and a description, 
+    -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
+    guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
+    guardedRule identifier description precondCheck applyEffects =
+        describe description $ makeRule identifier (\state -> do guard $ precondCheck state; Just $ applyEffects state)
             
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement tree rule nextStrategy 
@@ -93,8 +95,4 @@ sequenceRule statement tree rule nextStrategy
     | statInits statement && treeAtomic tree       = rule <*> inits nextStrategy
     | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
     | treeAtomic tree                              = rule <*> nextStrategy 
-    | otherwise                                    = rule !~> nextStrategy
-    
-foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> (Strategy ScenarioState, StrategyMap)
-foldAlternatives tree scenarioID (strategySoFar, strategyMap) statementID = (strategySoFar <|> nextStrategy, newStrategyMap)
-  where  (nextStrategy, newStrategyMap) = makeStatementStrategy strategyMap tree scenarioID statementID 
+    | otherwise                                    = rule !~> nextStrategy    

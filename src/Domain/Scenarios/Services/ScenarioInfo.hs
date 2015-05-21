@@ -5,7 +5,8 @@ import Ideas.Common.Library
 import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Parser
 import Domain.Scenarios.Globals
-import Domain.Scenarios.Id(findScript)
+import Domain.Scenarios.Scenario
+import Domain.Scenarios.Script
 
 data ScenarioInfo = ScenarioInfo ID
                                  Name

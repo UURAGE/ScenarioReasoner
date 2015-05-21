@@ -3,13 +3,15 @@ module Domain.Scenarios.Exercises where
 import Control.Monad
 import Data.List
 import Data.Map(findWithDefault, fromList, empty)
+import Data.Maybe(fromMaybe)
 import System.Directory
 
 import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Strategy(makeStrategy)
-import Domain.Scenarios.Parser
+import Domain.Scenarios.Parser(parseScript, parseScenario)
+import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState
 
 getExercises :: String ->  IO ([Exercise ScenarioState], [Script])
@@ -26,14 +28,14 @@ getExercise path = do
 
 exerciseFromScript :: Monad m => Script -> m (Exercise ScenarioState)
 exerciseFromScript script = do
-    let metadata = scenarioMetaData (parseScenario script)
-    let scenarioStrategy = makeStrategy script
-    let difficulty = scenarioDifficulty metadata
-    let parameters = scenarioParameters metadata
-    let processParameter p = (parameterId p, parameterInitialValueOrZero p)
-        initialState = ScenarioState (fromList (map processParameter parameters)) empty emptyStatementInfo --initial state for strategy generation
+    let scenario@(Scenario metadata dialogue) = (parseScenario script)
+        scenarioStrategy = makeStrategy (scenarioID metadata) dialogue
+        difficulty = scenarioDifficulty metadata
+        parameters = scenarioParameters metadata
+        processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
+        initialState = ScenarioState (fromList (map processParameter parameters)) empty emptyStatementInfo 
     return makeExercise
-       { exerciseId     = getId script
+       { exerciseId     = getId scenario
        , status         = Alpha
        , parser         = readJSON
        , prettyPrinter  = showJSON

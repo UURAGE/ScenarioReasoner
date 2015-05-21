@@ -2,12 +2,11 @@
 module Domain.Scenarios.ScenarioState where
 
 import Control.Monad
-import Control.Applicative((<*>))
 import Data.Char
 
 import qualified Data.Map as M
 
-import Ideas.Common.Library hiding ((<*>))
+import Ideas.Common.Library
 import Ideas.Common.Utils 
 import Ideas.Text.JSON
 import Data.Typeable
