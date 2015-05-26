@@ -1,5 +1,6 @@
-module Domain.Scenarios.Parser where
+module Domain.Scenarios.Parser (findScript, parseScript, parseScenario) where
 
+import Prelude hiding (readFile)
 import GHC.Exts (sortWith)
 
 import Control.Monad
@@ -7,7 +8,10 @@ import Control.Monad
 import Data.Char
 import Data.List
 import Data.Maybe
-import System.IO (withBinaryFile, hGetContents, IOMode(..))
+
+import System.IO
+import System.IO.Unsafe
+import System.FilePath
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Common.Utils (readM)
@@ -19,13 +23,22 @@ import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
 
+type Script = Element
+
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
    
--- | Parses the XML script at "filepath" to a Script. hGetContent is NOT lazy.
-parseScript :: String -> IO Script
+findScript :: String -> [FilePath] -> Exercise a -> Script
+findScript usage fs ex =
+    case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
+            [path] -> parseScript path
+            _             ->
+                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario."
+   
+-- | Parses the XML script at "filepath" to a Script. lazy.
+parseScript :: FilePath -> Script
 parseScript filepath =
-    withBinaryFile filepath ReadMode 
+    unsafePerformIO $ withBinaryFile filepath ReadMode 
         (hGetContents >=> (either fail return . parseXML))
         -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 

@@ -8,7 +8,6 @@ import Ideas.Text.JSON
 import Ideas.Text.XML.Interface(Element)
 
 -- | Type definitions 
-type Script = Element
 type ParameterValue = Int
 type Emotion = String
 type ID = String

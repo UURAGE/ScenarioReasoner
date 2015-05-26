@@ -11,7 +11,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: ModeJSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: ModeJSON.hs 7844 2015-05-22 09:41:38Z bastiaan $
 
 module Ideas.Encoding.ModeJSON (processJSON) where
 
@@ -76,12 +76,16 @@ jsonRequest cgiBin json = do
                 Just (String s)     -> Just s
                 Just (Number (I n)) -> Just (show n)
                 _                   -> Nothing
+   let sch = case lookupM "logging" json of
+                Just (String s) -> readSchema s  
+                _               -> Nothing
    return emptyRequest
       { serviceId  = srv
       , exerciseId = exId
       , user       = uid
       , source     = src
       , cgiBinary  = cgiBin
+      , logSchema  = sch
       , dataformat = JSON
       , encoding   = enc
       }

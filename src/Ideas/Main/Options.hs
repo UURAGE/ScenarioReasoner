@@ -11,7 +11,7 @@
 -- Options and command-line flags for services
 --
 -----------------------------------------------------------------------------
---  $Id: Options.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Options.hs 7841 2015-05-22 09:01:36Z bastiaan $
 
 module Ideas.Main.Options
    ( Flag(..), getFlags
@@ -19,7 +19,7 @@ module Ideas.Main.Options
    ) where
 
 import Data.Maybe
-import Ideas.Main.LoggingDatabase (logEnabled)
+import Ideas.Main.Logging (logEnabled)
 import Ideas.Main.Revision
 import System.Console.GetOpt
 import System.Environment
