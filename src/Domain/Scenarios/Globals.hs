@@ -45,8 +45,8 @@ instance Show Toggle where
 toggleNames :: [Name]
 toggleNames = ["showscore"    --score at the end of the game
               ,"showfeedback" --feedback at the end of the game
-              , "feedback"]   --feedback during the game
-              
+              , "feedback"    --feedback during the game
+              , "isSitting"]  --the character model is sitting
 
 --------------------------------------------------------------------------------------------------------------------------
     
