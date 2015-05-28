@@ -1,8 +1,9 @@
-{-# LANGUAGE FlexibleInstances, AutoDeriveTypeable #-} 
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-} 
 module Domain.Scenarios.ScenarioState where
 
 import Control.Monad
 import Data.Char
+import Data.Typeable
 
 import qualified Data.Map as M
 
