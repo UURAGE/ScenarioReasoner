@@ -47,21 +47,10 @@ applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects s
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
 applyEffect effect stateMap = case effectChangeType effect of
-        Set   -> setParam idref value stateMap
-        Delta -> setParam idref (getParamOrZero idref stateMap + value) stateMap
+        Set   -> M.insert idref value stateMap
+        Delta -> M.insert idref (M.findWithDefault 0 idref stateMap + value) stateMap
     where idref = effectIdref effect
           value = effectValue effect          
-          
--- Functions for changing the ScenarioState 
-
--- If the parameter is in the state return its value otherwise return zero
-getParamOrZero :: String -> M.Map String ParameterValue -> ParameterValue
-getParamOrZero = M.findWithDefault 0
-
--- Set the parameter to a specific value and return the new state
-setParam :: String -> ParameterValue -> M.Map String ParameterValue -> M.Map String ParameterValue
-setParam = M.insert
-          
 
 -- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
 

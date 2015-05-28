@@ -1,5 +1,7 @@
 module Domain.Scenarios.ScoringFunction where
 
+import qualified Data.Map as M
+
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
@@ -25,7 +27,7 @@ calculateScore mainScoringFunction state@(ScenarioState paramMap _ _) = calculat
             Constant           score        -> score
             Sum                subFunctions -> sum . map calculate $ subFunctions
             Scale     scalar   subFunction  -> scalar * calculate subFunction
-            ParamRef           paramId      -> getParamOrZero paramId paramMap
+            ParamRef           paramId      -> M.findWithDefault 0 paramId paramMap
             IntegeredCondition condition    -> if evaluateCondition condition state then 1 else 0
 
 -- | Calculates the values of the scored parameters in the given state.
@@ -33,5 +35,5 @@ calculateSubScores :: [Parameter] -> ScenarioState -> [(ID, Name, Score)]
 calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
                    , parameterName   param
-                   , getParamOrZero (parameterId param) paramMap)
+                   , M.findWithDefault 0 (parameterId param) paramMap)
         ) . filter parameterScored $ parameters
