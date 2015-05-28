@@ -8,9 +8,9 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import System.IO (withBinaryFile, hGetContents, IOMode(..))
+import Text.Read(readMaybe)
 
 import Ideas.Common.Library hiding (Sum)
-import Ideas.Common.Utils (readInt)
 import Ideas.Text.XML.Interface
 
 import Domain.Scenarios.ScoringFunction
@@ -112,7 +112,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
     parseParameter paramElem = Parameter
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
-        , parameterInitialValue = (findAttribute "initialValue" paramElem) >>= readInt
+        , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         }
 
