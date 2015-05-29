@@ -1,5 +1,7 @@
 module Domain.Scenarios.Condition where
 
+import qualified Data.Map as M
+
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals(ID)
 
@@ -46,8 +48,8 @@ evaluateComparisonCondition comparison state = operator tested value
           getParameterValue (ScenarioState paramMap emotionMap _) | paramValue /= 0 = paramValue
                                                                   | otherwise       = emotionValue            
             where
-              paramValue = getParamOrZero (conditionIdref comparison) paramMap
-              emotionValue = getParamOrZero (conditionIdref comparison) emotionMap
+              paramValue = M.findWithDefault 0 (conditionIdref comparison) paramMap
+              emotionValue = M.findWithDefault 0 (conditionIdref comparison) emotionMap
 
 -- | Returns the binary predicate corresponding to the given operator type.
 getCompareOperator :: CompareOperator -> Int -> Int -> Bool
