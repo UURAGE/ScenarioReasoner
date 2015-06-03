@@ -11,7 +11,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: ModeXML.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: ModeXML.hs 7844 2015-05-22 09:41:38Z bastiaan $
 
 module Ideas.Encoding.ModeXML (processXML) where
 
@@ -66,6 +66,7 @@ xmlRequest cgiBin xml = do
       , user           = findAttribute "userid" xml
       , source         = findAttribute "source" xml
       , feedbackScript = findAttribute "script" xml
+      , logSchema      = findAttribute "logging" xml >>= readSchema
       , cgiBinary      = cgiBin
       , dataformat     = XML
       , encoding       = enc

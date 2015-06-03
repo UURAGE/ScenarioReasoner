@@ -1,5 +1,7 @@
 module Domain.Scenarios.Services.ServiceList where
 
+import System.FilePath(FilePath)
+
 import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
@@ -7,26 +9,25 @@ import Ideas.Service.State
 import Domain.Scenarios.Services.ScenarioInfo
 import Domain.Scenarios.Services.Score
 
-import Domain.Scenarios.Globals(Script)
 import Domain.Scenarios.Types
 
 -- A list of all custom services available
-customServices :: [Script] -> [Service]
-customServices scripts = map ($ scripts)
+customServices :: [FilePath] -> [Service]
+customServices fs = map ($ fs)
     [scenariolistS, scenarioinfoS, scoreS]
 
-scenariolistS :: [Script] -> Service
-scenariolistS scripts = makeService "scenarios.scenariolist"
+scenariolistS :: [FilePath] -> Service
+scenariolistS fs = makeService "scenarios.scenariolist"
     "Lists all available scenarios." $
-    scenariolist scripts ::: tList tScenarioInfo
+    scenariolist fs ::: tList tScenarioInfo
 
-scenarioinfoS :: [Script] -> Service
-scenarioinfoS scripts = makeService "scenarios.scenarioinfo"
+scenarioinfoS :: [FilePath] -> Service
+scenarioinfoS fs = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
-    scenarioinfo scripts ::: tExercise .-> tScenarioInfo
+    scenarioinfo fs ::: tExercise .-> tScenarioInfo
 
-scoreS :: [Script] -> Service
-scoreS scripts = makeService "scenarios.score"
+scoreS :: [FilePath] -> Service
+scoreS fs = makeService "scenarios.score"
     "Calculates the score of a given state." $
-    score scripts ::: tState .-> tScoreResult
+    score fs ::: tState .-> tScoreResult
 
