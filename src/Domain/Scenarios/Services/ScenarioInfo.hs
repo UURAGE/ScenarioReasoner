@@ -1,12 +1,13 @@
 module Domain.Scenarios.Services.ScenarioInfo where
 
+import System.FilePath(FilePath)
+
 import Ideas.Common.Library
 
 import Domain.Scenarios.ScoringFunction
-import Domain.Scenarios.Parser
+import Domain.Scenarios.Parser(parseScenario, parseScript, findScript)
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
-import Domain.Scenarios.Script
 
 data ScenarioInfo = ScenarioInfo ID
                                  Name
@@ -33,12 +34,12 @@ instance Show ParameterInfo where
   show (ParameterInfo id name) = show id ++ ", " ++ show name
   
 -- Scenariolist service: lists all info for each scenario
-scenariolist :: [Script] -> [ScenarioInfo]
-scenariolist = map (getScenarioInfo . parseScenario)
+scenariolist :: [FilePath] -> [ScenarioInfo]
+scenariolist = map (getScenarioInfo . parseScenario . parseScript)
 
 -- Scenarioinfo service: shows the info for a specific scenario (exercise)
-scenarioinfo :: [Script] -> Exercise a -> ScenarioInfo
-scenarioinfo scripts ex = getScenarioInfo (parseScenario (findScript "get info for" scripts ex))
+scenarioinfo :: [FilePath] -> Exercise a -> ScenarioInfo
+scenarioinfo fs ex = getScenarioInfo (parseScenario (findScript "get info for" fs ex))
 
 getScenarioInfo :: Scenario -> ScenarioInfo
 getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo

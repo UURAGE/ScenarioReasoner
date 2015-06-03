@@ -8,7 +8,6 @@ import Ideas.Text.JSON
 import Ideas.Text.XML.Interface(Element)
 
 -- | Type definitions 
-type Script = Element
 type ParameterValue = Int
 type Emotion = String
 type ID = String
@@ -45,8 +44,8 @@ instance Show Toggle where
 toggleNames :: [Name]
 toggleNames = ["showscore"    --score at the end of the game
               ,"showfeedback" --feedback at the end of the game
-              , "feedback"]   --feedback during the game
-              
+              , "feedback"    --feedback during the game
+              , "isSitting"]  --the character model is sitting
 
 --------------------------------------------------------------------------------------------------------------------------
     

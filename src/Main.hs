@@ -18,34 +18,18 @@ import qualified Domain.Scenarios.Exercises as E
 -- changes were made in Ideas.Main.Default to the createDomainReasoner functions to adjust to load the scenario id 
 -- should not be adjusted, instead request exerciselist with list of scenarioIDs.. and send scenario id instead
 main :: IO ()
-main = defaultMain createDomainReasoner
+main = scenarioReasoner >>= defaultMain
 
 maindoc :: IO ()
-maindoc = createDomainReasoner "" >>= flip makeDocumentation "doc"
+maindoc = scenarioReasoner >>= flip makeDocumentation "doc"
 
-createDomainReasoner :: String -> IO DomainReasoner
-createDomainReasoner scenarioId = do
-    (flatExercises, scripts) <- E.getExercises scenarioId
-    let myExercises = map Some flatExercises
-    let ideasScenarios  = (newDomainReasoner "ideas.scenarios")
-            { exercises = myExercises
-            , services  = myServices
-            , views     = myViewList
-            , aliases   = myAliases
-            , scripts   = myScripts
-            , testSuite = myTestSuite
+scenarioReasoner :: IO DomainReasoner
+scenarioReasoner = do
+    exerciselist <- E.exercises
+    let scenarioPaths = map snd exerciselist
+    let exs = map (Some . fst) exerciselist
+        dr  = (newDomainReasoner "ideas.scenarios")
+            { exercises = exs
+            , services  = S.customServices scenarioPaths ++ metaServiceList dr ++ serviceList
             }
-        myServices = S.customServices scripts ++ metaServiceList ideasScenarios ++ serviceList
-    return ideasScenarios
-
-myViewList :: [ViewPackage]
-myViewList = []
-
-myAliases :: [(Id, Id)]
-myAliases = []
-
-myScripts :: [(Id, FilePath)]
-myScripts = []
-
-myTestSuite :: TestSuite
-myTestSuite = undefined
+    return dr
