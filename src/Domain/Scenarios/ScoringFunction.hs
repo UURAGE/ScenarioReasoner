@@ -1,5 +1,7 @@
 module Domain.Scenarios.ScoringFunction where
 
+import Data.List(find)
+import Data.Maybe(fromJust)
 import qualified Data.Map as M
 
 import Domain.Scenarios.Globals
@@ -19,19 +21,31 @@ instance Show ScoringFunction where
     show (Scale scalar sf)         = "Scale: "     ++ show scalar ++ "\n\t" ++ show sf ++ "\n"
     show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n"
     show (IntegeredCondition cond) = "condition: " ++ show cond   ++ "\n"
+    
+type SubScore = (ID, Name, Score) -- Score as a percentage
                      
 -- | Calculates the score based on the given state with a scoring function
-calculateScore :: ScoringFunction -> ScenarioState -> Score
-calculateScore mainScoringFunction state@(ScenarioState paramMap _ _) = calculate mainScoringFunction  
-    where calculate scoringFunction = case scoringFunction of
-            Constant           score        -> score
-            Sum                subFunctions -> sum . map calculate $ subFunctions
-            Scale     scalar   subFunction  -> scalar * calculate subFunction
-            ParamRef           paramId      -> M.findWithDefault 0 paramId paramMap
-            IntegeredCondition condition    -> if evaluateCondition condition state then 1 else 0
+calculateScore :: [SubScore] -> ScoringFunction -> ScenarioState -> Score
+calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) = (\(mainScore, weight) -> round (fromIntegral mainScore / fromIntegral weight)) (calculate mainScoringFunction 0)
+    where 
+    calculate scoringFunction weight = case scoringFunction of
+        Constant           score        -> (score, weight + 1)
+        Sum                subFunctions -> (\xs -> (sum $ map fst xs, sum $ map snd xs)) (map (flip calculate $ weight) subFunctions)
+        Scale     scalar   subFunction  -> (\(subScore, newWeight) -> (scalar * subScore, weight + newWeight)) (calculate subFunction scalar)
+        ParamRef           paramId      | weight == 0 -> (findSubScore paramId, 1)
+        ParamRef           paramId      | otherwise   -> (findSubScore paramId, weight)
+        IntegeredCondition condition    -> if evaluateCondition condition state then (1, weight + 1) else (0, weight + 1)
+            
+    findSubScore paramId = trd3 (fromJust (find ((==) paramId . fst3) subScores))
+    
+    fst3 :: (a, b, c) -> a
+    fst3 (x, _, _) = x
+    
+    trd3 :: (a, b, c) -> c 
+    trd3 (_, _, z) = z
 
 -- | Calculates the values of the scored parameters in the given state.
-calculateSubScores :: [Parameter] -> ScenarioState -> [(ID, Name, Score)]
+calculateSubScores :: [Parameter] -> ScenarioState -> [SubScore]
 calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
                    , parameterName   param
@@ -44,7 +58,7 @@ calculateSubScores parameters (ScenarioState paramMap _ _) =
 clamp :: ParameterValue -> Maybe ParameterValue -> Maybe ParameterValue -> Score
 clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
                                             | shiftedValue < shiftedMin = 0
-                                            | otherwise                 = round (toInteger shiftedValue / toInteger shiftedMax)
+                                            | otherwise                 = round ((fromIntegral shiftedValue / fromIntegral shiftedMax) * 100)
   where 
     shiftedMax   = shift maxValue minValue
     shiftedMin   = shift minValue minValue
