@@ -127,6 +127,8 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
+        , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
+        , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         }
 
 parseScenarioToggles :: Script -> [Toggle]

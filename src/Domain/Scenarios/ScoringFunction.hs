@@ -35,5 +35,25 @@ calculateSubScores :: [Parameter] -> ScenarioState -> [(ID, Name, Score)]
 calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
                    , parameterName   param
-                   , M.findWithDefault 0 (parameterId param) paramMap)
+                   , clamp (getParamValue param) (parameterMax param) (parameterMin param))
         ) . filter parameterScored $ parameters
+        
+  where 
+    getParamValue param = M.findWithDefault 0 (parameterId param) paramMap
+  
+clamp :: ParameterValue -> Maybe ParameterValue -> Maybe ParameterValue -> Score
+clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
+                                            | shiftedValue < shiftedMin = 0
+                                            | otherwise                 = round (toInteger shiftedValue / toInteger shiftedMax)
+  where 
+    shiftedMax   = shift maxValue minValue
+    shiftedMin   = shift minValue minValue
+    shiftedValue = shift value    minValue
+    
+clamp score _ _ = error "no maximum and minimum given"
+
+shift :: ParameterValue -> ParameterValue -> ParameterValue
+shift value minValue | minValue < 0 = value + (0 - minValue)
+                     | otherwise    = value
+
+
