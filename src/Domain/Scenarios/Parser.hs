@@ -68,6 +68,7 @@ parseMetaData script = MetaData
         , scenarioToggles         = parseScenarioToggles         script
         , scenarioScoringFunction = parseScenarioScoringFunction script
         , scenarioScoreExtremes   = parseScenarioScoreExtremes   script
+        , scenarioFeedbackForm    = parseScenarioFeedbackForm    script
         }
         
 -- | Queries the given script for its ID.
@@ -134,7 +135,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
 parseScenarioToggles :: Script -> [Toggle]
 parseScenarioToggles script = map parseToggle toggleNames
     where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
-
+    
 -- | Queries the given script for its scoring function.
 parseScenarioScoringFunction :: Script -> ScoringFunction
 parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
@@ -167,6 +168,54 @@ parseScenarioScoreExtremes script =
     minimumValue <- findAttribute "minimum" scoreExtremesElem
     maximumValue <- findAttribute "maximum" scoreExtremesElem
     return (read minimumValue :: Score, read maximumValue :: Score)
+    
+parseScenarioFeedbackForm :: Script -> FeedbackForm
+parseScenarioFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
+  where     
+    metaDataElem = getChild "metadata" script 
+    feedbackFormElem = getChild "feedbackform" metaDataElem
+    feedbackParamElems = children feedbackFormElem
+    
+parseFeedbackFormEntry :: Element -> FeedbackFormEntry
+parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
+    { feedbackParamID    = paramID
+    , feedbackConditions = map (parseConditionedFeedback paramID) conditionedFeedbackElems
+    , feedbackDefault    = nothingOnFail maybeDefaultFeedback
+    }
+  where 
+    paramID = getAttribute "id" feedbackParamElem
+    conditionedFeedbackElems = filter ((/= "default") . name) (children feedbackParamElem)
+    maybeDefaultFeedback = findChild "default" feedbackParamElem >>= return . getData
+    
+    parseConditionedFeedback :: ID -> Element -> (Condition, String)
+    parseConditionedFeedback paramID condFeedbackElem = 
+        (case maybeBetweenOp of 
+            Nothing -> Condition
+                ComparisonCondition
+                { conditionIdref = paramID
+                , conditionTest  = parseCompareOperator condFeedbackElem
+                , conditionValue = getValue condFeedbackElem
+                }
+            Just "between" -> And 
+                [ Condition 
+                    ComparisonCondition
+                    { conditionIdref = paramID
+                    , conditionTest  = GreaterThanEqualTo
+                    , conditionValue = read (getAttribute "lowerBound" condFeedbackElem) :: ParameterValue
+                    }
+                , Condition
+                    ComparisonCondition
+                    { conditionIdref = paramID
+                    , conditionTest  = LessThanEqualTo
+                    , conditionValue = read (getAttribute "upperBound" condFeedbackElem) :: ParameterValue
+                    }
+                ]     
+        , getData condFeedbackElem)
+      where 
+        maybeBetweenOp = case getAttribute "test" condFeedbackElem of
+            "between" -> Just "between" 
+            _         -> Nothing
+        
     
 -- MetaData Parser END -----------------------------------------------------------------------------
    
@@ -354,12 +403,12 @@ parseCondition conditionElem = case name conditionElem of
         ComparisonCondition
         { conditionIdref = getAttribute "idref" conditionElem
         , conditionTest  = parseCompareOperator conditionElem
-        , conditionValue = getValue           conditionElem
+        , conditionValue = getValue             conditionElem
         }
-  where
-    -- | Parses a compare operator. Gives an exception on invalid input.
-    parseCompareOperator :: Element -> CompareOperator
-    parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "test"  conditionElem))
+        
+-- | Parses a compare operator. Gives an exception on invalid input.
+parseCompareOperator :: Element -> CompareOperator
+parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "test"  conditionElem))
 
 
 -- Functions that extend the XML parser

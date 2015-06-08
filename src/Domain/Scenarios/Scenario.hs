@@ -36,10 +36,11 @@ data MetaData = MetaData
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         , scenarioScoreExtremes   :: Maybe (Score, Score)
+        , scenarioFeedbackForm    :: FeedbackForm
         }
         
 instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model ps loc ts sf se) =
+    show (MetaData id name desc diff bi ci model ps loc ts sf se fbf) =
         "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
         "description: "     ++ show desc  ++ "\n" ++ 
         "difficulty: "      ++ show diff  ++ "\n" ++
@@ -50,7 +51,19 @@ instance Show MetaData where
         "location: "        ++ show loc   ++ "\n" ++
         "toggles: "         ++ show ts    ++ "\n" ++ 
         "scoringFunction: " ++ show sf    ++ "\n" ++ 
-        "scoreExtremes: "   ++ show se    ++ "\n"
+        "scoreExtremes: "   ++ show se    ++ "\n" ++
+        "feedbackForm: "    ++ show fbf   ++ "\n"
+        
+type FeedbackForm = [FeedbackFormEntry]
+
+data FeedbackFormEntry = FeedbackFormEntry
+    { feedbackParamID    :: ID
+    , feedbackConditions :: [(Condition, String)]
+    , feedbackDefault    :: Maybe String
+    }
+    
+instance Show FeedbackFormEntry where
+    show (FeedbackFormEntry pid cond def) = show pid ++ "\t" ++ show cond ++ "\t" ++ show def ++ "\n"
         
 type Dialogue = [InterleaveLevel]
 
