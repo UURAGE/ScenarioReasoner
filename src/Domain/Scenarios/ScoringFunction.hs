@@ -31,8 +31,8 @@ calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) 
     calculate scoringFunction weight = case scoringFunction of
         Constant           score        -> (score, weight + 1)
         Sum                subFunctions -> (\xs -> (sum $ map fst xs, sum $ map snd xs)) (map (flip calculate $ weight) subFunctions)
-        Scale     scalar   subFunction  -> (\(subScore, newWeight) -> (scalar * subScore, weight + newWeight)) (calculate subFunction scalar)
-        ParamRef           paramId      | weight == 0 -> (findSubScore paramId, 1)
+        Scale     scalar   subFunction  -> (\(subScore, _) -> (scalar * subScore, weight + scalar)) (calculate subFunction scalar)
+        ParamRef           paramId      | weight == 0 -> (0, 0)
         ParamRef           paramId      | otherwise   -> (findSubScore paramId, weight)
         IntegeredCondition condition    -> if evaluateCondition condition state then (1, weight + 1) else (0, weight + 1)
             
