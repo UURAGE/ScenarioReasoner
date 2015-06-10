@@ -18,14 +18,15 @@ data ScenarioInfo = ScenarioInfo ID
                                  (Maybe ID)       -- Model
                                  [ParameterInfo]
                                  Name             -- Location
+                                 Name             -- Pet
                                  [Toggle]
             
 instance Show ScenarioInfo where
-  show (ScenarioInfo id name desc diff bi ci model ps lc ss) = 
+  show (ScenarioInfo id name desc diff bi ci model ps lc pet ss) = 
     show id    ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
     show diff  ++ "\n" ++ show bi    ++ "\n" ++ show ci   ++ "\n" ++ 
     show model ++ "\n" ++ show ps    ++ "\n" ++ show lc   ++ "\n" ++ 
-    show ss    ++ "\n" 
+    show pet   ++ "\n" ++ show ss    ++ "\n" 
 
 data ParameterInfo = ParameterInfo ID
                                    Name
@@ -52,6 +53,7 @@ getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
                 (scenarioModel          metadata)
                 (map describeParameter (scenarioParameters metadata))
                 (scenarioLocation       metadata)
+                (scenarioPet            metadata)
                 (scenarioToggles        metadata)
   where 
     describeParameter param = ParameterInfo

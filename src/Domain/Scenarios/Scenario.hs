@@ -33,13 +33,14 @@ data MetaData = MetaData
         , scenarioModel           :: Maybe ID 
         , scenarioParameters      :: [Parameter]
         , scenarioLocation        :: Name
+        , scenarioPet             :: Name
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         , scenarioScoreExtremes   :: Maybe (Score, Score)
         }
         
 instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model ps loc ts sf se) =
+    show (MetaData id name desc diff bi ci model ps loc pet ts sf se) =
         "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
         "description: "     ++ show desc  ++ "\n" ++ 
         "difficulty: "      ++ show diff  ++ "\n" ++
@@ -48,6 +49,7 @@ instance Show MetaData where
         "model: "           ++ show model ++ "\n" ++ 
         "parameters: "      ++ show ps    ++ "\n" ++ 
         "location: "        ++ show loc   ++ "\n" ++
+        "pet: "             ++ show pet   ++ "\n" ++
         "toggles: "         ++ show ts    ++ "\n" ++ 
         "scoringFunction: " ++ show sf    ++ "\n" ++ 
         "scoreExtremes: "   ++ show se    ++ "\n"

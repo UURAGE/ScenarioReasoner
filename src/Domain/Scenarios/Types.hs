@@ -23,10 +23,11 @@ tScenarioInfo =
                         (Pair (Tag "model"          (tMaybe tString))
                         (Pair (Tag "parameters"     (tList tParameterInfo))
                         (Pair (Tag "location"        tString)
-                              (Tag "toggles"        (tList tToggle)))))))))))                             
+                        (Pair (Tag "pet"        tString)
+                              (Tag "toggles"        (tList tToggle))))))))))))                             
       where 
-        pairify (ScenarioInfo id name descr diff bi ci model ps loc ts) = 
-            (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, ts)))))))))
+        pairify (ScenarioInfo id name descr diff bi ci model ps loc pet ts) = 
+            (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
                        
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)

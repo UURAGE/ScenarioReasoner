@@ -65,6 +65,7 @@ parseMetaData script = MetaData
         , scenarioModel           = parseScenarioModel           script
         , scenarioParameters      = parseScenarioParameters      script
         , scenarioLocation        = parseScenarioLocation        script
+        , scenarioPet             = parseScenarioPet             script
         , scenarioToggles         = parseScenarioToggles         script
         , scenarioScoringFunction = parseScenarioScoringFunction script
         , scenarioScoreExtremes   = parseScenarioScoreExtremes   script
@@ -84,6 +85,9 @@ parseScenarioDescription = getMetaDataString "description"
 
 parseScenarioLocation :: Script -> Name
 parseScenarioLocation = getMetaDataString "location"
+
+parseScenarioPet :: Script -> Name
+parseScenarioPet = getMetaDataString "pet"
 
 -- | Queries the given script for its difficulty.
 parseScenarioDifficulty :: Script -> Difficulty
