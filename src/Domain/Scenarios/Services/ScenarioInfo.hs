@@ -29,9 +29,10 @@ instance Show ScenarioInfo where
 
 data ParameterInfo = ParameterInfo ID
                                    Name
+                                   String --description
     
 instance Show ParameterInfo where
-  show (ParameterInfo id name) = show id ++ ", " ++ show name
+  show (ParameterInfo id name descr) = show id ++ ", " ++ show name ++ ", " ++ show descr
   
 -- Scenariolist service: lists all info for each scenario
 scenariolist :: [FilePath] -> [ScenarioInfo]
@@ -55,5 +56,6 @@ getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
                 (scenarioToggles        metadata)
   where 
     describeParameter param = ParameterInfo
-        (parameterId      param)
-        (parameterName    param)
+        (parameterId          param)
+        (parameterName        param)
+        (parameterDescription param)

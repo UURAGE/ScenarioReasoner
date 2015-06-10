@@ -29,9 +29,10 @@ tScenarioInfo =
             (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, ts)))))))))
                        
 tParameterInfo :: Type a ParameterInfo
-tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
-                                     (Tag "name"     tString))                                        
-        where pairify (ParameterInfo id name) = (id,name)
+tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
+                                     (Pair (Tag "name"          tString)
+                                           (Tag "description"   tString)))                                    
+        where pairify (ParameterInfo id name descr) = (id, (name, descr))
         
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 

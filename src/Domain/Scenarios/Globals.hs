@@ -54,12 +54,13 @@ data Parameter = Parameter
     { parameterId           :: ID
     , parameterName         :: Name
     , parameterInitialValue :: Maybe ParameterValue
+    , parameterDescription  :: String
     , parameterScored       :: Bool
     }
     
 instance Show Parameter where
-    show (Parameter id name initvalue scored) = 
-        show id ++ "\t" ++ show name ++ "\t" ++ "\t" ++ show initvalue ++ "\t" ++ show scored ++ "\n"
+    show (Parameter id name initvalue descr scored) = 
+        show id ++ "\t" ++ show name ++ "\t" ++ "\t" ++ show initvalue ++ "\t" ++ show descr ++ "\t" ++ show scored ++ "\n"
     
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.
