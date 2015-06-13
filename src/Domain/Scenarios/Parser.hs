@@ -189,8 +189,8 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     
     parseConditionedFeedback :: ID -> Element -> (Condition, String)
     parseConditionedFeedback paramID condFeedbackElem = 
-        (case maybeBetweenOp of 
-            Nothing -> Condition
+        (case maybeOtherOp of 
+            Nothing        -> Condition
                 ComparisonCondition
                 { conditionIdref = paramID
                 , conditionTest  = parseCompareOperator condFeedbackElem
@@ -209,11 +209,25 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
                     , conditionTest  = LessThanEqualTo
                     , conditionValue = read (getAttribute "upperBound" condFeedbackElem) :: ParameterValue
                     }
-                ]     
+                ] 
+            Just "max"     -> Condition
+                ComparisonCondition
+                    { conditionIdref = paramID
+                    , conditionTest  = GreaterThanEqualTo
+                    , conditionValue = getValue condFeedbackElem
+                    }
+            Just "min"     -> Condition
+                ComparisonCondition
+                    { conditionIdref = paramID
+                    , conditionTest  = LessThanEqualTo
+                    , conditionValue = getValue condFeedbackElem
+                    }
         , getData condFeedbackElem)
       where 
-        maybeBetweenOp = case getAttribute "test" condFeedbackElem of
+        maybeOtherOp = case getAttribute "test" condFeedbackElem of
             "between" -> Just "between" 
+            "max"     -> Just "max"
+            "min"     -> Just "min" 
             _         -> Nothing
         
     
