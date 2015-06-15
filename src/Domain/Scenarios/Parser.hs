@@ -45,8 +45,9 @@ parseScript filepath =
 -- | Parses a script from a script element
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario 
-        { scenarioMetaData = parseMetaData script
-        , scenarioDialogue = parseDialogue script     
+        { scenarioMetaData     = parseMetaData     script
+        , scenarioFeedbackForm = parseFeedbackForm script
+        , scenarioDialogue     = parseDialogue     script     
         }
  
 -- Functions to be used internally
@@ -69,7 +70,6 @@ parseMetaData script = MetaData
         , scenarioToggles         = parseScenarioToggles         script
         , scenarioScoringFunction = parseScenarioScoringFunction script
         , scenarioScoreExtremes   = parseScenarioScoreExtremes   script
-        , scenarioFeedbackForm    = parseScenarioFeedbackForm    script
         }
         
 -- | Queries the given script for its ID.
@@ -175,12 +175,16 @@ parseScenarioScoreExtremes script =
     minimumValue <- findAttribute "minimum" scoreExtremesElem
     maximumValue <- findAttribute "maximum" scoreExtremesElem
     return (read minimumValue :: Score, read maximumValue :: Score)
+        
     
-parseScenarioFeedbackForm :: Script -> FeedbackForm
-parseScenarioFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
+-- MetaData Parser END -----------------------------------------------------------------------------
+  
+-- FeedbackForm Parser -----------------------------------------------------------------------------
+  
+parseFeedbackForm :: Script -> FeedbackForm
+parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
   where     
-    metaDataElem = getChild "metadata" script 
-    feedbackFormElem = getChild "feedbackform" metaDataElem
+    feedbackFormElem = getChild "feedbackform" script
     feedbackParamElems = children feedbackFormElem
     
 parseFeedbackFormEntry :: Element -> FeedbackFormEntry
@@ -236,10 +240,8 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
             "max"     -> Just "max"
             "min"     -> Just "min" 
             _         -> Nothing
-        
-    
--- MetaData Parser END -----------------------------------------------------------------------------
-   
+            
+-- FeedbackForm Parser END -------------------------------------------------------------------------
     
 -- Dialogue Parser ---------------------------------------------------------------------------------
 

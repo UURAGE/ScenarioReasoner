@@ -21,11 +21,11 @@ import Domain.Scenarios.Services.Types
 -- FeedbackForm Service -------------------------------------------------------------------------------------
 
 feedbackform :: [FilePath] -> State a -> [(ID, String)]
-feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm metaData)
+feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm scenario)
   where 
     state = fromMaybe (error "Cannot give feedback on exercise: casting failed.") $
         castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
-    metaData = scenarioMetaData (parseScenario (findScript "feedbackform" fs (exercise fstate)))
+    scenario = parseScenario (findScript "feedbackform" fs (exercise fstate))
     
 -- If an entry contains conditioned feedback then it checks if it is fullfilled 
 -- and returns the corresponding feedback otherwise it returns the default feedback or an empty string.
@@ -52,7 +52,7 @@ scenarioinfo :: [FilePath] -> Exercise a -> ScenarioInfo
 scenarioinfo fs ex = getScenarioInfo (parseScenario (findScript "get info for" fs ex))
 
 getScenarioInfo :: Scenario -> ScenarioInfo
-getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
+getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
                 (show (getId scenario))
                 (scenarioName           metadata)
                 (scenarioDescription    metadata)

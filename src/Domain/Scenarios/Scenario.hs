@@ -11,13 +11,14 @@ import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState(Effect)
 
 data Scenario = Scenario 
-        { scenarioMetaData :: MetaData
-        , scenarioDialogue :: Dialogue        
+        { scenarioMetaData     :: MetaData
+        , scenarioFeedbackForm :: FeedbackForm
+        , scenarioDialogue     :: Dialogue  
         }
     deriving(Show)
     
 instance HasId Scenario where
-    getId (Scenario metadata _) = either error id $ do
+    getId (Scenario metadata _ _) = either error id $ do
                 let id = scenarioID metadata
                 let descr = scenarioDescription metadata
                 return $ describe descr $ "scenarios" # id
@@ -37,11 +38,10 @@ data MetaData = MetaData
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         , scenarioScoreExtremes   :: Maybe (Score, Score)
-        , scenarioFeedbackForm    :: FeedbackForm
         }
         
 instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model ps loc pet ts sf se fbf) =
+    show (MetaData id name desc diff bi ci model ps loc pet ts sf se) =
         "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
         "description: "     ++ show desc  ++ "\n" ++ 
         "difficulty: "      ++ show diff  ++ "\n" ++
@@ -53,8 +53,7 @@ instance Show MetaData where
         "pet: "             ++ show pet   ++ "\n" ++
         "toggles: "         ++ show ts    ++ "\n" ++ 
         "scoringFunction: " ++ show sf    ++ "\n" ++ 
-        "scoreExtremes: "   ++ show se    ++ "\n" ++
-        "feedbackForm: "    ++ show fbf   ++ "\n"
+        "scoreExtremes: "   ++ show se    ++ "\n" 
         
 type FeedbackForm = [FeedbackFormEntry]
 

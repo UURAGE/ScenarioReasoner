@@ -26,7 +26,7 @@ readExercise path = (mkExercise id strategy difficulty initialState, path)
   where 
     id = "scenarios" # newId (takeBaseName path)    
     script = parseScript path
-    scenario@(Scenario metadata dialogue) = (parseScenario script)
+    scenario@(Scenario metadata _ dialogue) = (parseScenario script)
     strategy = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
