@@ -5,17 +5,26 @@ import System.FilePath(FilePath)
 import Ideas.Common.Library
 import Ideas.Service.Types
 import Ideas.Service.State
+import Ideas.Service.BasicServices (tStepInfo)
 
-import Domain.Scenarios.Services.FeedbackForm
-import Domain.Scenarios.Services.ScenarioInfo
-import Domain.Scenarios.Services.Score
+import Domain.Scenarios.Services.AdaptedServices(allfirsts)
+import Domain.Scenarios.Services.ExtraServices(feedbackform, scenariolist, scenarioinfo, score)
 
-import Domain.Scenarios.Types
+import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
 customServices :: [FilePath] -> [Service]
-customServices fs = map ($ fs)
+customServices fs = [allfirstsS] ++ map ($ fs)
     [feedbackformS, scenariolistS, scenarioinfoS, scoreS]
+   
+-- Adapted allfirsts   
+allfirstsS :: Service
+allfirstsS = makeService "scenarios.allfirsts"
+   "Returns all next steps that are suggested by the strategy. See the \
+   \onefirst service to get only one suggestion. For each suggestion, a new \
+   \state, the rule used, and the location where the rule was applied are \
+   \returned." $
+   allfirsts ::: tState .-> tError (tList (tPair tStepInfo tState))
     
 feedbackformS :: [FilePath] -> Service
 feedbackformS fs = makeService "scenarios.feedbackform"
