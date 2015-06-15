@@ -66,8 +66,9 @@ getScenarioInfo scenario@(Scenario metadata _) = ScenarioInfo
                 (scenarioToggles        metadata)
   where 
     describeParameter param = ParameterInfo
-        (parameterId      param)
-        (parameterName    param)      
+        (parameterId          param)
+        (parameterName        param)      
+        (parameterDescription param)
         
                                             
 -- Score Service --------------------------------------------------------------------------------------------

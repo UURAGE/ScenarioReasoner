@@ -48,14 +48,15 @@ instance Show ScenarioInfo where
 
 data ParameterInfo = ParameterInfo ID
                                    Name
+                                   String -- Description
 
-tParameterInfo :: Type a ParameterInfo
-tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"       tString)
-                                           (Tag "name"     tString))                      
-  where pairify (ParameterInfo id name) = (id,name)                                           
-    
 instance Show ParameterInfo where
-  show (ParameterInfo id name) = show id ++ ", " ++ show name
+  show (ParameterInfo id name descr) = show id ++ ", " ++ show name ++ ", " ++ show descr
+  
+tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
+                                     (Pair (Tag "name"          tString)
+                                           (Tag "description"   tString)))                                    
+        where pairify (ParameterInfo id name descr) = (id, (name, descr))
         
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 

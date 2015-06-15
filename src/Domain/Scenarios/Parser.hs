@@ -131,6 +131,9 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
+        , parameterDescription  = case nothingOnFail (findAttribute "parameterDescription" paramElem) of 
+            Nothing    -> "" 
+            Just descr -> descr
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
