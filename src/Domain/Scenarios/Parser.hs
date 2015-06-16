@@ -132,8 +132,8 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterDescription  = case nothingOnFail (findAttribute "parameterDescription" paramElem) of 
-            Nothing    -> "" 
-            Just descr -> descr
+                                    Nothing    -> "" 
+                                    Just descr -> descr
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
@@ -159,11 +159,9 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
     "scale"              -> Scale parseScalar  (parseScoringFunction paramElem)
     "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
-    "integeredCondition" -> IntegeredCondition (parseCondition conditionElem)
   where 
     parseConstant = read (getAttribute "value" scoringFunctionElem)  :: Score
     parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
-    conditionElem = getChild "condition" scoringFunctionElem         :: Element
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
 -- | Queries the given script for its score extremes.
@@ -307,9 +305,12 @@ parseType statElem = takeWhile isLower (name statElem)
 -- | Takes a statement and returns its text.
 parseText :: Element -> StatementText
 parseText statElem = case name statElem of
-        "conversation" -> Right (map toConversationText (filter (isSuffixOf "Text" . name) (children statElem)))
+        "conversation" -> Right (map toConversationText (filterText conversationElems))
         _              -> Left (getData (getChild "text" statElem))
-  where toConversationText textEl = (map toLower (name textEl), getData textEl)
+  where 
+    toConversationText textEl = (map toLower (name textEl), getData textEl)
+    conversationElems = children statElem
+    filterText = filter (isSuffixOf "Text" . name)
 
 -- | Takes a statement element and returns its precondition, if it has one.
 -- | Uses the monadic findChild for Maybe Monad
@@ -339,8 +340,7 @@ parseEmotionEffect effectElem = Effect
             { effectIdref      = getAttribute "emotionid" effectElem
             , effectChangeType = parseChangeType      effectElem
             , effectValue      = getValue             effectElem
-            }
-            
+            }            
             
 -- | Parses a string to a Changetype. Gives an exception on invalid input.
 parseChangeType :: Element -> ChangeType

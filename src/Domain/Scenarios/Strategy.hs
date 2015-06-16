@@ -70,23 +70,24 @@ makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) =
     firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
     
     foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> (Strategy ScenarioState, StrategyMap)
-    foldAlternatives tree scenarioID (strategySoFar, strategyMap) statementID = (strategySoFar <|> nextStrategy, newStrategyMap)
-      where  (nextStrategy, newStrategyMap) = makeStatementStrategy strategyMap tree scenarioID statementID 
+    foldAlternatives tree scenarioID (stratSoFar, stratMap) statID = (stratSoFar <|> nextStrategy, newStrategyMap)
+      where  (nextStrategy, newStrategyMap) = makeStatementStrategy stratMap tree scenarioID statID 
       
 makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState
 makeGuardedRule scenarioID statement tree = guardedRule
-    ["scenarios", scenarioID, statType (statInfo statement), statID statement]                                          -- create an identifier for the rule
-    (either id (intercalate " // " . map snd) (statText (statInfo statement)))                                          -- make a description for the rule
-    (evaluateMaybeCondition (statPrecondition statement))                                                               -- check if precondition is fulfilled
-    (\state -> applyEffects state (statParamEffects statement) (statEmotionEffects statement) (statInfo statement))     -- apply the effects of a statement to the state
-    --The initial state is not generated here. 
-    --It is generated at exercises.hs then the frontend requests it with the "examples" method and sends it back with the first "allfirsts" request
+    ["scenarios", scenarioID, statType (statInfo statement), statID statement]              -- create an identifier for the rule
+    (either id (intercalate " // " . map snd) (statText (statInfo statement)))              -- make a description for the rule
+    (evaluateMaybeCondition (statPrecondition statement))                                   -- check if precondition is fulfilled
+    (\state -> applyEffects state parameterEffects emotionEffects (statInfo statement))     -- apply the effects of a statement to the state
   where
     -- Make a rule with an identifier and a description, 
     -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
     guardedRule :: IsId a => a -> String -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
     guardedRule identifier description precondCheck applyEffects =
         describe description $ makeRule identifier (\state -> do guard $ precondCheck state; Just $ applyEffects state)
+    
+    parameterEffects = statParamEffects statement
+    emotionEffects = statEmotionEffects statement
             
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement tree rule nextStrategy 

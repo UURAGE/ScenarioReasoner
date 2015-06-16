@@ -8,7 +8,6 @@ import System.FilePath(FilePath)
 
 import Ideas.Common.Library
 import Ideas.Service.State
-import Ideas.Service.Types
 
 import Domain.Scenarios.Condition
 import Domain.Scenarios.Globals

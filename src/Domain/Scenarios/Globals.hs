@@ -62,7 +62,9 @@ data Parameter = Parameter
     
 instance Show Parameter where
     show (Parameter id name initvalue descr scored max min) = 
-        show id ++ "\t" ++ show name ++ "\t" ++ "\t" ++ show initvalue ++ "\t" ++ show descr ++ "\t" ++ show max ++ "\t" ++ show min ++ "\t" ++ show scored ++ "\n"     
+        show id    ++ "\t" ++ show name ++ "\t" ++ show initvalue ++ "\t" ++ 
+        show descr ++ "\t" ++ show max  ++ "\t" ++ show min       ++ "\t" ++ 
+        show scored ++ "\n"     
 
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.

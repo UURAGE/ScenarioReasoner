@@ -124,7 +124,9 @@ instance IsTerm (M.Map ID ParameterValue) where
    
 instance IsTerm StatementInfo where
     toTerm statInfo = 
-        toTerm [toTerm (statType statInfo), toTerm (statText statInfo), toTerm (statIntents statInfo), toTerm (statFeedback statInfo), toTerm (statMedia statInfo), toTerm (statEnd statInfo)]
+        toTerm [toTerm (statType statInfo),     toTerm (statText statInfo)
+               ,toTerm (statIntents statInfo),  toTerm (statFeedback statInfo)
+               ,toTerm (statMedia statInfo),    toTerm (statEnd statInfo)]
     fromTerm statTerm = do
         statInfo <- fromTerm statTerm
         return statInfo

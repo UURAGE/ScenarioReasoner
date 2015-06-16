@@ -9,7 +9,6 @@ import Ideas.Service.BasicServices (tStepInfo)
 
 import Domain.Scenarios.Services.AdaptedServices(allfirsts)
 import Domain.Scenarios.Services.ExtraServices(feedbackform, scenariolist, scenarioinfo, score)
-
 import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
