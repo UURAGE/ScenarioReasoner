@@ -1,4 +1,4 @@
-module Domain.Scenarios.Services.ServiceList where
+module Domain.Scenarios.Services.ServiceList (customServices) where
 
 import System.FilePath(FilePath)
 

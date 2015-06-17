@@ -7,6 +7,9 @@ import Ideas.Common.Library
 import Ideas.Service.BasicServices (StepInfo)
 import Ideas.Service.State
 
+-- This adaptation of allfirsts in Ideas.Service.BasicServices 
+-- merges duplicate rules with different states together, 
+-- when the strategy is not left factorised.
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
