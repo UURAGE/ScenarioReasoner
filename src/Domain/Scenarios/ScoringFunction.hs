@@ -75,4 +75,5 @@ shift value minValue | minValue < 0 = value + (0 - minValue)
                      | otherwise    = value
 
 divInt :: (Fractional a) => Int -> Int -> a
+divInt numerator 0           = 0
 divInt numerator denominator = fromIntegral numerator / fromIntegral denominator
