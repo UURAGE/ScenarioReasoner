@@ -32,6 +32,7 @@ data MetaData = MetaData
         , scenarioBannerImage     :: Maybe ID
         , scenarioCharacterImage  :: Maybe ID
         , scenarioModel           :: Maybe ID 
+        , scenarioStartEmotion    :: Maybe Emotion
         , scenarioParameters      :: [Parameter]
         , scenarioLocation        :: Name
         , scenarioPet             :: Name
@@ -41,13 +42,14 @@ data MetaData = MetaData
         }
         
 instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model ps loc pet ts sf se) =
+    show (MetaData id name desc diff bi ci model emo ps loc pet ts sf se) =
         "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
         "description: "     ++ show desc  ++ "\n" ++ 
         "difficulty: "      ++ show diff  ++ "\n" ++
         "bannerImage: "     ++ show bi    ++ "\n" ++ 
         "characterImage: "  ++ show ci    ++ "\n" ++ 
         "model: "           ++ show model ++ "\n" ++ 
+        "startEmotion: "    ++ show emo   ++ "\n" ++
         "parameters: "      ++ show ps    ++ "\n" ++ 
         "location: "        ++ show loc   ++ "\n" ++
         "pet: "             ++ show pet   ++ "\n" ++

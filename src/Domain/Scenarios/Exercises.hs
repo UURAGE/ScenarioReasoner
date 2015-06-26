@@ -1,8 +1,8 @@
 module Domain.Scenarios.Exercises where
 
 import Control.Monad
-import Data.List
-import Data.Map(findWithDefault, fromList, empty)
+import Data.List hiding (insert)
+import Data.Map(insert, findWithDefault, fromList, empty)
 import Data.Maybe(fromMaybe)
 import System.Directory
 import System.FilePath(FilePath, takeBaseName)
@@ -31,7 +31,8 @@ readExercise path = (mkExercise id strategy difficulty initialState, path)
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
-    initialState = ScenarioState (fromList (map processParameter parameters)) empty emptyStatementInfo
+    initialEmotion = maybe empty (\emotion -> insert emotion 1 empty) (scenarioStartEmotion metadata)
+    initialState = ScenarioState (fromList (map processParameter parameters)) initialEmotion emptyStatementInfo
     
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise id strat difficulty initState = 

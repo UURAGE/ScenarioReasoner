@@ -64,6 +64,7 @@ parseMetaData script = MetaData
         , scenarioBannerImage     = parseScenarioBannerImage     script
         , scenarioCharacterImage  = parseScenarioCharacterImage  script 
         , scenarioModel           = parseScenarioModel           script
+        , scenarioStartEmotion    = parseScenarioStartEmotion script
         , scenarioParameters      = parseScenarioParameters      script
         , scenarioLocation        = parseScenarioLocation        script
         , scenarioPet             = parseScenarioPet             script
@@ -117,6 +118,13 @@ parseScenarioModel script = nothingOnFail(
     findChild "metadata" script >>=
     findChild "model"               >>=
     findAttribute "extid")
+    
+-- | Queries the given script for its start emotion.
+parseScenarioStartEmotion :: Script -> Maybe ID
+parseScenarioStartEmotion script = nothingOnFail(
+    findChild "metadata" script >>=
+    findChild "startEmotion"    >>=
+    return . getData)
 
 -- | Queries the given script for its parameters.
 parseScenarioParameters :: Script -> [Parameter]
