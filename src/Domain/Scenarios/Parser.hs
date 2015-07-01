@@ -4,7 +4,7 @@
 -- ©Copyright Utrecht University (Department of Information and Computing Sciences)
 ------------------------------------------------------------------------------------
 
-module Domain.Scenarios.Parser (findScript, parseScript, parseScenario) where
+module Domain.Scenarios.Parser (parseScript, parseScenario, Script) where
 
 import Prelude hiding (readFile)
 import GHC.Exts (sortWith)
@@ -18,7 +18,6 @@ import Text.Read(readMaybe)
 
 import System.IO
 import System.IO.Unsafe
-import System.FilePath
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Text.XML.Interface
@@ -33,14 +32,6 @@ type Script = Element
 
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
-   
--- | Finds the script of the exercise in the given filepaths list
-findScript :: String -> [FilePath] -> Exercise a -> Script
-findScript usage fs ex =
-    case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
-            [path] -> parseScript path
-            _             ->
-                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario."
    
 -- | Parses the XML script at "filepath" to a Script. lazy.
 parseScript :: FilePath -> Script

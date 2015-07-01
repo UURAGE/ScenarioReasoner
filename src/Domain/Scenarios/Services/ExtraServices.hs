@@ -10,7 +10,7 @@ import Control.Monad
 
 import Data.Maybe
 
-import System.FilePath(FilePath)
+import System.FilePath(FilePath, takeBaseName)
 
 import Ideas.Common.Library
 import Ideas.Service.State
@@ -91,3 +91,11 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
           mainScoreExtremes = liftM (\(min, max) -> [min, max]) 
             (scenarioScoreExtremes metaData) :: Maybe [Score]          
           parameters = scenarioParameters metaData
+
+-- | Finds the script of the exercise in the given filepaths list
+findScript :: String -> [FilePath] -> Exercise a -> Script
+findScript usage fs ex =
+    case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
+            [path] -> parseScript path
+            _             ->
+                error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario."
