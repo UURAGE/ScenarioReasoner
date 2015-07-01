@@ -1,4 +1,9 @@
-{-# LANGUAGE FlexibleContexts #-}
+------------------------------------------------------------------------------------
+-- This program has been developed by students from the bachelor Computer Science
+-- at Utrecht University within the Software and Game project course (2013-2015)
+-- ©Copyright Utrecht University (Department of Information and Computing Sciences)
+------------------------------------------------------------------------------------
+
 module Domain.Scenarios.ScoringFunction where
 
 import Data.List(find)
@@ -36,6 +41,7 @@ calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) 
         ParamRef     paramId      | weight == 0 -> (0, 0)
         ParamRef     paramId      | otherwise   -> (findSubScore paramId, weight)
     
+    -- | Finds the score for the given parameter
     findSubScore :: ID -> Score
     findSubScore paramId = trd3 (fromJust (find ((==) paramId . fst3) subScores))
     
@@ -48,7 +54,7 @@ calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) 
     trd3 :: (a, b, c) -> c 
     trd3 (_, _, z) = z
 
--- | Calculates the values of the scored parameters in the given state.
+-- | Calculates the values of the scored parameters given a state.
 calculateSubScores :: [Parameter] -> ScenarioState -> [SubScore]
 calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
@@ -59,6 +65,7 @@ calculateSubScores parameters (ScenarioState paramMap _ _) =
   where 
     getParamValue param = M.findWithDefault 0 (parameterId param) paramMap
   
+-- Clamps the values between 0 and 100 (%)
 clamp :: ParameterValue -> Maybe ParameterValue -> Maybe ParameterValue -> Score
 clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
                                             | shiftedValue < shiftedMin = 0
@@ -70,10 +77,12 @@ clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
     
 clamp score _ _ = error "no maximum and minimum given"
 
+-- Shifts the possible negative values to positive values given that maxValue >= minValue
 shift :: ParameterValue -> ParameterValue -> ParameterValue
 shift value minValue | minValue < 0 = value + (0 - minValue)
                      | otherwise    = value
 
+-- Divides two integers and returns the result. If dividing by zero (weight) then return 0 
 divInt :: (Fractional a) => Int -> Int -> a
 divInt numerator 0           = 0
 divInt numerator denominator = fromIntegral numerator / fromIntegral denominator

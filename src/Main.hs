@@ -1,5 +1,10 @@
-module Main where
+------------------------------------------------------------------------------------
+-- This program has been developed by students from the bachelor Computer Science
+-- at Utrecht University within the Software and Game project course (2013-2015)
+-- ©Copyright Utrecht University (Department of Information and Computing Sciences)
+------------------------------------------------------------------------------------
 
+module Main where
 
 import Control.Arrow
 import Ideas.Common.Exercise
@@ -15,8 +20,6 @@ import Ideas.Service.Types (Service)
 import qualified Domain.Scenarios.Services.ServiceList as S
 import qualified Domain.Scenarios.Exercises as E
 
--- changes were made in Ideas.Main.Default to the createDomainReasoner functions to adjust to load the scenario id 
--- should not be adjusted, instead request exerciselist with list of scenarioIDs.. and send scenario id instead
 main :: IO ()
 main = scenarioReasoner >>= defaultMain
 

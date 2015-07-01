@@ -1,3 +1,9 @@
+------------------------------------------------------------------------------------
+-- This program has been developed by students from the bachelor Computer Science
+-- at Utrecht University within the Software and Game project course (2013-2015)
+-- ©Copyright Utrecht University (Department of Information and Computing Sciences)
+------------------------------------------------------------------------------------
+
 module Domain.Scenarios.Parser (findScript, parseScript, parseScenario) where
 
 import Prelude hiding (readFile)
@@ -28,6 +34,7 @@ type Script = Element
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
    
+-- | Finds the script of the exercise in the given filepaths list
 findScript :: String -> [FilePath] -> Exercise a -> Script
 findScript usage fs ex =
     case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
@@ -49,6 +56,8 @@ parseScenario script = Scenario
         , scenarioFeedbackForm = parseFeedbackForm script
         , scenarioDialogue     = parseDialogue     script     
         }
+        
+----------------------------------------------------------------------------------------------------        
  
 -- Functions to be used internally
 ----------------------------------------------------------------------------------------------------
@@ -147,6 +156,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         }
 
+-- | Queries the given script for its defined toggles using the globally defined toggleNames variable.
 parseScenarioToggles :: Script -> [Toggle]
 parseScenarioToggles script = map parseToggle toggleNames
     where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
@@ -192,7 +202,9 @@ parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
   where     
     feedbackFormElem = getChild "feedbackform" script
     feedbackParamElems = children feedbackFormElem
-    
+
+-- Evaluates the feedbackform entry using the given parameter and the score on the parameter 
+-- and then gives the appriopriate feedback   
 parseFeedbackFormEntry :: Element -> FeedbackFormEntry
 parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     { feedbackParamID    = paramID
@@ -354,7 +366,7 @@ parseEmotionEffect effectElem = Effect
 parseChangeType :: Element -> ChangeType
 parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
   where changeTypeStr = getAttribute "changeType" effectElem
-            
+      
 parseJumpPoint :: Element -> Bool    
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
 
@@ -421,6 +433,7 @@ parseFeedback statElem = nothingOnFail (liftM getData (findChild "feedback" stat
 parseBool :: String -> Bool
 parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
 
+-- | Tries to parse bool, False on Nothing
 tryParseBool :: Maybe String -> Bool
 tryParseBool (Just boolStr) = parseBool boolStr
 tryParseBool _              = False
