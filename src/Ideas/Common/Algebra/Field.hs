@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Field.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Field.hs 8274 2015-08-04 10:18:46Z bastiaan $
 
 module Ideas.Common.Algebra.Field
    ( -- * Semi-ring
@@ -29,6 +29,7 @@ module Ideas.Common.Algebra.Field
    , CoSemiRing(..), CoRing(..), CoField(..)
    ) where
 
+import qualified Control.Applicative as Applicative
 import Control.Monad
 import Ideas.Common.Algebra.Group
 import Ideas.Common.Classes (mapBoth)
@@ -152,6 +153,10 @@ instance Show a => Show (SafeNum a) where
 
 instance Functor SafeNum where
    fmap f = either Exception (return . f) . safeNum
+
+instance Applicative.Applicative SafeNum where
+   pure  = return
+   (<*>) = ap
 
 instance Monad SafeNum where
    return  = Ok

@@ -12,7 +12,7 @@
 -- Encoding in HTML
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderHTML.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: EncoderHTML.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Encoding.EncoderHTML (htmlEncoder, htmlEncoderAt) where
 
@@ -456,8 +456,9 @@ htmlDerivation lm = exerciseEncoder $ \ex d ->
              , showEnv env1 -- local environment
              , showEnv env2 -- global environment (diff)
              ]
+       textLines = mconcat . intersperse br . map string . lines
        forTerm a =
-          divClass "term" $ string $ prettyPrinterContext ex a
+          divClass "term" $ textLines $ prettyPrinterContext ex a
    in htmlDerivationWith before forStep forTerm (diffEnvironment d)
 
 htmlState :: LinkManager -> HTMLEncoder a (State a)
@@ -568,6 +569,8 @@ htmlAllApplications lm = encoderFor $ \xs ->
 htmlDiagnosis :: LinkManager -> DomainReasoner -> HTMLEncoder a (Diagnosis a)
 htmlDiagnosis lm dr = encoderFor $ \diagnosis ->
    case diagnosis of
+      SyntaxError s -> 
+         spanClass "error" $ string s
       Buggy _ r ->
          spanClass "error" $ string $ "Not equivalent: buggy rule " ++ show r
       NotEquivalent s ->

@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ProblemDecomposition.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: ProblemDecomposition.hs 7871 2015-05-29 07:37:57Z bastiaan $
 
 module Ideas.Service.ProblemDecomposition
    ( problemDecomposition, Reply(..), Answer, tAnswer, tReply
@@ -38,12 +38,17 @@ problemDecomposition msloc state maybeAnswer
               (newCtx, _, newPrefix) = head witnesses
               newLocation = nextTaskLocation strat sloc $
                                fromMaybe topId $ nextMajorForPrefix newPrefix
-              newState = makeState ex newPrefix newCtx
-
+              newState = state 
+                 { statePrefix  = newPrefix 
+                 , stateContext = newCtx
+                 }
            _ -> Incorrect isEquiv newLocation expState arguments
             where
               newLocation = subTaskLocation strat sloc loc
-              expState = makeState ex pref expected
+              expState = state 
+                 { statePrefix  = pref 
+                 , stateContext = expected
+                 }
               isEquiv  = maybe False (equivalence ex expected . fromAnswer) maybeAnswer
               (expected, answerSteps, pref) = head answers
               (loc, arguments) = fromMaybe (topId, mempty) $

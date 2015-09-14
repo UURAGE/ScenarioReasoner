@@ -12,10 +12,11 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderJSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: EncoderJSON.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Encoding.EncoderJSON (jsonEncoder) where
 
+import Data.Maybe
 import Ideas.Common.Library hiding (exerciseId, (<|>), (<*>))
 import Ideas.Common.Utils (Some(..), distinct)
 import Ideas.Encoding.Encoder
@@ -96,15 +97,17 @@ encodeContext = exerciseEncoder $ \ex ctx ->
 
 encodeState :: JSONEncoder a (State a)
 encodeState = encoderFor $ \st ->
-   let ctx = stateContext st
-       make pp env = Array
+   let ctx   = stateContext st
+       get f = String (fromMaybe "" (f st)) 
+       make pp env = Array $
           [ String $ showId (exercise st)
           , String $ if withoutPrefix st
                      then "NoPrefix"
                      else show (statePrefix st)
           , pp
           , env
-          ]
+          ] ++ if isNothing (stateUser st) then [] else
+          [ Array [get stateUser, get stateSession, get stateStartTerm] ]
    in make <$> (encodeContext // ctx) <*> (encodeStateEnvironment // ctx)
 
 encodeStateEnvironment :: JSONEncoder a (Context a)
@@ -158,6 +161,8 @@ encodeResult = encoderFor $ \result -> Object <$>
 encodeDiagnosis :: JSONEncoder a (Diagnose.Diagnosis a)
 encodeDiagnosis = encoderFor $ \diagnosis ->
    case diagnosis of
+      Diagnose.SyntaxError s -> 
+         pure $ Object [("syntaxerror", String s)]
       Diagnose.NotEquivalent s ->
          if null s then pure (Object [("notequiv", Null)])
                    else make "notequiv" [fromReason s]

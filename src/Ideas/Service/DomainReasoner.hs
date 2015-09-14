@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
 -----------------------------------------------------------------------------
 -- Copyright 2015, Open Universiteit Nederland. This file is distributed
 -- under the terms of the GNU General Public License. For more information,
@@ -10,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: DomainReasoner.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: DomainReasoner.hs 8038 2015-06-26 08:52:15Z bastiaan $
 
 module Ideas.Service.DomainReasoner
    ( DomainReasoner(..), tDomainReasoner, newDomainReasoner

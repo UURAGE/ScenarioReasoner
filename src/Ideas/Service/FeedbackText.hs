@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: FeedbackText.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: FeedbackText.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Service.FeedbackText
    ( Message, tMessage, accept, text
@@ -76,6 +76,7 @@ submittext script old input =
 feedbacktext :: Script -> State a -> Context a -> Maybe Id -> (Message, State a)
 feedbacktext script old new motivationId =
    case diagnosis of
+      SyntaxError s   -> (M (Just False) (makeText s), old)
       Buggy _ _       -> (msg False, old)
       NotEquivalent _ -> (msg False, old)
       Expected _ s _  -> (msg True, s)

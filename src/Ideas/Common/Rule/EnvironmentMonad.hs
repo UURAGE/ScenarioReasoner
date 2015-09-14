@@ -12,7 +12,7 @@
 -- State monad for environments
 --
 -----------------------------------------------------------------------------
---  $Id: EnvironmentMonad.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: EnvironmentMonad.hs 8274 2015-08-04 10:18:46Z bastiaan $
 
 module Ideas.Common.Rule.EnvironmentMonad
    ( -- * Environment Monad
@@ -24,6 +24,7 @@ module Ideas.Common.Rule.EnvironmentMonad
    , envMonadRefs, envMonadFunctionRefs
    ) where
 
+import Control.Applicative (Applicative(..), Alternative(..))
 import Control.Monad
 import Data.Maybe
 import Data.Typeable
@@ -51,6 +52,17 @@ data EnvMonad a where
    (:~)   :: Typeable a => Ref a -> (a -> a) -> EnvMonad ()
    (:?)   :: Typeable a => Ref a -> a -> EnvMonad a
    GetRef :: Typeable a => Ref a -> EnvMonad a
+
+instance Functor EnvMonad where
+   fmap = liftM
+
+instance Applicative EnvMonad where
+   pure  = return
+   (<*>) = ap
+
+instance Alternative EnvMonad where
+   empty = Zero
+   (<|>) = Plus
 
 instance Monad EnvMonad where
    return = Return

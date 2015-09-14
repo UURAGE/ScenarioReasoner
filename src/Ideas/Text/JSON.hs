@@ -12,14 +12,15 @@
 -- JSON. JSON is a lightweight alternative for XML.
 --
 -----------------------------------------------------------------------------
---  $Id: JSON.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: JSON.hs 8572 2015-08-27 08:26:05Z alex $
 
 module Ideas.Text.JSON
    ( JSON(..), Key, Number(..)            -- types
    , InJSON(..)                           -- type class
    , lookupM
    , parseJSON, compactJSON               -- parser and pretty-printers
-   , jsonRPC, RPCHandler, propEncoding
+   , jsonRPC, RPCHandler, RPCResponse(..)
+   , propEncoding
    ) where
 
 import Control.Exception
@@ -89,9 +90,9 @@ prettyJSON compact = rec
 escape :: String -> String
 escape = concatMap f . fromMaybe "invalid UTF8 string" . UTF8.encodeM
  where
-   f '\n' = "\\\\n"
+   f '\n' = "\\n"
    f '\r' = ""      -- carriage return (DOS files)
-   f '\t' = "\\\\t"
+   f '\t' = "\\t"
    f '"'  = "\\\""
    f '\\' = "\\\\"
    f c    = [c]

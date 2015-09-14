@@ -12,7 +12,7 @@
 -- Diagnose a term submitted by a student. Deprecated (see diagnose service).
 --
 -----------------------------------------------------------------------------
---  $Id: Submit.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Submit.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Service.Submit
    ( submit, Result(..), tResult
@@ -35,6 +35,7 @@ data Result a = Buggy  [Rule (Context a)]
 fromDiagnose :: Diagnosis a -> Result a
 fromDiagnose diagnosis =
    case diagnosis of
+      Diagnose.SyntaxError s    -> NotEquivalent s -- should not happen
       Diagnose.Buggy _ r        -> Buggy [r]
       Diagnose.NotEquivalent s  -> NotEquivalent s
       Diagnose.Similar _ s      -> Ok [] s

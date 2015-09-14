@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Configuration.hs 7638 2015-04-30 13:23:05Z bastiaan $
+--  $Id: Configuration.hs 8559 2015-08-25 18:35:44Z bastiaan $
 
 module Ideas.Common.Strategy.Configuration
    ( StrategyCfg, byName, ConfigAction(..)
@@ -96,7 +96,7 @@ insertAtLabel n def = replaceLeaf f . replaceLabel g
          | otherwise = Tree.label l a
 
 removeAtLabel :: HasId a => Id -> Def -> CyclicTree Def a -> CyclicTree Def a
-removeAtLabel n def = replaceNode $ \d xs -> 
+removeAtLabel n def = replaceNode $ \d xs -> -- fix me: use def
    case map nextId xs of
       [Just l] | n == l -> head xs
       _ -> node d xs
@@ -125,7 +125,7 @@ removeDef :: Def
 removeDef = propertyDef "removed" (const empty)
 
 collapseDef :: Def
-collapseDef = propertyDef "collapsed" (collapse . toProcess)
+collapseDef = propertyDef "collapsed" (collapse . fromBuilder)
  where
    collapse a = 
       case firsts a of
@@ -136,4 +136,4 @@ collapseDef = propertyDef "collapsed" (collapse . toProcess)
       single . RuleStep mempty . makeRule l . runProcess
 
 hideDef :: Def
-hideDef = propertyDef "hidden" (fmap minor)
+hideDef = propertyDef "hidden" (mapBuilder minor)

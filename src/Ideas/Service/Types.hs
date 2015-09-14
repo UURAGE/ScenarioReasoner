@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Types.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Types.hs 8001 2015-06-18 19:35:58Z bastiaan $
 
 module Ideas.Service.Types
    ( -- * Services
@@ -20,11 +20,13 @@ module Ideas.Service.Types
    , TypeRep(..), Const(..), Type, TypedValue(..)
    , Equal(..), ShowF(..), equalM
      -- * Constructing types
-   , tEnvironment, tLocation, tRule, tTuple3, tTuple4, tTuple5, tPair
+   , tEnvironment, tLocation, tRule, tUnit, tTuple3, tTuple4, tTuple5, tPair
    , tStrategy, tTree, tState, tBool, tMaybe, tString, tList
-   , tId, tService, tSomeExercise, tText, tDifficulty, tContext
+   , tId, tService, tSomeExercise, tText, tDifficulty, tUserId ,tContext
    , tDerivation, tError, (.->), tIO, tExercise, tTestSuiteResult, tStdGen
    , tScript, tExamples, tStrategyCfg, tInt
+     -- * Searching a typed value
+   , findValuesOfType
    ) where
 
 import Control.Monad
@@ -280,6 +282,9 @@ tStrategyCfg = Const StratCfg
 tList :: Type a t -> Type a [t]
 tList = List
 
+tUnit :: Type a ()
+tUnit = Unit
+
 tPair :: Type a t1 -> Type a t2 -> Type a (t1, t2)
 tPair = Pair
 
@@ -329,6 +334,9 @@ tDifficulty :: Type a Difficulty
 tDifficulty = Tag "Difficulty" (Iso (f <-> show) tString)
     where
       f = fromMaybe Medium . readDifficulty
+      
+tUserId :: Type a String
+tUserId = Tag "UserId" tString
 
 tStdGen :: Type a StdGen
 tStdGen = Const StdGen
@@ -359,3 +367,22 @@ tTree t = Tag "Tree" $ Iso (f <-> g) (tPair t (tList (tTree t)))
 
 tTestSuiteResult :: Type a TestSuite.Result
 tTestSuiteResult = Const Result
+
+-------------------------------------
+
+findValuesOfType :: Type a t -> TypedValue (Type a) -> [t]
+findValuesOfType thisType = rec 
+ where
+   rec tv@(a ::: tp) = 
+      case equal tp thisType of
+         Just f  -> [f a] 
+         Nothing -> recDown tv
+   
+   recDown (a ::: tp) = 
+      case tp of
+         Iso iso t  -> rec (to iso a ::: t)
+         Tag _ t    -> rec (a ::: t)
+         List t     -> concatMap (\b -> rec (b ::: t)) a
+         Pair t1 t2 -> rec (fst a ::: t1) ++ rec (snd a ::: t2)
+         t1 :|: t2  -> either (\b -> rec (b ::: t1)) (\b -> rec (b ::: t2)) a
+         _          -> []

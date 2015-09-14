@@ -11,7 +11,7 @@
 -- Main module for feedback services
 --
 -----------------------------------------------------------------------------
---  $Id: Default.hs 7844 2015-05-22 09:41:38Z bastiaan $
+--  $Id: Default.hs 8209 2015-07-20 14:44:31Z bastiaan $
 
 module Ideas.Main.Default
    ( defaultMain, defaultCGI
@@ -52,22 +52,24 @@ defaultMain dr = do
 defaultCGI :: DomainReasoner -> IO ()
 defaultCGI dr = runCGI $ handleErrors $ do
    -- create a record for logging
-   record  <- liftIO Log.makeRecord
+   logRef  <- liftIO Log.newLogRef
    -- query environment
    addr    <- remoteAddr       -- the IP address of the remote host
    cgiBin  <- scriptName       -- get name of binary
    input   <- inputOrDefault
    -- process request
    (req, txt, ctp) <- liftIO $
-      process dr (Just cgiBin) input
+      process dr logRef (Just cgiBin) input
    -- log request to database
-   when (useLogging req) $
-      liftIO $ Log.logRecord (getSchema req) (Log.addRequest req record)
+   when (useLogging req) $ liftIO $ do
+      Log.changeLog logRef $ \r -> Log.addRequest req r
          { Log.ipaddress = addr
-         , Log.binary    = cgiBin
+         , Log.version   = shortVersion
          , Log.input     = input
          , Log.output    = txt
          }
+      Log.logRecord (getSchema req) logRef
+         
    -- write header and output
    setHeader "Content-type" ctp
    -- Cross-Origin Resource Sharing (CORS) prevents browser warnings
@@ -111,9 +113,18 @@ defaultCommandLine dr flags = do
          -- process input file
          InputFile file ->
             withBinaryFile file ReadMode $ \h -> do
-               input <- hGetContents h
-               (_, txt, _) <- process dr Nothing input
+               logRef <- liftIO Log.newLogRef
+               input  <- hGetContents h
+               (req, txt, _) <- process dr logRef Nothing input
                putStrLn txt
+               when (PrintLog `elem` flags) $ do
+                  Log.changeLog logRef $ \r -> Log.addRequest req r
+                     { Log.ipaddress = "command-line"
+                     , Log.version   = shortVersion
+                     , Log.input     = input
+                     , Log.output    = txt
+                     }
+                  Log.printLog logRef
          -- blackbox tests
          Test dir -> do
             tests  <- blackBoxTests dr dir
@@ -125,14 +136,17 @@ defaultCommandLine dr flags = do
          -- feedback scripts
          MakeScriptFor s    -> makeScriptFor dr s
          AnalyzeScript file -> parseAndAnalyzeScript dr file
+         PrintLog           -> return ()
+         
 
-process :: DomainReasoner -> Maybe String -> String -> IO (Request, String, String)
-process dr cgiBin input = do
+process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
+process dr logRef cgiBin input = do
    format <- discoverDataFormat input
-   run format (Just 5) cgiBin dr input
- `catch` \ioe ->
+   run format (Just 5) cgiBin dr logRef input
+ `catch` \ioe -> do
    let msg = "Error: " ++ ioeGetErrorString ioe
-   in return (emptyRequest, msg, "text/plain")
+   Log.changeLog logRef (\r -> r { Log.errormsg = msg })
+   return (emptyRequest, msg, "text/plain")
  where
    run XML  = processXML
    run JSON = processJSON

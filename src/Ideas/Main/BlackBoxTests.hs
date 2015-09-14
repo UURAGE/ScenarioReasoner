@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: BlackBoxTests.hs 7528 2015-04-08 09:44:10Z bastiaan $
+--  $Id: BlackBoxTests.hs 8003 2015-06-19 07:26:41Z bastiaan $
 
 module Ideas.Main.BlackBoxTests (blackBoxTests) where
 
@@ -22,6 +22,7 @@ import Ideas.Encoding.ModeJSON
 import Ideas.Encoding.ModeXML
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
+import Ideas.Main.Logging
 import System.Directory
 import System.IO
 import qualified Data.Algorithm.Diff as Diff
@@ -55,8 +56,8 @@ doBlackBoxTest dr format path =
          hSetBinaryMode h1 True
          txt <- hGetContents h1
          out  <- case format of
-                    JSON -> liftM snd3 (processJSON Nothing Nothing dr txt)
-                    XML  -> liftM snd3 (processXML  Nothing Nothing dr txt)
+                    JSON -> liftM snd3 (processJSON Nothing Nothing dr noLogRef txt)
+                    XML  -> liftM snd3 (processXML  Nothing Nothing dr noLogRef txt)
          withFile expPath ReadMode $ \h2 -> do
             hSetBinaryMode h2 True
             expt <- hGetContents h2

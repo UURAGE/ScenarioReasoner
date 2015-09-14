@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ServiceList.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: ServiceList.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Service.ServiceList (serviceList, metaServiceList) where
 
@@ -36,7 +36,7 @@ serviceList =
    , equivalenceS, similarityS, suitableS, finishedS, readyS
    , stepsremainingS, allapplicationsS
    , applyS, generateS, createS, applicableS
-   , examplesS, exampleS, submitS, diagnoseS
+   , examplesS, exampleS, submitS, diagnoseS, diagnoseStringS
    , findbuggyrulesS, problemdecompositionS
    -- textual services
    , onefirsttextS, submittextS
@@ -47,7 +47,7 @@ metaServiceList :: DomainReasoner -> [Service]
 metaServiceList dr =
    [ indexS dr, servicelistS dr, serviceinfoS dr, exerciselistS dr
    , rulelistS, ruleinfoS, rulesinfoS, strategyinfoS, exerciseinfoS
-   , stateinfoS, examplederivationsS, testreportS
+   , stateinfoS, examplederivationsS, testreportS, logS
    ]
 
 ------------------------------------------------------
@@ -140,13 +140,13 @@ generateS :: Service
 generateS = makeService "basic.generate"
    "Given an exercise code and a difficulty level (optional), this service \
    \returns an initial state with a freshly generated expression." $
-   generate ::: tStdGen .-> tExercise .-> tMaybe tDifficulty .-> tError tState
+   generate ::: tStdGen .-> tExercise .-> tMaybe tDifficulty .-> tMaybe tUserId .-> tIO tState
 
 createS :: Service
 createS = makeService "basic.create"
     "Given an expression, this service \
     \returns an initial state with the original given expression." $
-    create ::: tExercise .-> tString .-> tError tState
+    create ::: tExercise .-> tString .-> tMaybe tUserId .-> tIO tState
 
 examplesS :: Service
 examplesS = makeService "basic.examples"
@@ -162,12 +162,12 @@ exampleS = makeService "basic.example"
    \with an exercise. These are the examples that appear at the page generated \
    \for each exercise. Also see the generate service, which returns a random \
    \start term." $
-   f ::: tExercise .-> tInt .-> tError tState
+   f ::: tExercise .-> tInt .-> tMaybe tUserId .-> tIO tState
  where
-   f ex nr =
-      case drop nr (examplesContext ex) of
-         []       -> Left "No such example"
-         (_,c ):_ -> Right (emptyStateContext ex c)
+   f ex nr userId =
+      case drop nr (examples ex) of
+         []       -> fail "No such example"
+         (_,a):_ -> startState ex userId a
 
 findbuggyrulesS :: Service
 findbuggyrulesS = makeService "basic.findbuggyrules"
@@ -194,6 +194,19 @@ diagnoseS = makeService "basic.diagnose"
    \detected), and Correct (it is correct, but we don't know which rule was \
    \applied)." $
    Diagnose.diagnose ::: tState .-> tContext .-> tMaybe tId .-> Diagnose.tDiagnosis
+
+diagnoseStringS :: Service
+diagnoseStringS = makeService "basic.diagnose-string" 
+   "See diagnose service, but also returns a SyntaxError for invalid input." $
+   diagnoseString ::: tState .-> tString .-> tMaybe tId .-> Diagnose.tDiagnosis
+
+diagnoseString :: State a -> String -> Maybe Id -> Diagnose.Diagnosis a
+diagnoseString st s mot =
+   case parser ex s of
+      Left msg -> Diagnose.SyntaxError msg 
+      Right ca -> Diagnose.diagnose st (inContext ex ca) mot
+ where
+   ex = exercise st
 
 ------------------------------------------------------
 -- Problem decomposition service
@@ -309,3 +322,10 @@ testreportS :: Service
 testreportS = makeService "meta.testreport"
    "Show test report for an exercise." $
    (\stdgen -> runTestSuiteResult False . exerciseTestSuite stdgen) ::: tStdGen .-> tExercise .-> tIO tTestSuiteResult
+   
+logS :: Service
+logS = makeService "meta.log" 
+   "Feedback service for logging events: the reply is always empty. The \
+   \optional input state can be used to record userid, sessionid, and \
+   \taskid."
+   (const () ::: tMaybe tState .-> tUnit)

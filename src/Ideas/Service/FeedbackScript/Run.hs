@@ -11,7 +11,7 @@
 -- Run a feedbackscript
 --
 -----------------------------------------------------------------------------
---  $Id: Run.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Run.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Service.FeedbackScript.Run
    ( Script
@@ -126,6 +126,7 @@ eval env script = either (return . findIdRef) evalText
 feedbackDiagnosis :: Diagnosis a -> Environment a -> Script -> Text
 feedbackDiagnosis diagnosis env =
    case diagnosis of
+      SyntaxError s    -> const (makeText s)
       Buggy _ r        -> makeWrong "buggy"     env {recognized = Just r}
       NotEquivalent s  -> makeNotEq s "noteq" env
       Expected _ _ r   -> makeOk    "ok"        env {recognized = Just r}

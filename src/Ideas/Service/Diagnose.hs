@@ -12,15 +12,15 @@
 -- Diagnose a term submitted by a student
 --
 -----------------------------------------------------------------------------
---  $Id: Diagnose.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Diagnose.hs 8223 2015-07-22 10:06:38Z bastiaan $
 
 module Ideas.Service.Diagnose
-   ( Diagnosis(..), tDiagnosis, diagnose, restartIfNeeded, newState
+   ( Diagnosis(..), tDiagnosis, diagnose
    , difference, differenceEqual
    ) where
 
 import Data.Function
-import Data.List (sortBy)
+import Data.List (intercalate, sortBy)
 import Data.Maybe
 import Ideas.Common.Library hiding (ready)
 import Ideas.Service.BasicServices hiding (apply)
@@ -32,9 +32,8 @@ import qualified Ideas.Common.Rewriting.Difference as Diff
 -- Result types for diagnose service
 
 data Diagnosis a
-   = Buggy          Environment (Rule (Context a))
---   | Missing
---   | IncorrectPart  [a]
+   = SyntaxError    String
+   | Buggy          Environment (Rule (Context a))
    | NotEquivalent  String
    | Similar        Bool (State a)
    | WrongRule      Bool (State a) (Maybe (Rule (Context a)))
@@ -47,22 +46,20 @@ data Diagnosis a
 instance Show (Diagnosis a) where
    show diagnosis =
       case diagnosis of
-         Buggy as r       -> "Buggy rule " ++ show (show r) ++ showArgs as
-         Unknown _ _      -> "Unknown step"
---         Missing          -> "Missing solutions"
---         IncorrectPart xs -> "Incorrect parts (" ++ show (length xs) ++ " items)"
-         NotEquivalent s  -> if null s then "Unknown mistake" else s
-         Similar _ _      -> "Very similar"
-         WrongRule _ _ mr -> "Wrong rule selected"  ++
-                             maybe "" (\r -> ", " ++ showId r ++ "recognized") mr
-         Expected _ _ r   -> "Rule " ++ show (show r) ++ ", expected by strategy"
-         Detour _ _ _ r   -> "Rule " ++ show (show r) ++ ", not following strategy"
-         Correct _ _      -> "Unknown step"
+         SyntaxError s    -> f "SyntaxError" [s]
+         Buggy _ r        -> f "Buggy" [show r]
+         NotEquivalent s  -> f "NotEquivalent" [ s | not (null s) ]
+         Similar _ _      -> "Similar"
+         WrongRule _ _ mr -> f "WrongRule" [ show r | r <- maybeToList mr ]
+         Expected _ _ r   -> f "Expected" [show r]
+         Detour _ _ _ r   -> f "Detour" [show r]
+         Correct _ _      -> "Correct"
+         Unknown _ _      -> "Unknown"
     where
-      showArgs as
-         | noBindings as = ""
-         | otherwise     = " (" ++ show as ++ ")"
-
+      f s xs
+         | null xs   = s 
+         | otherwise = s ++ "(" ++ intercalate "," xs ++ ")"
+{-
 newState :: Diagnosis a -> Maybe (State a)
 newState diagnosis =
    case diagnosis of
@@ -74,7 +71,7 @@ newState diagnosis =
       Detour   _ s _ _ -> Just s
       Correct  _ s     -> Just s
       Unknown  _ s     -> Just s
-
+-}
 ----------------------------------------------------------------
 -- The diagnose service
 
@@ -118,11 +115,11 @@ diagnose state new motivationId
               Correct (finished restarted) restarted
  where
    ex        = exercise state
-   restarted = restartIfNeeded (makeNoState ex new)
+   restarted = restart state {stateContext = new}
    similar   = similarity ex (stateContext state) new
 
    expected = do
-      let xs = either (const []) id $ allfirsts (restartIfNeeded state)
+      let xs = either (const []) id $ allfirsts state
           p (_, ns) = similarity ex new (stateContext ns) -- use rule recognizer?
       listToMaybe (filter p xs)
 
@@ -143,40 +140,27 @@ diagnose state new motivationId
 ----------------------------------------------------------------
 -- Helpers
 
--- If possible (and if needed), restart the strategy
--- Make sure that the new state has a prefix
--- When resetting the prefix, also make sure that the context is refreshed
-restartIfNeeded :: State a -> State a
-restartIfNeeded state
-   | withoutPrefix state && canBeRestarted ex =
-        emptyState ex (stateTerm state)
-   | otherwise = state
- where
-   ex = exercise state
-
 tDiagnosis :: Type a (Diagnosis a)
 tDiagnosis = Tag "Diagnosis" $ Iso (f <-> g) tp
     where
-      tp = (tPair tEnvironment tRule :|: (tString :|: tTuple3 tBool tState (tMaybe tRule)))
+      tp = (tString :|: tPair tEnvironment tRule :|: (tString :|: tTuple3 tBool tState (tMaybe tRule)))
          :|: tPair tBool tState :|: tTuple3 tBool tState tRule
          :|: tTuple4 tBool tState tEnvironment tRule :|: tPair tBool tState :|: tPair tBool tState
 
-      f (Left (Left (as, r))) = Buggy as r
-   --   f (Left (Right (Left ()))) = Missing
-   --   f (Left (Right (Right (Left xs)))) = IncorrectPart xs
-      f (Left (Right (Left s))) = NotEquivalent s
-      f (Left (Right (Right (b, s, mr)))) = WrongRule b s mr
+      f (Left (Left s)) = SyntaxError s
+      f (Left (Right (Left (as, r)))) = Buggy as r
+      f (Left (Right (Right (Left s)))) = NotEquivalent s
+      f (Left (Right (Right (Right (b, s, mr))))) = WrongRule b s mr
       f (Right (Left (b, s))) = Similar b s
       f (Right (Right (Left (b, s, r)))) = Expected b s r
       f (Right (Right (Right (Left (b, s, as, r))))) = Detour b s as r
       f (Right (Right (Right (Right (Left (b, s)))))) = Correct b s
       f (Right (Right (Right (Right (Right (b, s)))))) = Unknown b s
 
-      g (Buggy as r)       = Left (Left (as, r))
-   --   g Missing            = Left (Right (Left ()))
-   --   g (IncorrectPart xs) = Left (Right (Right (Left xs)))
-      g (NotEquivalent s)  = Left (Right (Left s))
-      g (WrongRule b s mr) = Left (Right (Right (b, s, mr)))
+      g (SyntaxError s)    = Left (Left s)
+      g (Buggy as r)       = Left (Right (Left (as, r)))
+      g (NotEquivalent s)  = Left (Right (Right (Left s)))
+      g (WrongRule b s mr) = Left (Right (Right (Right (b, s, mr))))
       g (Similar b s)      = Right (Left (b, s))
       g (Expected b s r)   = Right (Right (Left (b, s, r)))
       g (Detour b s as r)  = Right (Right (Right (Left (b, s, as, r))))
