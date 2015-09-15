@@ -37,7 +37,11 @@ readExercise path = (mkExercise id strategy difficulty initialState, path)
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
-    initialEmotion = maybe empty (\emotion -> insert emotion 1 empty) (scenarioStartEmotion metadata)
+    initialEmotion = 
+		maybe empty (\emotion -> case emotion of 
+			"" -> empty
+			_  -> insert emotion 1 empty)
+		(scenarioStartEmotion metadata)
     initialState = ScenarioState (fromList (map processParameter parameters)) initialEmotion emptyStatementInfo
     
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState

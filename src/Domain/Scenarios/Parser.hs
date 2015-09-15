@@ -121,10 +121,10 @@ parseScenarioModel script = nothingOnFail(
     
 -- | Queries the given script for its start emotion.
 parseScenarioStartEmotion :: Script -> Maybe ID
-parseScenarioStartEmotion script = nothingOnFail(
-    findChild "metadata" script >>=
-    findChild "startEmotion"    >>=
-    return . getData)
+parseScenarioStartEmotion script = case startEmotion of
+	Nothing -> Nothing
+	Just element -> Just (getData element)
+  where startEmotion = nothingOnFail (findChild "metadata" script >>= findChild "startEmotion")
 
 -- | Queries the given script for its parameters.
 parseScenarioParameters :: Script -> [Parameter]
