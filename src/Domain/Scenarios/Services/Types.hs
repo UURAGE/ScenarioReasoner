@@ -45,20 +45,22 @@ tScenarioInfo =
         pairify (ScenarioInfo id name descr diff bi ci model ps loc pet ts) = 
             (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
                        
+{-
 instance Show ScenarioInfo where
   show (ScenarioInfo id name desc diff bi ci model ps lc pet ss) = 
     show id    ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
     show diff  ++ "\n" ++ show bi    ++ "\n" ++ show ci   ++ "\n" ++ 
     show model ++ "\n" ++ show ps    ++ "\n" ++ show lc   ++ "\n" ++ 
-    show pet   ++ "\n" ++ show ss    ++ "\n" 
+    show pet   ++ "\n" ++ show ss    ++ "\n"   -}
 
 data ParameterInfo = ParameterInfo ID
                                    Name
                                    String -- Description
 
+{-
 instance Show ParameterInfo where
   show (ParameterInfo id name descr) = show id ++ ", " ++ show name ++ ", " ++ show descr
-  
+  -}
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
                                            (Tag "description"   tString)))                                    

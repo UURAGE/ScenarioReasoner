@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
 -- at Utrecht University within the Software and Game project course (2013-2015)
@@ -12,6 +13,8 @@ import Data.Char(isLower, toLower)
 import Ideas.Common.Library
 import Ideas.Text.JSON
 import Ideas.Text.XML.Interface(Element)
+import GHC.Generics
+import Data.Binary
 
 -- | Type definitions 
 type ParameterValue = Int
@@ -28,7 +31,9 @@ data StatementInfo = StatementInfo
     , statMedia    :: MediaInfo
     , statEnd      :: Bool
     }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Read, Generic)
+
+instance Binary	StatementInfo
 
 -- The text of a statement is either simply a text or a conversation with a list of tuples of the types and texts 
 type StatementType = String                                         -- Conversation / Player / Computer
@@ -37,16 +42,22 @@ type ConversationTextType = String                                  -- Player / 
 
 -- MediaInfo [(VisualType, VisualID)] [AudioID] where VisualType is either an "image" or a "video" 
 data MediaInfo = MediaInfo [(String, ID)] [ID] 
-    deriving(Show, Eq)
+    deriving(Show, Eq, Read, Generic)
+    
+instance Binary MediaInfo
     
 emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False 
                 
 -- Specifies if a certain feature should be on or off
-data Toggle = Toggle Name Bool
+data Toggle = Toggle Name Bool    
+ deriving (Show, Read, Generic)
     
+instance Binary Toggle
+    
+    {-
 instance Show Toggle where
     show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
-    
+    -}
 toggleNames :: [Name]
 toggleNames = ["showscore"    --score at the end of the game
               ,"showfeedback" --feedback at the end of the game
@@ -64,13 +75,17 @@ data Parameter = Parameter
     , parameterScored       :: Bool
     , parameterMax          :: Maybe ParameterValue
     , parameterMin          :: Maybe ParameterValue
-    }
-    
+    }                   
+ deriving (Show, Read,Generic)
+
+instance Binary Parameter
+
+{-
 instance Show Parameter where
     show (Parameter id name initvalue descr scored max min) = 
         show id    ++ "\t" ++ show name ++ "\t" ++ show initvalue ++ "\t" ++ 
         show descr ++ "\t" ++ show max  ++ "\t" ++ show min       ++ "\t" ++ 
-        show scored ++ "\n"     
+        show scored ++ "\n"     -}
 
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.

@@ -17,11 +17,11 @@ import Ideas.Service.State
 
 import Domain.Scenarios.Condition
 import Domain.Scenarios.Globals
-import Domain.Scenarios.Parser
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState(ScenarioState)
 import Domain.Scenarios.ScoringFunction(SubScore, calculateScore, calculateSubScores)
 import Domain.Scenarios.Services.Types
+import Domain.Scenarios.Parser(readBinaryScenario)
 
 -- FeedbackForm Service -------------------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm
   where 
     state = fromMaybe (error "Cannot give feedback on exercise: casting failed.") $
         castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
-    scenario = parseScenario (findScript "feedbackform" fs (exercise fstate))
+    scenario = findScript "feedbackform" fs (exercise fstate)
     
 -- If an entry contains conditioned feedback then it checks if it is fullfilled 
 -- and returns the corresponding feedback otherwise it returns the default feedback or an empty string.
@@ -50,11 +50,11 @@ getFeedbackFormResult state (FeedbackFormEntry paramID feedbackConditions defaul
   
 -- Scenariolist service: lists all info for each scenario
 scenariolist :: [FilePath] -> [ScenarioInfo]
-scenariolist = map (getScenarioInfo . parseScenario . parseScript)
+scenariolist = map (getScenarioInfo . readBinaryScenario)
 
 -- Scenarioinfo service: shows the info for a specific scenario (exercise)
 scenarioinfo :: [FilePath] -> Exercise a -> ScenarioInfo
-scenarioinfo fs ex = getScenarioInfo (parseScenario (findScript "get info for" fs ex))
+scenarioinfo fs ex = getScenarioInfo (findScript "scenarioinfo" fs ex)
 
 getScenarioInfo :: Scenario -> ScenarioInfo
 getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
@@ -83,7 +83,7 @@ getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
 -- because EncoderJSON merges a tuple into the main structure of the result
 score :: [FilePath] -> State a -> ScoreResult
 score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
-    where metaData = scenarioMetaData (parseScenario (findScript "score" fs $ exercise fstate))
+    where metaData = scenarioMetaData (findScript "score" fs (exercise fstate))
           state = fromMaybe (error "Cannot score exercise: casting failed.") $
             castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
           mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
@@ -92,10 +92,11 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
             (scenarioScoreExtremes metaData) :: Maybe [Score]          
           parameters = scenarioParameters metaData
 
+
 -- | Finds the script of the exercise in the given filepaths list
-findScript :: String -> [FilePath] -> Exercise a -> Script
+findScript :: String -> [FilePath] -> Exercise a -> Scenario
 findScript usage fs ex =
     case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
-            [path] -> parseScript path
+            [path] -> readBinaryScenario path
             _             ->
                 error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario."

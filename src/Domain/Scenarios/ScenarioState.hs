@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-} 
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, DeriveGeneric #-} 
 
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
@@ -18,16 +18,21 @@ import Ideas.Common.Library
 import Ideas.Common.Utils 
 import Ideas.Text.JSON
 import Data.Typeable
+import Data.Binary
+import GHC.Generics
 
 import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy.
 data ScenarioState = ScenarioState ParameterMap EmotionMap StatementInfo 
-    deriving (Eq, Typeable)
+    deriving (Show, Eq, Typeable, Read, Generic)
 
+instance Binary ScenarioState
+
+{-
 instance Show ScenarioState where
-    show (ScenarioState pmap emap end) = show pmap ++ show emap ++ show end
+    show (ScenarioState pmap emap end) = show pmap ++ show emap ++ show end  -}
   
 type ParameterMap = M.Map ID ParameterValue
 type EmotionMap = M.Map Emotion ParameterValue
@@ -38,14 +43,19 @@ data Effect = Effect
         , effectChangeType :: ChangeType
         , effectValue      :: ParameterValue
         } 
-        
+ deriving (Show, Read, Generic)
+
+instance Binary Effect
+{-
 instance Show Effect where
-    show (Effect id ct value) = "\n\t\t" ++ show id ++ show ct ++ show value
+    show (Effect id ct value) = "\n\t\t" ++ show id ++ show ct ++ show value -}
     
 -- This datatype specifies the type of change to be made to the parameter, 
 -- Set for setting the parameter to a specific value
 -- Delta for adding / subtracting the new value to / from the existing value     
-data ChangeType = Set | Delta deriving (Show, Eq, Read)
+data ChangeType = Set | Delta deriving (Show, Eq, Read, Generic)
+
+instance Binary ChangeType
 
 applyEffects :: ScenarioState -> [Effect] -> [Effect] -> StatementInfo -> ScenarioState
 applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects statInfo = 

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
 -- at Utrecht University within the Software and Game project course (2013-2015)
@@ -10,18 +11,24 @@ import qualified Data.Map as M
 
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals(ID)
+import GHC.Generics
+import Data.Binary
 
 data Condition = And [Condition]               -- ^ A list of conditions, all of which need to be satisfied 
                | Or [Condition]                -- ^ A list of conditions, one of which needs to be satisfied
                | Condition ComparisonCondition -- ^ A comparison condition
-               deriving (Show, Eq)
+               deriving (Show, Eq, Read, Generic)
+
+instance Binary Condition
 
 -- | A condition that compares the value of a parameter by id to a value using a binary predicate
 data ComparisonCondition = ComparisonCondition
         { conditionIdref :: ID
         , conditionTest  :: CompareOperator
         , conditionValue :: Int
-        } deriving (Show, Eq)
+        } deriving (Show, Eq, Read, Generic)
+ 
+instance Binary ComparisonCondition
         
 data CompareOperator = LessThan
                      | LessThanEqualTo
@@ -29,7 +36,9 @@ data CompareOperator = LessThan
                      | GreaterThanEqualTo
                      | GreaterThan
                      | NotEqualTo
-                     deriving (Show, Eq, Read)
+                     deriving (Show, Eq, Read, Generic)
+        
+instance Binary CompareOperator
                      
 -- | Evaluates the possible condition based on the given state, if there is no condition evaluate to True
 evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool

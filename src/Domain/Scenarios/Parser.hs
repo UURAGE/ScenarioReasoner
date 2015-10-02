@@ -4,7 +4,7 @@
 -- ©Copyright Utrecht University (Department of Information and Computing Sciences)
 ------------------------------------------------------------------------------------
 
-module Domain.Scenarios.Parser (parseScript, parseScenario, Script) where
+module Domain.Scenarios.Parser where
 
 import Prelude hiding (readFile)
 import GHC.Exts (sortWith)
@@ -27,6 +27,7 @@ import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
+import Data.Binary
 
 type Script = Element
 
@@ -34,9 +35,8 @@ type Script = Element
 ----------------------------------------------------------------------------------------------------
    
 -- | Parses the XML script at "filepath" to a Script. lazy.
-parseScript :: FilePath -> Script
-parseScript filepath =
-    unsafePerformIO $ withBinaryFile filepath ReadMode 
+parseScript :: FilePath -> IO Script
+parseScript filepath = withBinaryFile filepath ReadMode 
         (hGetContents >=> (either fail return . parseXML))
         -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 
@@ -46,7 +46,10 @@ parseScenario script = Scenario
         { scenarioMetaData     = parseMetaData     script
         , scenarioFeedbackForm = parseFeedbackForm script
         , scenarioDialogue     = parseDialogue     script     
-        }
+        } 
+		
+readBinaryScenario :: FilePath -> Scenario
+readBinaryScenario path = unsafePerformIO $ decodeFile path
         
 ----------------------------------------------------------------------------------------------------        
  

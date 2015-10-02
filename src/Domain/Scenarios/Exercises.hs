@@ -18,21 +18,20 @@ import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Strategy(makeStrategy)
-import Domain.Scenarios.Parser(parseScript, parseScenario)
+import Domain.Scenarios.Parser
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState
 
 exercises :: IO [(Exercise ScenarioState, FilePath)]
 exercises = 
-    F.find F.always (F.extension ==? ".xml") root >>= return . map readExercise 
-  where root = "../../scenarios/scripts" :: FilePath-- : The script directory.
+    F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise 
+  where root = "bins/" :: FilePath-- : The script directory.
 
 readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
 readExercise path = (mkExercise id strategy difficulty initialState, path)
   where 
     id = "scenarios" # newId (takeBaseName path)    
-    script = parseScript path
-    scenario@(Scenario metadata _ dialogue) = (parseScenario script)
+    scenario@(Scenario metadata _ dialogue) = readBinaryScenario path
     strategy = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata

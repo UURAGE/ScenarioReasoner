@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
 -- at Utrecht University within the Software and Game project course (2013-2015)
@@ -13,18 +14,24 @@ import qualified Data.Map as M
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
+import Data.Binary
+import GHC.Generics
 
 -- | Datastructure for a function to calculate the score based on the current state
 data ScoringFunction = Constant Score
                      | Sum [ScoringFunction]
                      | Scale Int ScoringFunction
                      | ParamRef ID
-    
+ deriving (Show, Read,Generic)
+ 
+instance Binary ScoringFunction
+      
+{-
 instance Show ScoringFunction where
     show (Constant score)          = "Constant: "  ++ show score  ++ "\n"
     show (Sum sflist)              = "Sum: "       ++ show sflist ++ "\n"
     show (Scale scalar sf)         = "Scale: "     ++ show scalar ++ "\n\t" ++ show sf ++ "\n"
-    show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n"
+    show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n" -}
     
 type SubScore = (ID, Name, Score) -- Score as a percentage
                      
