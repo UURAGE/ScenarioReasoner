@@ -35,6 +35,14 @@ main = runCGI $ handleErrors $ do
     path <- getInput "path"
     script <- liftIO $ parseScript (fromJust path)
     let scenario = parseScenario script
-    liftIO $ encodeFile ("bins/" ++ takeBaseName (fromJust path)) scenario
-    output (fromJust path)
+    liftIO $ encodeFile ("bins/" ++ takeBaseName (fromJust path) ++ ".bin") scenario
+    output ("bins/" ++ takeBaseName (fromJust path) ++ ".bin")
+    
+debugMain :: String -> IO ()
+debugMain path = do
+    script <- parseScript (path)
+    let scenario = parseScenario script
+    print scenario
+    print path
+    encodeFile ("bins/" ++ takeBaseName path ++ ".bin") scenario
 	

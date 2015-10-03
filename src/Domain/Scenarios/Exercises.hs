@@ -25,7 +25,7 @@ import Domain.Scenarios.ScenarioState
 exercises :: IO [(Exercise ScenarioState, FilePath)]
 exercises = 
     F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise 
-  where root = "bins/" :: FilePath-- : The script directory.
+  where root = "bins" :: FilePath-- : The script directory.
 
 readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
 readExercise path = (mkExercise id strategy difficulty initialState, path)
