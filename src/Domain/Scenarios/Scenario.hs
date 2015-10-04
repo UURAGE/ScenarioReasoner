@@ -10,7 +10,6 @@ module Domain.Scenarios.Scenario where
 import Data.List(intercalate)
 
 import Ideas.Common.Library
-import Ideas.Text.XML
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.ScoringFunction
@@ -19,19 +18,12 @@ import Domain.Scenarios.ScenarioState(Effect)
 import GHC.Generics
 import Data.Binary
 
-instance Read Difficulty where
-   readsPrec _ (' ':'M':'e':'d':'i':'u':'m':xs) = [(Medium, xs)]
-
-instance Binary Difficulty where
-   get = do () <- get; return Medium
-   put _ = put ()
-
 data Scenario = Scenario 
         { scenarioMetaData     :: MetaData
         , scenarioFeedbackForm :: FeedbackForm
         , scenarioDialogue     :: Dialogue  
         }
-    deriving(Show,Read,Generic)
+    deriving (Show,Generic )
     
 instance Binary Scenario
 
@@ -58,11 +50,23 @@ data MetaData = MetaData
         , scenarioScoringFunction :: ScoringFunction
         , scenarioScoreExtremes   :: Maybe (Score, Score)
         }      
- deriving (Show, Read,Generic)
+ deriving Generic
         
 instance Binary MetaData
-        
-{-
+instance Binary Difficulty where
+   get = do () <- get; return Medium
+   put _ = put ()
+{- TODO
+instance Binary Difficulty where
+    get = do t <- get :: Get String
+             case t of
+                  "diff" -> do diff <- get
+                               return (errorOnFail "no difficulty parse"$ readDifficulty diff)
+                  _      -> error "no binary difficulty"
+                       
+    put difficulty = do put ("diff" :: String)
+                        put (show difficulty)-}
+
 instance Show MetaData where 
     show (MetaData id name desc diff bi ci model emo ps loc pet ts sf se) =
         "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
@@ -77,7 +81,7 @@ instance Show MetaData where
         "pet: "             ++ show pet   ++ "\n" ++
         "toggles: "         ++ show ts    ++ "\n" ++ 
         "scoringFunction: " ++ show sf    ++ "\n" ++ 
-        "scoreExtremes: "   ++ show se    ++ "\n"  -}
+        "scoreExtremes: "   ++ show se    ++ "\n"  
         
 type FeedbackForm = [FeedbackFormEntry]
 
@@ -86,14 +90,14 @@ data FeedbackFormEntry = FeedbackFormEntry
     , feedbackConditions :: [(Condition, String)]
     , feedbackDefault    :: Maybe String
     }
- deriving (Show, Read,Generic)
+ deriving Generic
 
 instance Binary FeedbackFormEntry
 
-{-
+
 instance Show FeedbackFormEntry where
     show (FeedbackFormEntry pid cond def) = show pid ++ "\t" ++ show cond ++ "\t" ++ show def ++ "\n"
--}
+
       
 type Dialogue = [InterleaveLevel]
 
@@ -106,18 +110,17 @@ data Tree = Tree
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
         }       
- deriving (Show, Read,Generic)
+ deriving Generic
 
 instance Binary Tree
 
-{-
 instance Show Tree where
     show (Tree id start atom opt stats) = "\n" ++
         "tree: "        ++ show id    ++ 
         " start: "      ++ show start ++
         " atomic: "     ++ show atom  ++
         " optional: "   ++ show opt   ++
-        " statements: " ++ show stats ++ "\n"      -}
+        " statements: " ++ show stats ++ "\n"      
         
 data Statement = Statement
         { statID            :: ID
@@ -129,11 +132,10 @@ data Statement = Statement
         , statInits         :: Bool
         , nextStatIDs       :: [ID]
         }
- deriving (Show, Read,Generic)
+ deriving Generic
 
 instance Binary Statement
 
-{-
 instance Show Statement where
     show (Statement id info pc pes ees jp inits nexts) = "\n  " ++
         "statement: "     ++ show id    ++ "\n\t" ++ 
@@ -143,7 +145,7 @@ instance Show Statement where
         " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
         " inits: "        ++ show inits ++ "\n\t" ++
-        " nextIDs: "      ++ show nexts ++ "\n\t" -}
+        " nextIDs: "      ++ show nexts ++ "\n\t" 
         
 instance HasId Statement where
     getId statement = either error id $ do

@@ -8,11 +8,7 @@
 module Domain.Scenarios.Globals where
 
 import Data.Maybe
-import Data.Char(isLower, toLower)
 
-import Ideas.Common.Library
-import Ideas.Text.JSON
-import Ideas.Text.XML.Interface(Element)
 import GHC.Generics
 import Data.Binary
 
@@ -46,6 +42,7 @@ data MediaInfo = MediaInfo [(String, ID)] [ID]
     
 instance Binary MediaInfo
     
+emptyStatementInfo :: StatementInfo
 emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False 
                 
 -- Specifies if a certain feature should be on or off

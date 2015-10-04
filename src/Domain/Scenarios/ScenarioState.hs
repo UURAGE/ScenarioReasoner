@@ -9,16 +9,15 @@
 module Domain.Scenarios.ScenarioState where
 
 import Control.Monad
-import Data.Char
-import Data.Typeable
 
 import qualified Data.Map as M
+import Data.Typeable
+import Data.Binary
 
 import Ideas.Common.Library
 import Ideas.Common.Utils 
 import Ideas.Text.JSON
-import Data.Typeable
-import Data.Binary
+
 import GHC.Generics
 
 import Domain.Scenarios.Globals
@@ -102,8 +101,8 @@ instance InJSON StatementInfo  where
     fromJSON _ = fail "expecting an object"
     
 instance InJSON (Either String [(String, String)]) where
-    toJSON (Left string) = toJSON string
-    toJSON (Right list) = toJSON list
+    toJSON (Left text) = toJSON text
+    toJSON (Right conversation) = toJSON conversation
     fromJSON _ = fail "fail: the response is a default value in the statement info"
     
 instance InJSON MediaInfo where

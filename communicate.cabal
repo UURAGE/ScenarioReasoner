@@ -32,13 +32,13 @@ Executable communicate-hs
                      array,
                      mtl == 2.1.*,
                      network,
-                     network-uri,
                      exceptions,
                      multipart,
                      bytestring,
                      old-time,
                      old-locale,
-                     xhtml
+                     xhtml,
+                     binary
 
   if flag(network-uri)
     build-depends: network-uri >= 2.6, network >= 2.6

@@ -1,0 +1,4 @@
+dist/
+.cabal-sandbox/
+_output/
+CommunicateBinary/

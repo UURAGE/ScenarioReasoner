@@ -12,7 +12,6 @@ import Data.Maybe(fromJust)
 import qualified Data.Map as M
 
 import Domain.Scenarios.Globals
-import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Data.Binary
 import GHC.Generics
@@ -37,7 +36,7 @@ type SubScore = (ID, Name, Score) -- Score as a percentage
                      
 -- | Calculates the score based on the given state with a scoring function
 calculateScore :: [SubScore] -> ScoringFunction -> ScenarioState -> Score
-calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) =
+calculateScore subScores mainScoringFunction _ =
     (\(mainScore, weight) -> round (mainScore `divInt` weight)) (calculate mainScoringFunction 0)
   where 
     calculate :: ScoringFunction -> Int -> (Score, Int)
@@ -45,7 +44,7 @@ calculateScore subScores mainScoringFunction state@(ScenarioState paramMap _ _) 
         Constant     score        -> (score, weight + 1)
         Sum          subFunctions -> sumScoreAndWeight (map (flip calculate $ weight) subFunctions)
         Scale scalar subFunction  -> (\(subScore, _) -> (scalar * subScore, weight + scalar)) (calculate subFunction scalar)
-        ParamRef     paramId      | weight == 0 -> (0, 0)
+        ParamRef     _            | weight == 0 -> (0, 0)
         ParamRef     paramId      | otherwise   -> (findSubScore paramId, weight)
     
     -- | Finds the score for the given parameter
@@ -82,7 +81,7 @@ clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
     shiftedMin   = shift minValue minValue
     shiftedValue = shift value    minValue
     
-clamp score _ _ = error "no maximum and minimum given"
+clamp _ _ _ = error "no maximum and minimum given"
 
 -- Shifts the possible negative values to positive values given that maxValue >= minValue
 shift :: ParameterValue -> ParameterValue -> ParameterValue
@@ -90,6 +89,6 @@ shift value minValue | minValue < 0 = value + (0 - minValue)
                      | otherwise    = value
 
 -- Divides two integers and returns the result. If dividing by zero (weight) then return 0 
-divInt :: (Fractional a) => Int -> Int -> a
-divInt numerator 0           = 0
+divInt :: Int -> Int -> Double
+divInt _         0           = 0
 divInt numerator denominator = fromIntegral numerator / fromIntegral denominator

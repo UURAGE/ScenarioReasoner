@@ -10,7 +10,7 @@ import Control.Monad
 
 import Data.Maybe
 
-import System.FilePath(FilePath, takeBaseName)
+import System.FilePath(takeBaseName)
 
 import Ideas.Common.Library
 import Ideas.Service.State
@@ -19,7 +19,7 @@ import Domain.Scenarios.Condition
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState(ScenarioState)
-import Domain.Scenarios.ScoringFunction(SubScore, calculateScore, calculateSubScores)
+import Domain.Scenarios.ScoringFunction(calculateScore, calculateSubScores)
 import Domain.Scenarios.Services.Types
 import Domain.Scenarios.Parser(readBinaryScenario)
 

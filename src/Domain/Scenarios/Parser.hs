@@ -6,14 +6,10 @@
 
 module Domain.Scenarios.Parser where
 
-import Prelude hiding (readFile)
-import GHC.Exts (sortWith)
-
 import Control.Monad
 
 import Data.Char
 import Data.List
-import Data.Maybe
 import Text.Read(readMaybe)
 
 import System.IO
@@ -161,8 +157,8 @@ parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild
   where 
     metaDataElem = getChild "metadata" script
     scoringFunctionElem = getChild "scoringFunction" metaDataElem
-    scoringFunctionChild [elem] = elem
-    scoringFunctionChild _      = error "could not parse scoringFunction" 
+    scoringFunctionChild [sf] = sf
+    scoringFunctionChild _    = error "could not parse scoringFunction" 
     
 -- | Parses a scoring function element.
 parseScoringFunction :: Element -> ScoringFunction
@@ -171,6 +167,7 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
     "scale"              -> Scale parseScalar  (parseScoringFunction paramElem)
     "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
+    _                    -> error "no parse scoringfunction element"
   where 
     parseConstant = read (getAttribute "value" scoringFunctionElem)  :: Score
     parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
@@ -202,7 +199,7 @@ parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
 parseFeedbackFormEntry :: Element -> FeedbackFormEntry
 parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     { feedbackParamID    = paramID
-    , feedbackConditions = map (parseConditionedFeedback paramID) conditionedFeedbackElems
+    , feedbackConditions = map parseConditionedFeedback conditionedFeedbackElems
     , feedbackDefault    = nothingOnFail maybeDefaultFeedback
     }
   where 
@@ -210,8 +207,8 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     conditionedFeedbackElems = filter ((/= "default") . name) (children feedbackParamElem)
     maybeDefaultFeedback = findChild "default" feedbackParamElem >>= return . getData
     
-    parseConditionedFeedback :: ID -> Element -> (Condition, String)
-    parseConditionedFeedback paramID condFeedbackElem = 
+    parseConditionedFeedback :: Element -> (Condition, String)
+    parseConditionedFeedback condFeedbackElem = 
         (case maybeOtherOp of 
             Nothing        -> Condition
                 ComparisonCondition
@@ -245,6 +242,8 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
                     , conditionTest  = LessThanEqualTo
                     , conditionValue = getValue condFeedbackElem
                     }
+            Just _         -> error "no parse conditionedfeedback"        
+            
         , getData condFeedbackElem)
       where 
         maybeOtherOp = case getAttribute "test" condFeedbackElem of
@@ -264,9 +263,9 @@ parseDialogue script = map parseInterleaveLevel interleaveElems
     interleaveElems = findChildren "interleave" sequenceElem    
     
 parseInterleaveLevel :: Element -> InterleaveLevel
-parseInterleaveLevel interleaveElem = (read level :: Int, trees)
+parseInterleaveLevel interleaveElem = (read lvl :: Int, trees)
   where
-    level = getAttribute "level" interleaveElem
+    lvl = getAttribute "level" interleaveElem
     treeElems = findChildren "tree" interleaveElem 
     trees = map parseTree treeElems
 
@@ -391,11 +390,11 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
 
 -- | Parses media of the statement element
 parseMedia :: Element -> MediaInfo
-parseMedia statElem = MediaInfo (parseMediaVisuals statElem) (parseMediaAudios statElem)
+parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
   where 
     -- | Takes a statement and returns its visual media.
-    parseMediaVisuals :: Element -> [(Name, ID)]
-    parseMediaVisuals statElem = map parseMediaVisual visualElems
+    parseMediaVisuals :: [(Name, ID)]
+    parseMediaVisuals = map parseMediaVisual visualElems
       where 
         visualElems = 
             findChild "media" statElem >>= 
@@ -406,8 +405,8 @@ parseMedia statElem = MediaInfo (parseMediaVisuals statElem) (parseMediaAudios s
         parseMediaVisual e = (name e, getAttribute "extid" e)
 
     -- | Takes a statement and returns its audio.
-    parseMediaAudios :: Element -> [ID]
-    parseMediaAudios statElem = map (getAttribute "extid") audioElems
+    parseMediaAudios :: [ID]
+    parseMediaAudios = map (getAttribute "extid") audioElems
       where audioElems =
                 findChild "media" statElem >>= 
                 findChild "audios"          >>= 
@@ -443,6 +442,7 @@ parseCondition conditionElem = case name conditionElem of
         , conditionTest  = parseCompareOperator conditionElem
         , conditionValue = getValue             conditionElem
         }
+    _           -> error "no parse condition"
         
 -- | Parses a compare operator. Gives an exception on invalid input.
 parseCompareOperator :: Element -> CompareOperator
@@ -482,5 +482,5 @@ getMetaDataString metaDataName script = getData dataElem
     
 -- | Parses a value attribute from an element
 getValue :: Element -> ParameterValue
-getValue elem = read (getAttribute "value" elem) :: ParameterValue
+getValue el = read (getAttribute "value" el) :: ParameterValue
 

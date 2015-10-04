@@ -6,12 +6,9 @@
 
 module Domain.Scenarios.Exercises where
 
-import Control.Monad
-import Data.List hiding (insert)
-import Data.Map(insert, findWithDefault, fromList, empty)
+import Data.Map(insert, fromList, empty)
 import Data.Maybe(fromMaybe)
-import System.Directory
-import System.FilePath(FilePath, takeBaseName)
+import System.FilePath(takeBaseName)
 import System.FilePath.Find as F
 
 import Ideas.Common.Library
@@ -31,7 +28,7 @@ readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
 readExercise path = (mkExercise id strategy difficulty initialState, path)
   where 
     id = "scenarios" # newId (takeBaseName path)    
-    scenario@(Scenario metadata _ dialogue) = readBinaryScenario path
+    Scenario metadata _ dialogue = readBinaryScenario path
     strategy = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata

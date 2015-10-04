@@ -9,7 +9,6 @@ module Domain.Scenarios.Strategy where
 import GHC.Exts(sortWith)
 import Prelude hiding (sequence)
 
-import Data.Maybe
 import Data.List hiding (inits)
 import qualified Data.Map as M
 
@@ -17,10 +16,8 @@ import Control.Monad hiding (sequence)
 
 import Ideas.Common.Library
 import Ideas.Common.Strategy.Combinators hiding (not)
-import Ideas.Text.XML.Interface(Element)
 
 import Domain.Scenarios.ScenarioState
-import Domain.Scenarios.Parser
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.Condition(evaluateMaybeCondition)
 import Domain.Scenarios.Globals
@@ -75,8 +72,10 @@ makeStatementStrategy strategyMap tree scenarioID statementID =
     
 -- Folds over all the next statements, makes strategies for them
 -- and then combines them with the choice operator.
-makeAlternativesStrategy :: StrategyMap -> Tree -> ID -> [ID] -> (Strategy ScenarioState, StrategyMap)   
-makeAlternativesStrategy strategyMap tree scenarioID (statID : []) = 
+makeAlternativesStrategy :: StrategyMap -> Tree -> ID -> [ID] -> (Strategy ScenarioState, StrategyMap) 
+makeAlternativesStrategy _           _    _          []                      = 
+    error "failed to make alternative strategy"  
+makeAlternativesStrategy strategyMap tree scenarioID [statID]                = 
     makeStatementStrategy strategyMap tree scenarioID statID
 makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) = 
     foldl (foldAlternatives tree scenarioID) firstStrategy statIDs
@@ -84,8 +83,8 @@ makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) =
     firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
     
     foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> (Strategy ScenarioState, StrategyMap)
-    foldAlternatives tree scenarioID (stratSoFar, stratMap) statID = (stratSoFar <|> nextStrategy, newStrategyMap)
-      where  (nextStrategy, newStrategyMap) = makeStatementStrategy stratMap tree scenarioID statID 
+    foldAlternatives tree scenarioID (stratSoFar, stratMap) statementID = (stratSoFar <|> nextStrategy, newStrategyMap)
+      where  (nextStrategy, newStrategyMap) = makeStatementStrategy stratMap tree scenarioID statementID 
       
 -- Make a rule using all the specific properties for a scenario 
 makeGuardedRule :: ID -> Statement -> Tree -> Rule ScenarioState

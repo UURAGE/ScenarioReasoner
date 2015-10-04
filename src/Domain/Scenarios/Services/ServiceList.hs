@@ -6,11 +6,7 @@
 
 module Domain.Scenarios.Services.ServiceList (customServices) where
 
-import System.FilePath(FilePath)
-
-import Ideas.Common.Library
 import Ideas.Service.Types
-import Ideas.Service.State
 import Ideas.Service.BasicServices (tStepInfo)
 
 import Domain.Scenarios.Services.AdaptedServices(allfirsts)
