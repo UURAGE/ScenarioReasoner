@@ -83,7 +83,7 @@ makeAlternativesStrategy strategyMap tree scenarioID (firstStatID : statIDs) =
     firstStrategy = makeStatementStrategy strategyMap tree scenarioID firstStatID
     
     foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID -> (Strategy ScenarioState, StrategyMap)
-    foldAlternatives tree scenarioID (stratSoFar, stratMap) statementID = (stratSoFar <|> nextStrategy, newStrategyMap)
+    foldAlternatives tree scenarioID (stratSoFar, stratMap) statementID = (stratSoFar .|. nextStrategy, newStrategyMap)
       where  (nextStrategy, newStrategyMap) = makeStatementStrategy stratMap tree scenarioID statementID 
       
 -- Make a rule using all the specific properties for a scenario 
@@ -108,9 +108,9 @@ makeGuardedRule scenarioID statement tree = guardedRule
 -- so the strategy does not have to be finished.
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement tree rule nextStrategy 
-    | jumpPoint statement && statInits statement   = rule <*> inits nextStrategy
-    | jumpPoint statement                          = rule <*> nextStrategy
-    | statInits statement && treeAtomic tree       = rule <*> inits nextStrategy
+    | jumpPoint statement && statInits statement   = rule .*. inits nextStrategy
+    | jumpPoint statement                          = rule .*. nextStrategy
+    | statInits statement && treeAtomic tree       = rule .*. inits nextStrategy
     | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
-    | treeAtomic tree                              = rule <*> nextStrategy 
+    | treeAtomic tree                              = rule .*. nextStrategy 
     | otherwise                                    = rule !~> nextStrategy    

@@ -13,7 +13,7 @@
 -- derivation.
 --
 -----------------------------------------------------------------------------
---  $Id: State.hs 8509 2015-08-20 06:42:04Z bastiaan $
+--  $Id: State.hs 8683 2015-09-28 12:14:51Z bastiaan $
 
 module Ideas.Service.State
    ( -- * Exercise state
@@ -29,8 +29,8 @@ import Data.Function
 import Data.List
 import Data.Maybe
 import Ideas.Common.Library hiding (suitable, ready, (:~>))
-import Ideas.Common.Strategy.Choice
 import Ideas.Common.Strategy.Sequence
+import Ideas.Common.Strategy.Prefix
 import System.Random
 
 data State a = State
@@ -65,18 +65,17 @@ instance HasEnvironment (State a) where
 instance Firsts (State a) where
    type Elem (State a) = (Step (Context a), Context a)
 
-   firsts st = firstsOrdered cmp st
-    where
-      cmp = ruleOrdering (exercise st) `on` (stepRule . fst)
-
-   menu st = onMenu f doneMenu (menu (majorPrefix (statePrefix st)))
-    where
-      f info p = info |-> st {statePrefix = p, stateContext = snd info}
+   ready  = ready . majorPrefix . statePrefix
+   firsts = firstsWith (majorPrefix . statePrefix)
 
 microsteps :: State a -> [((Step (Context a), Context a), State a)]
-microsteps st = concatMap f (bests (menu (statePrefix st)))
+microsteps = firstsWith statePrefix
+
+firstsWith :: (State a -> Prefix (Context a)) -> State a -> [((Step (Context a), Context a), State a)]
+firstsWith getPrefix st = map f (firstsOrdered cmp (getPrefix st))
  where
-   f (info, p) = [(info, st {statePrefix = p, stateContext = snd info})]
+   cmp = ruleOrdering (exercise st) `on` stepRule
+   f ((step, a), pr) = ((step, a), st {statePrefix = pr, stateContext = a})
 
 stateTerm :: State a -> a
 stateTerm = fromMaybe (error "invalid term") . fromContext . stateContext

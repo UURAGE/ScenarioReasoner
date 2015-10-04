@@ -12,12 +12,12 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderJSON.hs 8223 2015-07-22 10:06:38Z bastiaan $
+--  $Id: EncoderJSON.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Encoding.EncoderJSON (jsonEncoder) where
 
 import Data.Maybe
-import Ideas.Common.Library hiding (exerciseId, (<|>), (<*>))
+import Ideas.Common.Library hiding (exerciseId)
 import Ideas.Common.Utils (Some(..), distinct)
 import Ideas.Encoding.Encoder
 import Ideas.Service.State

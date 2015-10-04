@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: FieldLaws.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: FieldLaws.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Common.Algebra.FieldLaws
    ( -- * Semi-ring laws
@@ -38,10 +38,10 @@ import Test.QuickCheck
 -- Semi-ring laws
 
 leftDistributive :: SemiRing a => Law a
-leftDistributive = leftDistributiveFor (<*>) (<+>)
+leftDistributive = leftDistributiveFor (|*|) (|+|)
 
 rightDistributive :: SemiRing a => Law a
-rightDistributive = rightDistributiveFor (<*>) (<+>)
+rightDistributive = rightDistributiveFor (|*|) (|+|)
 
 distributiveLaws :: SemiRing a => [Law a]
 distributiveLaws = [leftDistributive, rightDistributive]
@@ -57,11 +57,11 @@ semiRingLaws =
 
 leftNegateTimes :: Ring a => Law a
 leftNegateTimes = law "left-negate-times" $ \a b ->
-   plusInverse a <*> b :==: plusInverse (a <*> b)
+   plusInverse a |*| b :==: plusInverse (a |*| b)
 
 rightNegateTimes :: Ring a => Law a
 rightNegateTimes = law "right-negate-times" $ \a b ->
-   a <*> plusInverse b :==: plusInverse (a <*> b)
+   a |*| plusInverse b :==: plusInverse (a |*| b)
 
 negateTimesLaws :: Ring a => [Law a]
 negateTimesLaws = [leftNegateTimes, rightNegateTimes]
@@ -78,7 +78,7 @@ commutativeRingLaws =
 
 distributiveSubtractionLaws :: Ring a => [Law a]
 distributiveSubtractionLaws =
-   [leftDistributiveFor (<*>) (<->), rightDistributiveFor (<*>) (<->)]
+   [leftDistributiveFor (|*|) (|-|), rightDistributiveFor (|*|) (|-|)]
 
 --------------------------------------------------------
 -- Field laws

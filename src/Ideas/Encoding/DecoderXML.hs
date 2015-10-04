@@ -12,7 +12,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: DecoderXML.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: DecoderXML.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Encoding.DecoderXML
    ( XMLDecoder, xmlDecoder
@@ -20,7 +20,7 @@ module Ideas.Encoding.DecoderXML
 
 import Control.Monad
 import Data.Char
-import Ideas.Common.Library hiding ((<|>))
+import Ideas.Common.Library
 import Ideas.Common.Traversal.Navigator
 import Ideas.Encoding.Encoder
 import Ideas.Encoding.OpenMathSupport

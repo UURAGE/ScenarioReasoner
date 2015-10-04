@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Abstract.hs 8571 2015-08-27 08:23:13Z bastiaan $
+--  $Id: Abstract.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Common.Strategy.Abstract
    ( Strategy, IsStrategy(..)
@@ -37,7 +37,7 @@ import Ideas.Common.Strategy.Def
 import Ideas.Common.Strategy.Choice
 import Ideas.Common.Strategy.Prefix
 import Ideas.Common.Strategy.Process
-import Ideas.Common.Strategy.Sequence (firstsOrdered, Sequence(..))
+import Ideas.Common.Strategy.Sequence (Sequence(..))
 import Ideas.Common.Strategy.Step
 import Ideas.Common.View
 import Prelude hiding (sequence)
@@ -57,16 +57,16 @@ instance Apply Strategy where
 
 instance Choice (Strategy a) where
    empty = fromCore (node0 failDef)
-   (<|>) = liftCore2 (node2 choiceDef)
+   (.|.) = liftCore2 (node2 choiceDef)
    (|>)  = liftCore2 (node2 orelseDef)
-   (>|>) = liftCore2 (node2 preferenceDef)
+   (./.) = liftCore2 (node2 preferenceDef)
 
 instance Sequence (Strategy a) where
    type Sym (Strategy a) = Rule a
 
    done  = fromCore (node0 succeedDef)
    (~>)  = liftCore2 (node2 sequenceDef)
-   (<*>) = liftCore2 (node2 sequenceDef)
+   (.*.) = liftCore2 (node2 sequenceDef)
 
 succeedDef :: Def
 succeedDef = makeDef "succeed" (const done)
@@ -171,7 +171,7 @@ derivationList cmpRule s a0 = rec a0 (toPrefix s)
 
    firstsOrd = map f . firstsOrdered cmp
     where
-      cmp = cmpRule `on` (fst . g . fst)
+      cmp = cmpRule `on` (fst . g)
 
       f ((stp, b), new) = (g stp, b, new)
 
@@ -199,8 +199,8 @@ mapRulesS f = S . fmap f . toCore
 cleanUpStrategy :: (a -> a) -> LabeledStrategy a -> LabeledStrategy a
 cleanUpStrategy f (LS n s) = cleanUpStrategyAfter f (LS n t)
  where
-   t     = doAfter f (idRule ()) <*> s
-   (<*>) = liftCore2 (node2 sequenceDef)
+   t      = doAfter f (idRule ()) .**. s
+   (.**.) = liftCore2 (node2 sequenceDef)
 
 -- | Use a function as do-after hook for all rules in a labeled strategy
 cleanUpStrategyAfter :: (a -> a) -> LabeledStrategy a -> LabeledStrategy a

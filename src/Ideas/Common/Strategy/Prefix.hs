@@ -17,18 +17,18 @@
 -- operation.
 --
 -----------------------------------------------------------------------------
---  $Id: Prefix.hs 8589 2015-08-28 07:55:27Z bastiaan $
+--  $Id: Prefix.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Common.Strategy.Prefix
    ( -- * Prefix
-     Prefix, noPrefix, makePrefix, Core, runCore, replayCore
+     Prefix, noPrefix, makePrefix, firstsOrdered
+   , Core, runCore, replayCore
    , isEmptyPrefix, majorPrefix, searchModePrefix, prefixPaths
      -- * Path
    , Path, emptyPath, readPath, readPaths
    ) where
 
 import Control.Monad
-import Data.Function
 import Data.List (intercalate)
 import Ideas.Common.Classes
 import Ideas.Common.Id
@@ -45,8 +45,8 @@ import Ideas.Common.Utils (splitsWithElem, readM)
 -- Prefix datatype
 
 data Prefix a = Prefix
-   { getPaths    :: [Path]
-   , remainder   :: Menu (Step a, a) (Prefix a)
+   { getPaths  :: [Path]
+   , remainder :: Menu (Step a) (a, Prefix a)
    }
 
 instance Show (Prefix a) where
@@ -54,12 +54,19 @@ instance Show (Prefix a) where
 
 instance Monoid (Prefix a) where
    mempty = noPrefix
-   mappend (Prefix xs p) (Prefix ys q) = Prefix (xs ++ ys) (p <|> q)
+   mappend (Prefix xs p) (Prefix ys q) = Prefix (xs ++ ys) (p .|. q)
 
 instance Firsts (Prefix a) where
    type Elem (Prefix a) = (Step a, a)
 
-   menu = remainder
+   ready  = hasDone . remainder
+   firsts = map reorder . bests . remainder
+    
+firstsOrdered :: (Step a -> Step a -> Ordering) -> Prefix a -> [((Step a, a), Prefix a)]
+firstsOrdered cmp = map reorder . bestsOrdered (cmp) . remainder
+
+reorder :: (a, (b, c)) -> ((a, b), c)
+reorder (x, (y, z)) = ((x, y), z)
 
 --------------------------------------------------------------------------------
 -- Running Core strategies
@@ -73,7 +80,7 @@ coreToProcess :: Core a -> Process (Step a)
 coreToProcess = fromBuilder . foldUnwind emptyAlg 
    { fNode  = useDef
    , fLeaf  = single . RuleStep mempty
-   , fLabel = \l p -> Enter l ~> p <*> (Exit l ~> done)
+   , fLabel = \l p -> Enter l ~> p .*. (Exit l ~> done)
    }
    
 --------------------------------------------------------------------------------
@@ -105,17 +112,17 @@ replayCore (Path is) = replay [] is . coreToProcess
       f n st p =
          case st of
             RuleStep _ r -> choice
-               [ (RuleStep env r, b) ?~> mk b
+               [ RuleStep env r ?~> (b, mk b)
                | (b, env) <- transApply (transformation r) a
                ]
-            _ -> (st, a) ?~> mk a
+            _ -> st ?~> (a, mk a)
        where
          ms   = n:ns
          path = Path (is ++ reverse ms)
          mk b = Prefix [path] (rec ms b p)
 
          x ?~> y
-            | isMinor st && stopped y = empty
+            | isMinor st && stopped (snd y) = empty
             | otherwise = x |-> y
 
 stopped :: Prefix a -> Bool
@@ -132,37 +139,34 @@ isEmptyPrefix = all (== emptyPath) . getPaths
 majorPrefix :: Prefix a -> Prefix a
 majorPrefix prfx = prfx { remainder = onMenu f doneMenu (remainder prfx) }
  where
-   f t@(st, _) p
-      | isMajor st = t |-> majorPrefix p 
+   f st (a, p)
+      | isMajor st = st |-> (a, majorPrefix p)
       | otherwise  = remainder (majorPrefix p)
 
 -- | The searchModePrefix transformation changes the process in such a way that
 --   all intermediate states can only be reached by one path. A prerequisite is
 --   that symbols are unique (or only used once).
 searchModePrefix :: (Step a -> Step a -> Bool) -> Prefix a -> Prefix a
-searchModePrefix eq prfx = 
+searchModePrefix eq prfx =
    prfx { remainder = rec (remainder (majorPrefix prfx)) }
  where
-   eqFst = eq `on` fst
-
    rec m | hasDone m = doneMenu
          | otherwise = process (bests m)
 
    process [] = empty
-   process ((a, p):xs) =
-      let ys = map fst $ bests (a |-> p)
-      in (a |-> p { remainder = rec (remainder p) }) 
-      <|> process (concatMap (change ys) xs)
+   process ((st, (a, pr)):xs) =
+      (st |-> (a, pr { remainder = rec (remainder pr) })) 
+      .|. process (concatMap (change st) xs)
 
-   change ys (a, q) = 
-      let f x = all (not . eqFst x) ys
-      in bests $ filterPrefix f (a |-> q)
+   change y (st, pair) =
+      let f x = not (eq x y)
+      in bests (filterPrefix f st pair)
 
-filterPrefix :: ((Step a, a) -> Bool) -> Menu (Step a, a) (Prefix a) -> Menu (Step a, a) (Prefix a)
-filterPrefix cond = rec 
+filterPrefix :: (Step a -> Bool) -> Step a -> (a, Prefix a) -> Menu (Step a) (a, Prefix a)
+filterPrefix cond = f
  where
-   rec   = onMenu f doneMenu
-   f a p = if cond a then a |-> p { remainder = rec (remainder p) } else empty
+   rec = onMenu f doneMenu
+   f st (a, pr) = if cond st then st |-> (a, pr { remainder = rec (remainder pr) }) else empty
 
 -- | Returns the current @Path@.
 prefixPaths :: Prefix a -> [Path]

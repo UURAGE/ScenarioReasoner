@@ -14,7 +14,7 @@
 -- functions yourself.
 --
 -----------------------------------------------------------------------------
---  $Id: Strategy.hs 7638 2015-04-30 13:23:05Z bastiaan $
+--  $Id: Strategy.hs 8692 2015-10-02 13:55:48Z bastiaan $
 
 module Ideas.Common.Strategy
    ( -- * Data types and type classes
@@ -24,13 +24,13 @@ module Ideas.Common.Strategy
    , derivationList
      -- * Strategy combinators
      -- ** Basic combinators
-   , (<*>), (<|>), (<%>), (<@>), (!~>) 
+   , (.*.), (.|.), (.%.), (.@.), (!~>) 
    , succeed, fail, atomic, label, inits
    , sequence, alternatives, interleave, permute
      -- ** EBNF combinators
    , many, many1, replicate, option
      -- ** Negation and greedy combinators
-   , check, not, repeat, repeat1, try, (|>), (>|>), exhaustive
+   , check, not, repeat, repeat1, try, (|>), (./.), exhaustive
    , while, until, multi
      -- ** Graph
    , DependencyGraph, dependencyGraph

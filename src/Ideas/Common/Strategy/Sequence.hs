@@ -18,14 +18,13 @@ module Ideas.Common.Strategy.Sequence
    ( -- * Sequence type class
      Sequence(..)
      -- * Firsts type class
-   , Firsts(..), firstsOrdered, firstsTree
+   , Firsts(..), firstsTree
      -- * MenuItem data type with some utility functions
    ) where
 
 import Ideas.Common.DerivationTree
-import Ideas.Common.Strategy.Choice
 
-infixr 5 <*>, ~>
+infixr 5 .*., ~>
 
 ------------------------------------------------------------------------
 -- Sequence type class
@@ -37,13 +36,13 @@ class Sequence a where
    -- | Prepend a symbol to a sequence.
    (~>) :: Sym a -> a -> a
    -- | Append two sequences.
-   (<*>) :: a -> a -> a
+   (.*.) :: a -> a -> a
    -- | Singleton sequence.
    single :: Sym a -> a
    single s = s ~> done
    -- | Sequential composition.
    sequence :: [a] -> a
-   sequence xs = if null xs then done else foldr1 (<*>) xs
+   sequence xs = if null xs then done else foldr1 (.*.) xs
  
 instance Sequence b => Sequence (a -> b) where
    type Sym (a -> b) = Sym b
@@ -51,7 +50,7 @@ instance Sequence b => Sequence (a -> b) where
    done   = const done
    single = const . single
    a ~> f = (a ~>) . f
-   (f <*> g) x = f x <*> g x
+   (f .*. g) x = f x .*. g x
 
 ------------------------------------------------------------------------
 -- Firsts type class
@@ -61,16 +60,8 @@ class Firsts s where
    type Elem s
    -- | The ready predicate (we are done).
    ready :: s -> Bool
-   ready = hasDone . menu
    -- | The first set.
    firsts :: s -> [(Elem s, s)]
-   firsts = bests . menu
-   -- | The menu offers single steps (with the remainder) and 'done' steps.
-   menu :: s -> Menu (Elem s) s
-
-firstsOrdered :: Firsts s => (Elem s -> Elem s -> Ordering)
-              -> s -> [(Elem s, s)]
-firstsOrdered cmp = bestsOrdered cmp . menu
 
 firstsTree :: Firsts s => s -> DerivationTree (Elem s) s
 firstsTree x = addBranches bs tr
