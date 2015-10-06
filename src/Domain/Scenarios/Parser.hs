@@ -13,7 +13,6 @@ import Data.List
 import Text.Read(readMaybe)
 
 import System.IO
-import System.IO.Unsafe
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Text.XML.Interface
@@ -23,7 +22,6 @@ import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
-import Data.Binary
 
 type Script = Element
 
@@ -44,9 +42,6 @@ parseScenario script = Scenario
         , scenarioDialogue     = parseDialogue     script     
         } 
 		
-readBinaryScenario :: FilePath -> Scenario
-readBinaryScenario path = unsafePerformIO $ decodeFile path
-        
 ----------------------------------------------------------------------------------------------------        
  
 -- Functions to be used internally

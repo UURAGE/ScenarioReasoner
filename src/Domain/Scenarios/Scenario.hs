@@ -18,6 +18,11 @@ import Domain.Scenarios.ScenarioState(Effect)
 import GHC.Generics
 import Data.Binary
 
+import System.IO.Unsafe
+
+readBinaryScenario :: FilePath -> Scenario
+readBinaryScenario path = unsafePerformIO $ decodeFile path
+
 data Scenario = Scenario 
         { scenarioMetaData     :: MetaData
         , scenarioFeedbackForm :: FeedbackForm

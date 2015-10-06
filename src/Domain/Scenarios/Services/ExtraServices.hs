@@ -21,7 +21,6 @@ import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState(ScenarioState)
 import Domain.Scenarios.ScoringFunction(calculateScore, calculateSubScores)
 import Domain.Scenarios.Services.Types
-import Domain.Scenarios.Parser(readBinaryScenario)
 
 -- FeedbackForm Service -------------------------------------------------------------------------------------
 

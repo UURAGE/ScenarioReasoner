@@ -15,7 +15,6 @@ import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Strategy(makeStrategy)
-import Domain.Scenarios.Parser
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState
 
