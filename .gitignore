@@ -1,5 +1,5 @@
-dist/*
-.cabal-sandbox/*
-_output/*
-CommunicateBinary/*
-out/*
+dist/
+.cabal-sandbox/
+_output/
+out/
+Profiling/
