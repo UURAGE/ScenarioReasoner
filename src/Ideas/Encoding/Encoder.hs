@@ -1,8 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Evaluator.hs 6535 2014-05-14 11:05:06Z bastiaan $
+--  $Id: Encoder.hs 8747 2015-10-15 14:54:48Z bastiaan $
 
 module Ideas.Encoding.Encoder
    ( -- * Converter type class

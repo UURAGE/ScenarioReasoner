@@ -1,8 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExistentialQuantification #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Law.hs 8314 2015-08-10 11:35:46Z bastiaan $
+--  $Id: Law.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Common.Algebra.Law
    ( Law, LawSpec((:==:)), law, lawAbs, mapLaw
@@ -27,7 +27,7 @@ data Law a = Law String (LawSpec a)
 instance Show (Law a) where
    show (Law s _) = s
 
-data LawSpec a 
+data LawSpec a
    = AbsMono (a -> LawSpec a) -- simple abstraction (fewer classes needed)
    | forall b . (Arbitrary b, Show b, Different b) => Abs (b -> LawSpec a) -- generalized abstraction
    | a :==: a

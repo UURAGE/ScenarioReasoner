@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,7 +12,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: DecoderJSON.hs 7865 2015-05-27 07:50:10Z bastiaan $
+--  $Id: DecoderJSON.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Encoding.DecoderJSON
    ( JSONDecoder, jsonDecoder
@@ -104,7 +104,7 @@ decodeState = do
                 prfx = replayPaths pts (strategy ex) ctx
             case rest of
                [] -> return $ makeState ex prfx ctx
-               [Array [String user, String session, String startterm]] -> 
+               [Array [String user, String session, String startterm]] ->
                   return (makeState ex prfx ctx)
                      { stateUser      = Just user
                      , stateSession   = Just session

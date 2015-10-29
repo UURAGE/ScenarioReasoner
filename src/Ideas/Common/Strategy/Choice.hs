@@ -1,18 +1,19 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- A type class with an implementation for expressing choice and left-biased
--- choice.
+-- A type class for expressing choice, preference, and left-biased choice.
+-- The 'Menu' datatype implements the type class by keeping all the
+-- alternatives.
 --
 -----------------------------------------------------------------------------
---  $Id: Sequential.hs 6598 2014-06-04 14:59:01Z bastiaan $
+--  $Id: Choice.hs 8758 2015-10-22 06:48:52Z bastiaan $
 
 module Ideas.Common.Strategy.Choice
    ( -- * Choice type class
@@ -34,7 +35,7 @@ infixr 5 |->, :->
 ------------------------------------------------------------------------
 -- Choice type class
 
--- | Laws: '<|>', '>|>' '|>' are all associative, and have 'empty' as their
+-- | Laws: '.|.', './.' '|>' are all associative, and have 'empty' as their
 -- unit element.
 class Choice a where
    -- | Nothing to choose from.
@@ -74,8 +75,9 @@ instance Choice b => Choice (a -> b) where
 -- (Unit) The left-hand side of :|: and :|> cannot be Empty
 -- (Asso) :|: and :|> are balanced to the right
 
--- | A menu offers choices and preferences. It is an instance of the 'Functor'
--- and 'Monad' type classes.
+-- | A menu offers choices and preferences. It stores singleton bindings (thus
+-- acting as a finite map) and one special element ('doneMenu'). It is an
+-- instance of the 'Functor' and 'Monad' type classes.
 data Menu k a = k :-> a
               | Done
               | Empty
@@ -110,7 +112,7 @@ instance Choice (Menu k a) where
      rec p         = p :|> rest
 
 instance Functor (Menu k) where
-   fmap f = rec 
+   fmap f = rec
     where
       rec (p :|: q) = rec p :|: rec q
       rec (p :/: q) = rec p :/: rec q
@@ -119,9 +121,11 @@ instance Functor (Menu k) where
       rec Done      = Done
       rec Empty     = Empty
 
+-- | Singleton binding
 (|->) :: a -> s -> Menu a s
 (|->) = (:->)
 
+-- | Special element for denoting success
 doneMenu :: Menu k a
 doneMenu = Done
 
@@ -163,7 +167,8 @@ elems = ($ []) . rec
    rec Done      = id
    rec Empty     = id
 
--- | Returns only the best elements that are in the menu.
+-- | Returns only the best elements that are in the menu with respect to
+-- left-biased choices.
 bests :: Menu k a -> [(k, a)]
 bests = bestsWith (++)
 
@@ -173,7 +178,7 @@ bestsOrdered cmp = bestsWith merge
  where
    -- merge two lists with comparison function
    merge lx@(x:xs) ly@(y:ys) =
-      case cmp (fst x) (fst y) of 
+      case cmp (fst x) (fst y) of
          GT -> y : merge lx ys
          _  -> x : merge xs ly
    merge [] ys = ys

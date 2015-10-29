@@ -1,36 +1,39 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
+-- Strategies can be configured at their labeled positions. Possible actions
+-- are remove/reinsert, collapse/expand, and hide/reveal.
+--
 -----------------------------------------------------------------------------
---  $Id: Configuration.hs 8559 2015-08-25 18:35:44Z bastiaan $
+--  $Id: Configuration.hs 8758 2015-10-22 06:48:52Z bastiaan $
 
 module Ideas.Common.Strategy.Configuration
    ( StrategyCfg, byName, ConfigAction(..)
    , configure, configureS
-   , removeCore, collapseCore, hideCore, configDefs
-   , module Data.Monoid
+   , remove, collapse, hide, multi
+   , isConfigId
    ) where
 
 import Data.Char
 import Data.Monoid
-import Ideas.Common.Id
-import Ideas.Common.Strategy.Abstract
-import Ideas.Common.Rule
 import Ideas.Common.Classes
-import Ideas.Common.Strategy.Choice
-import Ideas.Common.Strategy.Def
-import Ideas.Common.Strategy.Sequence
-import Ideas.Common.Strategy.Prefix
-import Ideas.Common.Strategy.Process hiding (fold)
 import Ideas.Common.CyclicTree hiding (label)
-import Ideas.Common.Strategy.Step
+import Ideas.Common.Id
+import Ideas.Common.Rule
+import Ideas.Common.Strategy.Abstract
+import Ideas.Common.Strategy.Choice
+import Ideas.Common.Strategy.Derived (repeat1)
+import Ideas.Common.Strategy.Process hiding (fold)
+import Ideas.Common.Strategy.Sequence
+import Ideas.Common.Strategy.StrategyTree
+import Ideas.Common.Strategy.Symbol
 import qualified Ideas.Common.CyclicTree as Tree
 
 ---------------------------------------------------------------------
@@ -72,68 +75,76 @@ configure :: StrategyCfg -> LabeledStrategy a -> LabeledStrategy a
 configure cfg ls = label (getId ls) (configureS cfg (unlabel ls))
 
 configureS :: StrategyCfg -> Strategy a -> Strategy a
-configureS cfg = fromCore . configureCore cfg . toCore
+configureS = onStrategyTree . configureStrategyTree
 
-configureCore :: StrategyCfg -> Core a -> Core a
-configureCore (Cfg pairs) core = foldr handle core pairs
+configureStrategyTree :: StrategyCfg -> StrategyTree a -> StrategyTree a
+configureStrategyTree (Cfg pairs) tree = foldr handle tree pairs
  where
-   handle (ByName l, action) = 
-      case action of 
-         Remove   -> insertAtLabel l removeDef
-         Reinsert -> removeAtLabel l removeDef
-         Collapse -> insertAtLabel l collapseDef
-         Expand   -> removeAtLabel l collapseDef
-         Hide     -> insertAtLabel l hideDef
-         Reveal   -> removeAtLabel l hideDef
+   handle (ByName l, action) =
+      case action of
+         Remove   -> insertAtLabel l removeDecl
+         Reinsert -> removeAtLabel l removeDecl
+         Collapse -> insertAtLabel l collapseDecl
+         Expand   -> removeAtLabel l collapseDecl
+         Hide     -> insertAtLabel l hideDecl
+         Reveal   -> removeAtLabel l hideDecl
 
-insertAtLabel :: HasId a => Id -> d -> CyclicTree d a -> CyclicTree d a
-insertAtLabel n def = replaceLeaf f . replaceLabel g
+insertAtLabel :: Id -> Decl Unary -> StrategyTree a -> StrategyTree a
+insertAtLabel n comb = replaceLeaf f . replaceLabel g
  where
-   f a | n == getId a = node def [leaf a]
+   f a | n == getId a = fromUnary (applyDecl comb) (leaf a)
        | otherwise    = leaf a
-       
-   g l a | n == l    = node def [Tree.label l a]
+
+   g l a | n == l    = fromUnary (applyDecl comb) (Tree.label l a)
          | otherwise = Tree.label l a
 
-removeAtLabel :: HasId a => Id -> Def -> CyclicTree Def a -> CyclicTree Def a
-removeAtLabel n def = replaceNode $ \d xs -> -- fix me: use def
+removeAtLabel :: Id -> Decl Unary -> StrategyTree a -> StrategyTree a
+removeAtLabel n _decl = replaceNode $ \d xs -> -- fix me: use decl
    case map nextId xs of
       [Just l] | n == l -> head xs
       _ -> node d xs
 
-nextId :: HasId a => CyclicTree Def a -> Maybe Id
-nextId = fold monoidAlg 
-   { fNode  = \d xs -> if isProperty d && length xs == 1 
-                       then head xs 
+nextId :: StrategyTree a -> Maybe Id
+nextId = fold monoidAlg
+   { fNode  = \d xs -> if isConfigId d && length xs == 1
+                       then head xs
                        else Nothing
-   , fLeaf  = \a    -> Just (getId a)
+   , fLeaf  = Just . getId
    , fLabel = \l _  -> Just l
-   } 
+   }
+
+isConfigId :: HasId a => a -> Bool
+isConfigId = (`elem` map getId configIds) . getId
 
 ---------------------------------------------------------------------
 -- Combinator definitions
 
-removeCore, collapseCore, hideCore :: Core a -> Core a
-removeCore   = node1 removeDef
-collapseCore = node1 collapseDef
-hideCore     = node1 hideDef
+remove, collapse, hide :: IsStrategy f => f a -> Strategy a
+remove   = decl1 removeDecl
+collapse = decl1 collapseDecl
+hide     = decl1 hideDecl
 
-configDefs :: [Def]
-configDefs = [removeDef, collapseDef, hideDef]
+-- | Apply a strategy at least once, but collapse into a single step
+multi :: (IsId l, IsStrategy f) => l -> f a -> Strategy a
+multi l = collapse . label l . decl1 repeatDecl . toStrategy
 
-removeDef :: Def
-removeDef = propertyDef "removed" (const empty)
+repeatDecl :: Decl Unary -- fix me: overlap with combinators
+repeatDecl = "repeat1" .=. Unary repeat1
 
-collapseDef :: Def
-collapseDef = propertyDef "collapsed" (collapse . fromBuilder)
+configIds :: [Id]
+configIds = map getId [removeDecl, collapseDecl, hideDecl]
+
+removeDecl :: Decl Unary
+removeDecl = "removed" .=. Unary (const empty)
+
+collapseDecl :: Decl Unary
+collapseDecl = "collapsed" .=. Unary (\a ->
+   case firsts a of
+      [(r, _)] -> maybe empty (`collapseWith` a) (isEnterRule r)
+      _        -> empty)
  where
-   collapse a = 
-      case firsts a of
-         [(Enter l, _)] -> collapseWith l a
-         _              -> empty
-    
-   collapseWith l = 
-      single . RuleStep mempty . makeRule l . runProcess
+   collapseWith l =
+      single . makeRule l . runProcess
 
-hideDef :: Def
-hideDef = propertyDef "hidden" (mapBuilder minor)
+hideDecl :: Decl Unary
+hideDecl = "hidden" .=. Unary (fmap minor)

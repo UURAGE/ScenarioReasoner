@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, FlexibleContexts #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Types.hs 8001 2015-06-18 19:35:58Z bastiaan $
+--  $Id: Types.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Service.Types
    ( -- * Services
@@ -334,7 +334,7 @@ tDifficulty :: Type a Difficulty
 tDifficulty = Tag "Difficulty" (Iso (f <-> show) tString)
     where
       f = fromMaybe Medium . readDifficulty
-      
+
 tUserId :: Type a String
 tUserId = Tag "UserId" tString
 
@@ -371,14 +371,14 @@ tTestSuiteResult = Const Result
 -------------------------------------
 
 findValuesOfType :: Type a t -> TypedValue (Type a) -> [t]
-findValuesOfType thisType = rec 
+findValuesOfType thisType = rec
  where
-   rec tv@(a ::: tp) = 
+   rec tv@(a ::: tp) =
       case equal tp thisType of
-         Just f  -> [f a] 
+         Just f  -> [f a]
          Nothing -> recDown tv
-   
-   recDown (a ::: tp) = 
+
+   recDown (a ::: tp) =
       case tp of
          Iso iso t  -> rec (to iso a ::: t)
          Tag _ t    -> rec (a ::: t)

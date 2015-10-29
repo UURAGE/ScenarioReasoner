@@ -1,17 +1,17 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- Locations in a strategy
+-- Locations that correspond to the labels in a strategy
 --
 -----------------------------------------------------------------------------
---  $Id: Location.hs 7638 2015-04-30 13:23:05Z bastiaan $
+--  $Id: Location.hs 8745 2015-10-15 14:45:46Z bastiaan $
 
 module Ideas.Common.Strategy.Location
    ( checkLocation, subTaskLocation, nextTaskLocation
@@ -19,9 +19,9 @@ module Ideas.Common.Strategy.Location
    ) where
 
 import Data.Maybe
+import Ideas.Common.CyclicTree
 import Ideas.Common.Id
 import Ideas.Common.Strategy.Abstract
-import Ideas.Common.CyclicTree
 
 -----------------------------------------------------------
 --- Strategy locations
@@ -57,8 +57,8 @@ nextTaskLocation s xs ys = g (rec (f xs) (f ys))
 strategyLocations :: LabeledStrategy a -> [([Int], Id)]
 strategyLocations s = ([], getId s) : make s
  where
-   make = nrs . fold alg . toCore . unlabel
-   alg  = monoidAlg 
+   make = nrs . fold alg . toStrategyTree . unlabel
+   alg  = monoidAlg
       { fLeaf  = \a   -> [(getId a, [])]
       , fLabel = \l x -> [(l, nrs x)]
       }

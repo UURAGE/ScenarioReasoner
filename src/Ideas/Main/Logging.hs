@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,9 +12,9 @@
 -- Facilities to create a log database
 --
 -----------------------------------------------------------------------------
---  $Id: Logging.hs 8209 2015-07-20 14:44:31Z bastiaan $
+--  $Id: Logging.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
-module Ideas.Main.Logging 
+module Ideas.Main.Logging
    ( Record(..), addRequest, addState
    , LogRef, newLogRef, noLogRef, changeLog
    , logEnabled, logRecord, printLog
@@ -27,6 +27,7 @@ import Ideas.Service.Request (Request, Schema(..))
 import Ideas.Service.State
 import qualified Ideas.Service.Request as R
 
+-- #define DB
 #ifdef DB
 import Data.List
 import Database.HDBC
@@ -38,7 +39,7 @@ type Time = UTCTime
 
 -- | The Record datatype is based on the Ideas Request Logging Schema version 2.
 data Record = Record
-   { -- request attributes  
+   { -- request attributes
      service      :: String  -- name of feedback service
    , exerciseid   :: String  -- exercise identifier
    , source       :: String  -- tool/learning environment that makes request
@@ -53,7 +54,7 @@ data Record = Record
    , taskid       :: String  -- task identifier (default: start term)
      -- meta-information
    , time         :: Time    -- date and time of request
-   , responsetime :: Diff    -- time needed for processing request 
+   , responsetime :: Diff    -- time needed for processing request
    , ipaddress    :: String  -- IP address of client
    , binary       :: String  -- name of (cgi) binary that is being executed
    , version      :: String  -- version (and revision) information
@@ -78,7 +79,7 @@ makeRecord = do
 
 -- | Add record information from the Request datatype
 addRequest :: Request -> Record -> Record
-addRequest req r = r 
+addRequest req r = r
    { service     = maybe (service r) show (R.serviceId req)
    , exerciseid  = maybe (exerciseid r) show (R.exerciseId req)
    , source      = fromMaybe (source r) (R.source req)
@@ -105,7 +106,7 @@ noLogRef :: LogRef
 noLogRef = L Nothing
 
 newLogRef :: IO LogRef
-newLogRef = do 
+newLogRef = do
    r   <- makeRecord
    ref <- newIORef r
    return (L (Just ref))
@@ -152,20 +153,20 @@ columnsInTable _  = values_v2
 
 values_v1 :: Record -> [SqlValue]
 values_v1 r =
-   let get f = toSql (f r) 
+   let get f = toSql (f r)
    in [ get service, get exerciseid, get source, get dataformat, get encoding
       , get input, get output, get ipaddress, get time, get responsetime
       ]
-      
+
 values_v2 :: Record -> [SqlValue]
 values_v2 r =
-   let get f = toSql (f r) 
+   let get f = toSql (f r)
    in [ get service, get exerciseid, get source, get script, get requestinfo
       , get dataformat, get encoding, get userid, get sessionid, get taskid
       , get time, get responsetime, get ipaddress, get binary, get version
       , get errormsg, get serviceinfo, get ruleid, get input, get output
       ]
-      
+
 logRecordWith :: IConnection c => Schema -> LogRef -> c -> IO ()
 logRecordWith schema logRef conn = do
    -- calculate duration
@@ -176,7 +177,7 @@ logRecordWith schema logRef conn = do
    insertRecord schema r {responsetime = diff} conn
    -- close the connection to the database
    disconnect conn
- `catchSql` \err -> 
+ `catchSql` \err ->
    putStrLn $ "Error in logging to database: " ++ show err
 
 insertRecord :: IConnection c => Schema -> Record -> c ->  IO ()

@@ -1,25 +1,25 @@
 {-# LANGUAGE TypeFamilies #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
--- A type class for sequences together with the 'Step' datatype.
+-- A type class for sequences together with the 'Firsts' type class for
+-- accessing the firsts set and ready predicate.
 --
 -----------------------------------------------------------------------------
---  $Id: Sequential.hs 6612 2014-06-12 07:57:59Z bastiaan $
+--  $Id: Sequence.hs 8758 2015-10-22 06:48:52Z bastiaan $
 
 module Ideas.Common.Strategy.Sequence
    ( -- * Sequence type class
      Sequence(..)
      -- * Firsts type class
    , Firsts(..), firstsTree
-     -- * MenuItem data type with some utility functions
    ) where
 
 import Ideas.Common.DerivationTree
@@ -43,10 +43,10 @@ class Sequence a where
    -- | Sequential composition.
    sequence :: [a] -> a
    sequence xs = if null xs then done else foldr1 (.*.) xs
- 
+
 instance Sequence b => Sequence (a -> b) where
    type Sym (a -> b) = Sym b
-   
+
    done   = const done
    single = const . single
    a ~> f = (a ~>) . f
@@ -60,7 +60,7 @@ class Firsts s where
    type Elem s
    -- | The ready predicate (we are done).
    ready :: s -> Bool
-   -- | The first set.
+   -- | The firsts set.
    firsts :: s -> [(Elem s, s)]
 
 firstsTree :: Firsts s => s -> DerivationTree (Elem s) s

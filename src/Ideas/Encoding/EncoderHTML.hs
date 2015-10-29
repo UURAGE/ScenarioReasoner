@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,7 +12,7 @@
 -- Encoding in HTML
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderHTML.hs 8223 2015-07-22 10:06:38Z bastiaan $
+--  $Id: EncoderHTML.hs 8745 2015-10-15 14:45:46Z bastiaan $
 
 module Ideas.Encoding.EncoderHTML (htmlEncoder, htmlEncoderAt) where
 
@@ -21,6 +21,7 @@ import Data.List
 import Data.Maybe
 import Data.Ord
 import Ideas.Common.Library hiding (alternatives)
+import Ideas.Common.Strategy.Symbol
 import Ideas.Common.Utils
 import Ideas.Common.Utils.TestSuite
 import Ideas.Encoding.Encoder
@@ -531,11 +532,13 @@ encodePrefix st =
       ctx = stateContext st
       prSteps = fst $ replayPath path (strategy ex) ctx
 
-htmlStep :: Step a -> HTMLBuilder
-htmlStep (Enter l)      = spanClass "step-enter" $ string $ "enter " ++ show l
-htmlStep (Exit  l)      = spanClass "step-exit"  $ string $ "exit " ++ show l
-htmlStep (RuleStep _ r) = let s = if isMinor r then "minor" else "major"
-                          in spanClass ("step-"++s) $ string $ showId r
+htmlStep :: Rule a -> HTMLBuilder
+htmlStep r =
+   case (isEnterRule r, isExitRule r) of
+      (Just l, _) -> spanClass "step-enter" $ string $ "enter " ++ show l
+      (_, Just l) -> spanClass "step-exit"  $ string $ "exit " ++ show l
+      _ -> let s = if isMinor r then "minor" else "major"
+           in spanClass ("step-"++s) $ string $ showId r
 
 htmlDerivationWith :: HTMLBuilder -> (s -> HTMLBuilder) -> (t -> HTMLBuilder) -> Derivation s t -> HTMLBuilder
 htmlDerivationWith before forStep forTerm d =
@@ -569,7 +572,7 @@ htmlAllApplications lm = encoderFor $ \xs ->
 htmlDiagnosis :: LinkManager -> DomainReasoner -> HTMLEncoder a (Diagnosis a)
 htmlDiagnosis lm dr = encoderFor $ \diagnosis ->
    case diagnosis of
-      SyntaxError s -> 
+      SyntaxError s ->
          spanClass "error" $ string s
       Buggy _ r ->
          spanClass "error" $ string $ "Not equivalent: buggy rule " ++ show r

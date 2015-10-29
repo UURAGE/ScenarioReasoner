@@ -1,8 +1,8 @@
 {-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -15,7 +15,7 @@
 -- "Ideas.Common.ExerciseTests" module.
 --
 -----------------------------------------------------------------------------
---  $Id: Exercise.hs 7524 2015-04-08 07:31:15Z bastiaan $
+--  $Id: Exercise.hs 8758 2015-10-22 06:48:52Z bastiaan $
 
 module Ideas.Common.Exercise
    ( -- * Exercise record
@@ -258,6 +258,20 @@ instance Show Difficulty where
    show = (xs !!) . fromEnum
     where
       xs = ["very_easy", "easy", "medium", "difficult", "very_difficult"]
+
+instance Read Difficulty where
+   readsPrec _ s =
+      case concatMap f txt of
+         "veryeasy"      -> [(VeryEasy, xs)]
+         "easy"          -> [(Easy, xs)]
+         "medium"        -> [(Medium, xs)]
+         "difficult"     -> [(Difficult, xs)]
+         "verydifficult" -> [(VeryDifficult, xs)]
+         _               -> []
+    where
+      (txt, xs) = span p (dropWhile isSpace s)
+      p c   = isAlpha c || c `elem` "_-"
+      f c   = [toLower c | c `notElem` "_-"]
 
 -- | Parser for difficulty levels, which ignores non-alpha charactes (including
 -- spaces) and upper/lower case distinction.

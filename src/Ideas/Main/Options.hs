@@ -1,7 +1,7 @@
-----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-----------------------------------------------------------------------------
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -11,7 +11,7 @@
 -- Options and command-line flags for services
 --
 -----------------------------------------------------------------------------
---  $Id: Options.hs 8209 2015-07-20 14:44:31Z bastiaan $
+--  $Id: Options.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Main.Options
    ( Flag(..), getFlags
@@ -29,7 +29,7 @@ data Flag = Version | Help | PrintLog
           | InputFile String
           | MakePages FilePath | Test FilePath
           | MakeScriptFor String | AnalyzeScript FilePath
-          
+
    deriving Eq
 
 header :: String

@@ -1,8 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, PatternGuards #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: SmartGroup.hs 8692 2015-10-02 13:55:48Z bastiaan $
+--  $Id: SmartGroup.hs 8740 2015-10-14 19:26:22Z bastiaan $
 
 module Ideas.Common.Algebra.SmartGroup
    ( -- * Smart datatypes

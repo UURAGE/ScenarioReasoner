@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,7 +12,7 @@
 -- Diagnose a term submitted by a student
 --
 -----------------------------------------------------------------------------
---  $Id: Diagnose.hs 8223 2015-07-22 10:06:38Z bastiaan $
+--  $Id: Diagnose.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Service.Diagnose
    ( Diagnosis(..), tDiagnosis, diagnose
@@ -57,7 +57,7 @@ instance Show (Diagnosis a) where
          Unknown _ _      -> "Unknown"
     where
       f s xs
-         | null xs   = s 
+         | null xs   = s
          | otherwise = s ++ "(" ++ intercalate "," xs ++ ")"
 {-
 newState :: Diagnosis a -> Maybe (State a)

@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,7 +12,7 @@
 -- JSON. JSON is a lightweight alternative for XML.
 --
 -----------------------------------------------------------------------------
---  $Id: JSON.hs 8572 2015-08-27 08:26:05Z alex $
+--  $Id: JSON.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Text.JSON
    ( JSON(..), Key, Number(..)            -- types

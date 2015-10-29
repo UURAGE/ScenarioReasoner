@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -10,7 +10,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ProblemDecomposition.hs 7871 2015-05-29 07:37:57Z bastiaan $
+--  $Id: ProblemDecomposition.hs 8745 2015-10-15 14:45:46Z bastiaan $
 
 module Ideas.Service.ProblemDecomposition
    ( problemDecomposition, Reply(..), Answer, tAnswer, tReply
@@ -18,6 +18,7 @@ module Ideas.Service.ProblemDecomposition
 
 import Data.Maybe
 import Ideas.Common.Library
+import Ideas.Common.Strategy.Symbol
 import Ideas.Common.Utils (fst3)
 import Ideas.Service.State
 import Ideas.Service.Types
@@ -38,15 +39,15 @@ problemDecomposition msloc state maybeAnswer
               (newCtx, _, newPrefix) = head witnesses
               newLocation = nextTaskLocation strat sloc $
                                fromMaybe topId $ nextMajorForPrefix newPrefix
-              newState = state 
-                 { statePrefix  = newPrefix 
+              newState = state
+                 { statePrefix  = newPrefix
                  , stateContext = newCtx
                  }
            _ -> Incorrect isEquiv newLocation expState arguments
             where
               newLocation = subTaskLocation strat sloc loc
-              expState = state 
-                 { statePrefix  = pref 
+              expState = state
+                 { statePrefix  = pref
                  , stateContext = expected
                  }
               isEquiv  = maybe False (equivalence ex expected . fromAnswer) maybeAnswer
@@ -64,20 +65,22 @@ problemDecomposition msloc state maybeAnswer
       | otherwise           = statePrefix state
 
 -- | Continue with a prefix until a certain strategy location is reached.
-runPrefixLocation :: Id -> Prefix a -> [(a, [Step a], Prefix a)]
+runPrefixLocation :: Id -> Prefix a -> [(a, [(Rule a, Environment)], Prefix a)]
 runPrefixLocation loc = rec []
  where
    rec acc p = do
-      ((st, a), q) <- firsts p
-      if isLoc st then return (a, reverse (st:acc), q)
-                  else rec (st:acc) q
+      ((st, a, env), q) <- firsts p
+      if isLoc st then return (a, reverse ((st, env):acc), q)
+                  else rec ((st, env):acc) q
 
-   isLoc (Exit l)       = l       == loc
-   isLoc (RuleStep _ r) = getId r == loc
-   isLoc _ = False
+   isLoc r =
+      case (isEnterRule r, isExitRule r) of
+         (Just _, _) -> False
+         (_, Just l) -> l == loc
+         _           -> getId r == loc
 
-firstMajorInSteps :: [Step a] -> Maybe (Id, Environment)
-firstMajorInSteps (RuleStep env r:_) | isMajor r = Just (getId r, env)
+firstMajorInSteps :: [(Rule a, Environment)] -> Maybe (Id, Environment)
+firstMajorInSteps ((r, env):_) | isMajor r = Just (getId r, env)
 firstMajorInSteps (_:xs) = firstMajorInSteps xs
 firstMajorInSteps []     = Nothing
 
@@ -85,11 +88,12 @@ nextMajorForPrefix :: Prefix a -> Maybe Id
 nextMajorForPrefix = listToMaybe . rec
  where
    rec prfx = do
-      ((st, _), p) <- firsts prfx
-      case st of
-         Enter l -> [l]
-         RuleStep _ r | isMajor r -> [getId r]
-         _ -> rec p
+      ((r, _, _), p) <- firsts prfx
+      case isEnterRule r of
+         Just l -> [l]
+         Nothing
+            | isMajor r -> [getId r]
+            | otherwise -> rec p
 
 ------------------------------------------------------------------------
 -- Data types for replies

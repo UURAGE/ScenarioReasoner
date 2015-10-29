@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -11,7 +11,7 @@
 -- Main module for feedback services
 --
 -----------------------------------------------------------------------------
---  $Id: Default.hs 8209 2015-07-20 14:44:31Z bastiaan $
+--  $Id: Default.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Main.Default
    ( defaultMain, defaultCGI
@@ -29,7 +29,6 @@ import Ideas.Encoding.ModeJSON (processJSON)
 import Ideas.Encoding.ModeXML (processXML)
 import Ideas.Main.BlackBoxTests
 import Ideas.Main.Documentation
-import qualified Ideas.Main.Logging as Log
 import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.FeedbackScript.Analysis
@@ -40,6 +39,7 @@ import Network.CGI
 import Prelude hiding (catch)
 import System.IO
 import System.IO.Error (ioeGetErrorString)
+import qualified Ideas.Main.Logging as Log
 
 defaultMain :: DomainReasoner -> IO ()
 defaultMain dr = do
@@ -69,7 +69,7 @@ defaultCGI dr = runCGI $ handleErrors $ do
          , Log.output    = txt
          }
       Log.logRecord (getSchema req) logRef
-         
+
    -- write header and output
    setHeader "Content-type" ctp
    -- Cross-Origin Resource Sharing (CORS) prevents browser warnings
@@ -137,7 +137,6 @@ defaultCommandLine dr flags = do
          MakeScriptFor s    -> makeScriptFor dr s
          AnalyzeScript file -> parseAndAnalyzeScript dr file
          PrintLog           -> return ()
-         
 
 process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
 process dr logRef cgiBin input = do

@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -11,17 +11,17 @@
 -- Type classes and instances.
 --
 -----------------------------------------------------------------------------
---  $Id: Classes.hs 7638 2015-04-30 13:23:05Z bastiaan $
+--  $Id: Classes.hs 8763 2015-10-23 06:46:32Z bastiaan $
 
 module Ideas.Common.Classes
    ( -- * Type class Apply
-     Apply, apply, applyAll, applicable, applyD, applyM, applyList
+     Apply(applyAll), apply, applicable, applyD, applyM, applyList
      -- * Type class Container
-   , Container, singleton, getSingleton
+   , Container(singleton, getSingleton)
      -- * Type class BiArrow
    , BiArrow(..)
      -- * Type class BiFunctor
-   , BiFunctor, biMap, mapFirst, mapSecond, mapBoth
+   , BiFunctor(biMap, mapFirst, mapSecond), mapBoth
      -- * Type class Fix
    , Fix(..)
      -- * Buggy and Minor properties

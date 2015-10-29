@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -12,7 +12,7 @@
 -- Services using JSON notation
 --
 -----------------------------------------------------------------------------
---  $Id: EncoderJSON.hs 8692 2015-10-02 13:55:48Z bastiaan $
+--  $Id: EncoderJSON.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Encoding.EncoderJSON (jsonEncoder) where
 
@@ -98,7 +98,7 @@ encodeContext = exerciseEncoder $ \ex ctx ->
 encodeState :: JSONEncoder a (State a)
 encodeState = encoderFor $ \st ->
    let ctx   = stateContext st
-       get f = String (fromMaybe "" (f st)) 
+       get f = String (fromMaybe "" (f st))
        make pp env = Array $
           [ String $ showId (exercise st)
           , String $ if withoutPrefix st
@@ -161,7 +161,7 @@ encodeResult = encoderFor $ \result -> Object <$>
 encodeDiagnosis :: JSONEncoder a (Diagnose.Diagnosis a)
 encodeDiagnosis = encoderFor $ \diagnosis ->
    case diagnosis of
-      Diagnose.SyntaxError s -> 
+      Diagnose.SyntaxError s ->
          pure $ Object [("syntaxerror", String s)]
       Diagnose.NotEquivalent s ->
          if null s then pure (Object [("notequiv", Null)])

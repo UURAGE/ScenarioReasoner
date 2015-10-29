@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: Request.hs 8001 2015-06-18 19:35:58Z bastiaan $
+--  $Id: Request.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Service.Request where
 
@@ -32,7 +32,7 @@ data Request = Request
    }
 
 emptyRequest :: Request
-emptyRequest = Request Nothing Nothing Nothing Nothing 
+emptyRequest = Request Nothing Nothing Nothing Nothing
                        Nothing Nothing Nothing XML []
 
 data Schema = V1 | V2 | NoLogging deriving (Show, Eq)

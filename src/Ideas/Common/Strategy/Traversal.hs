@@ -1,19 +1,23 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
 -- Stability   :  provisional
 -- Portability :  portable (depends on ghc)
 --
+-- Parameterized traversals based on the strategy language.
+--
 -----------------------------------------------------------------------------
---  $Id: Traversal.hs 8692 2015-10-02 13:55:48Z bastiaan $
+--  $Id: Traversal.hs 8745 2015-10-15 14:45:46Z bastiaan $
 
 module Ideas.Common.Strategy.Traversal
-   ( layer, traverse, Option
+   ( -- * Parameterized traversals
+     layer, traverse
      -- * Options
+   , Option
    , topdown, bottomup, leftToRight, rightToLeft
    , full, spine, stop, once, leftmost, rightmost
    , traversalFilter, parentFilter
@@ -23,10 +27,12 @@ module Ideas.Common.Strategy.Traversal
    , oncetdPref, oncebuPref
      -- * Fixpoint traversals
    , innermost, outermost
-   , ruleDown, ruleDownLast, ruleUp
+     -- * Navigator rules
+   , ruleUp, ruleDown, ruleDownLast, ruleLeft, ruleRight
    ) where
 
 import Data.Monoid
+import Ideas.Common.Classes
 import Ideas.Common.Rule
 import Ideas.Common.Strategy.Abstract
 import Ideas.Common.Strategy.Combinators
@@ -73,7 +79,7 @@ traverse = traverseWith . fromOptions
 traverseWith :: (IsStrategy f, Navigator a) => Info a -> f a -> Strategy a
 traverseWith tr s =
    fix $ \a ->
-   case getCombinator tr of
+   case getOp tr of
       Sequence
          | getTopDown tr -> s .*. (descend a .|. check isLeaf)
          | otherwise     -> (descend a .|. check isLeaf) .*. s
@@ -89,14 +95,14 @@ traverseWith tr s =
 
 -----------------------------------------------------------------------
 
-data Combinator = Sequence | OrElse | Choice | Prefer
+data Op = Sequence | OrElse | Choice | Prefer
 
 data Info a = Info
-   { getVisit      :: Visit
-   , getCombinator :: Combinator
-   , getFilters    :: [a -> Bool]
-   , getTopDown    :: Bool
-   , getReversed   :: Bool
+   { getVisit    :: Visit
+   , getOp       :: Op
+   , getFilters  :: [a -> Bool]
+   , getTopDown  :: Bool
+   , getReversed :: Bool
    }
 
 newtype Option a = O { unO :: Info a -> Info a }
@@ -117,20 +123,20 @@ leftToRight = O $ \t -> t {getReversed = False}
 rightToLeft = O $ \t -> t {getReversed = True}
 
 full, spine, stop, once :: Option a
-full  = setCombinator Sequence `mappend` setVisit VisitAll
-spine = setCombinator Sequence `mappend` setVisit VisitOne
-stop  = setCombinator OrElse   `mappend` setVisit VisitAll
-once  = setCombinator OrElse   `mappend` setVisit VisitOne
+full  = setOp Sequence `mappend` setVisit VisitAll
+spine = setOp Sequence `mappend` setVisit VisitOne
+stop  = setOp OrElse   `mappend` setVisit VisitAll
+once  = setOp OrElse   `mappend` setVisit VisitOne
 
 leftmost, rightmost :: Option a
-leftmost  = leftToRight <> setCombinator OrElse
-rightmost = rightToLeft <> setCombinator OrElse
+leftmost  = leftToRight <> setOp OrElse
+rightmost = rightToLeft <> setOp OrElse
 
 setVisit :: Visit -> Option a
 setVisit v = O $ \t -> t {getVisit = v}
 
-setCombinator :: Combinator -> Option a
-setCombinator c = O $ \t -> t {getCombinator = c}
+setOp :: Op -> Option a
+setOp c = O $ \t -> t {getOp = c}
 
 traversalFilter :: (a -> Bool) -> Option a
 traversalFilter ok = O $ \t -> t {getFilters = ok:getFilters t}
@@ -153,26 +159,26 @@ oncetd :: (IsStrategy f, Navigator a) => f a -> Strategy a
 oncetd = traverse [once, topdown]
 
 oncetdPref :: (IsStrategy f, Navigator a) => f a -> Strategy a
-oncetdPref = traverse [setCombinator Prefer, once, topdown]
+oncetdPref = traverse [setOp Prefer, once, topdown]
 
 oncebu :: (IsStrategy f, Navigator a) => f a -> Strategy a
 oncebu = traverse [once, bottomup]
 
 oncebuPref :: (IsStrategy f, Navigator a) => f a -> Strategy a
-oncebuPref = traverse [setCombinator Prefer, once, bottomup]
+oncebuPref = traverse [setOp Prefer, once, bottomup]
 
 leftmostbu :: (IsStrategy f, Navigator a) => f a -> Strategy a
-leftmostbu = traverse [setCombinator OrElse, setVisit VisitFirst, bottomup]
+leftmostbu = traverse [setOp OrElse, setVisit VisitFirst, bottomup]
 
 leftmosttd :: (IsStrategy f, Navigator a) => f a -> Strategy a
-leftmosttd = traverse [setCombinator OrElse, setVisit VisitFirst, topdown]
+leftmosttd = traverse [setOp OrElse, setVisit VisitFirst, topdown]
 
 somewhere :: (IsStrategy f, Navigator a) => f a -> Strategy a
 somewhere = traverse []
 
 -- as long as the predicate does not hold, go to the next layer
 somewhereWhen :: (IsStrategy g, Navigator a) => (a -> Bool) -> g a -> Strategy a
-somewhereWhen p s = fix $ \this -> 
+somewhereWhen p s = fix $ \this ->
    check p .*. s .|. check (Prelude.not . p) .*. layer [] this
 
 ----------------------------------------------------------------------

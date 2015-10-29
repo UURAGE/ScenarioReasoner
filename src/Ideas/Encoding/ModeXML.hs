@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -11,7 +11,7 @@
 -- Services using XML notation
 --
 -----------------------------------------------------------------------------
---  $Id: ModeXML.hs 8003 2015-06-19 07:26:41Z bastiaan $
+--  $Id: ModeXML.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Encoding.ModeXML (processXML) where
 
@@ -25,11 +25,11 @@ import Ideas.Encoding.Encoder (makeOptions)
 import Ideas.Encoding.EncoderHTML
 import Ideas.Encoding.EncoderXML
 import Ideas.Encoding.Evaluator
+import Ideas.Main.Logging (LogRef, changeLog, errormsg)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import Ideas.Text.HTML
 import Ideas.Text.XML
-import Ideas.Main.Logging (LogRef, changeLog, errormsg)
 import Prelude hiding (catch)
 import System.IO.Error hiding (catch)
 

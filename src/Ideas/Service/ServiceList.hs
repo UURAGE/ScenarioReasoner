@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -9,7 +9,7 @@
 -- Portability :  portable (depends on ghc)
 --
 -----------------------------------------------------------------------------
---  $Id: ServiceList.hs 8223 2015-07-22 10:06:38Z bastiaan $
+--  $Id: ServiceList.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Service.ServiceList (serviceList, metaServiceList) where
 
@@ -196,14 +196,14 @@ diagnoseS = makeService "basic.diagnose"
    Diagnose.diagnose ::: tState .-> tContext .-> tMaybe tId .-> Diagnose.tDiagnosis
 
 diagnoseStringS :: Service
-diagnoseStringS = makeService "basic.diagnose-string" 
+diagnoseStringS = makeService "basic.diagnose-string"
    "See diagnose service, but also returns a SyntaxError for invalid input." $
    diagnoseString ::: tState .-> tString .-> tMaybe tId .-> Diagnose.tDiagnosis
 
 diagnoseString :: State a -> String -> Maybe Id -> Diagnose.Diagnosis a
 diagnoseString st s mot =
    case parser ex s of
-      Left msg -> Diagnose.SyntaxError msg 
+      Left msg -> Diagnose.SyntaxError msg
       Right ca -> Diagnose.diagnose st (inContext ex ca) mot
  where
    ex = exercise st
@@ -311,7 +311,7 @@ microstepsS :: Service
 microstepsS = makeService "meta.microsteps" "Next (minor) steps." $
    (map f . microsteps) ::: tState .-> tList (tPair (tTuple3 tRule tLocation tEnvironment) tState)
  where
-   f ((s, ctx), st) = ((stepRule s, location ctx, stepEnvironment s), st)
+   f ((s, ctx, env), st) = ((s, location ctx, env), st)
 
 examplederivationsS :: Service
 examplederivationsS = makeService "meta.examplederivations"
@@ -322,9 +322,9 @@ testreportS :: Service
 testreportS = makeService "meta.testreport"
    "Show test report for an exercise." $
    (\stdgen -> runTestSuiteResult False . exerciseTestSuite stdgen) ::: tStdGen .-> tExercise .-> tIO tTestSuiteResult
-   
+
 logS :: Service
-logS = makeService "meta.log" 
+logS = makeService "meta.log"
    "Feedback service for logging events: the reply is always empty. The \
    \optional input state can be used to record userid, sessionid, and \
    \taskid."

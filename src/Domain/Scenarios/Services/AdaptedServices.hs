@@ -20,13 +20,16 @@ allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
    | otherwise = Right $ 
-        mergeDuplicates $ concatMap make $ firsts state                 
+        mergeDuplicates $ map make $ firsts state                 
   where 
-    make ((stp, ctx), st) =
-       case stp of
-           RuleStep env r -> [((r, location ctx, env), st)]
-           _ -> []
-
+    make ((r, ctx, env), st) =
+      let pfx      = statePrefix st
+          newState = (makeState (exercise state) pfx $ ctx) 
+                       { stateSession   = stateSession state   -- we clean the env because we don't want to send lots of internal info to the webapp
+                       , stateUser      = stateUser state
+                       , stateStartTerm = stateStartTerm state }
+      in ((r, location ctx, env), newState)
+      
     mergeDuplicates = mapMaybe mergeSteps . groupWith eq
     eq ((r1, _,_), _) ((r2, _, _), _) = getId r1 == getId r2
       
@@ -46,3 +49,4 @@ allfirsts state
     safeHead :: [a] -> Maybe a
     safeHead (x:_) = Just x
     safeHead []    = Nothing
+    

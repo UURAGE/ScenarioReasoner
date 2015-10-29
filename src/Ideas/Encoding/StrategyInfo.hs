@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
--- Copyright 2015, Open Universiteit Nederland. This file is distributed
--- under the terms of the GNU General Public License. For more information,
--- see the file "LICENSE.txt", which is included in the distribution.
+-- Copyright 2015, Ideas project team. This file is distributed under the
+-- terms of the Apache License 2.0. For more information, see the files
+-- "LICENSE.txt" and "NOTICE.txt", which are included in the distribution.
 -----------------------------------------------------------------------------
 -- |
 -- Maintainer  :  bastiaan.heeren@ou.nl
@@ -11,56 +11,48 @@
 -- Converting a strategy to XML, and the other way around.
 --
 -----------------------------------------------------------------------------
---  $Id: StrategyInfo.hs 7638 2015-04-30 13:23:05Z bastiaan $
+--  $Id: StrategyInfo.hs 8743 2015-10-14 19:48:13Z bastiaan $
 
 module Ideas.Encoding.StrategyInfo (strategyToXML) where
 
-import Ideas.Common.Id
 import Ideas.Common.CyclicTree
+import Ideas.Common.Id
 import Ideas.Common.Strategy.Abstract
-import Ideas.Common.Strategy.Prefix
-import Ideas.Common.Strategy.Def
+import Ideas.Common.Strategy.Configuration
+import Ideas.Common.Strategy.StrategyTree (StrategyTree)
 import Ideas.Text.XML
 
 -----------------------------------------------------------------------
 -- Strategy to XML
 
 strategyToXML :: IsStrategy f => f a -> XML
-strategyToXML = coreToXML . toCore . toStrategy
+strategyToXML = strategyTreeToXML . toStrategyTree
 
 nameAttr :: Id -> XMLBuilder
 nameAttr info = "name" .=. showId info
 
-coreToXML :: Core a -> XML
-coreToXML core = makeXML "label" $
-   case isLabel core of
-      Just (l, a) -> nameAttr l <> coreBuilder a
-      _ -> coreBuilder core
+strategyTreeToXML :: StrategyTree a -> XML
+strategyTreeToXML tree = makeXML "label" $
+   case isLabel tree of
+      Just (l, a) -> nameAttr l <> strategyTreeBuilder a
+      _ -> strategyTreeBuilder tree
 
-coreBuilder :: Core a -> XMLBuilder
-coreBuilder = fold emptyAlg
-   { fNode = \def xs -> 
+strategyTreeBuilder :: StrategyTree a -> XMLBuilder
+strategyTreeBuilder = fold emptyAlg
+   { fNode = \def xs ->
         case xs of
-           [x] | isProperty def 
+           [x] | isConfigId def
              -> addProperty (show def) x
            _ -> tag (show def) (mconcat xs)
-   , fLeaf = \r -> 
+   , fLeaf = \r ->
         tag "rule" ("name" .=. show r)
    , fLabel = \l a ->
         tag "label" (nameAttr l <> a)
    , fRec = \n a ->
         tag "rec" (("var" .=. show n) <> a)
-   , fVar = \n -> 
+   , fVar = \n ->
         tag "var" ("var" .=. show n)
-   } . flatten
-
-flatten :: Core a -> Core a
-flatten = replaceNode $ \def -> node def . concatMap (collect def)
- where
-   collect def core = 
-      case isNode core of
-         Just (d, xs) | d == def -> xs
-         _ -> [core]
+   }
 
 addProperty :: String -> XMLBuilder -> XMLBuilder
 addProperty s a =
@@ -108,10 +100,10 @@ readStrategy toLabel findRule xml = error "not implemented" do
       | otherwise = return (foldr1 (:*:) xs)
    buildChoice _ xs
       | null xs   = return Fail
-      | otherwise = return (foldr1 (:|:) xs) 
+      | otherwise = return (foldr1 (:|:) xs)
    buildOrElse _ xs
       | null xs   = return Fail
-      | otherwise = return (foldr1 (:|>:) xs) 
+      | otherwise = return (foldr1 (:|>:) xs)
    buildInterleave _ xs
       | null xs   = return succeedCore
       | otherwise = return (foldr1 (:%:) xs)
