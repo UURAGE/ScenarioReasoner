@@ -24,8 +24,8 @@ Executable communicate-hs
       Build-Depends:   HDBC, HDBC-sqlite3
   }
 
-  Main-is:           Main.hs Main.cgi
-  ghc-options:       -Wall -fno-warn-orphans -O2 -static
+  Main-is:           Main.hs
+  ghc-options:       -Wall -fno-warn-orphans
   hs-source-dirs:    src
   Build-Depends:     base >= 4.2 && < 5, 
                      QuickCheck >= 2.4.1 && < 2.7, 
