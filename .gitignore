@@ -1,5 +1,7 @@
 dist/
 .cabal-sandbox/
-_output/
+intermediate/
 out/
 Profiling/
+cabal.sandbox.config
+
