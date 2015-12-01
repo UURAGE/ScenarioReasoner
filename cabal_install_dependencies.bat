@@ -25,4 +25,6 @@ cabal install old-time
 cabal install multipart
 cabal install bytestring
 cabal install array
+cabal install transformers-0.3.0.0
+cabal install network-uri
 pause
