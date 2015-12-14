@@ -41,22 +41,30 @@ import System.IO
 import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Main.Logging as Log
 
-defaultMain :: DomainReasoner -> IO ()
-defaultMain dr = do
+defaultMain ::(DomainReasoner, DomainReasoner) -> IO ()
+defaultMain drTuple = do
    flags <- getFlags
    if null flags
-      then defaultCGI dr
-      else defaultCommandLine dr flags
+      then defaultCGI drTuple
+      else defaultCommandLine (fst drTuple) flags
 
 -- Invoked as a cgi binary
-defaultCGI :: DomainReasoner -> IO ()
-defaultCGI dr = runCGI $ handleErrors $ do
+defaultCGI :: (DomainReasoner, DomainReasoner) -> IO ()
+defaultCGI (sr, srt) = runCGI $ handleErrors $ do
    -- create a record for logging
    logRef  <- liftIO Log.newLogRef
    -- query environment
    addr    <- remoteAddr       -- the IP address of the remote host
    cgiBin  <- scriptName       -- get name of binary
    input   <- inputOrDefault
+   
+   -- create a domain reasoner based on testing or not
+   testingInput <- getInput "testing"
+   testing <- case testingInput of
+                Just t -> return (read t :: Bool)
+                Nothing -> return False
+   let dr = if testing then srt else sr
+   
    -- process request
    (req, txt, ctp) <- liftIO $
       process dr logRef (Just cgiBin) input

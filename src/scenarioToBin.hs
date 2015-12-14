@@ -17,11 +17,12 @@ import System.FilePath
 
 main :: IO ()
 main = runCGI $ handleErrors $ do
-    path <- getInput "path"
-    script <- liftIO $ parseScript (fromJust path)
+    script_path <- getInput "script_path"
+    script <- liftIO $ parseScript (fromJust script_path)
     let scenario = parseScenario script
-    liftIO $ encodeFile ("bins/" ++ takeBaseName (fromJust path) ++ ".bin") scenario
-    output ("bins/" ++ takeBaseName (fromJust path) ++ ".bin")
+    bin_path <- getInput "bin_path"
+    liftIO $ encodeFile (fromJust bin_path) scenario
+    output (fromJust bin_path)
     
 debugMain :: String -> IO ()
 debugMain path = do

@@ -17,7 +17,7 @@ flag logging
    
 --------------------------------------------------------------------------------
 
-Executable communicate-hs
+Executable communicate.cgi
   if flag(logging) 
   {
       cpp-options:     -DDB
@@ -55,7 +55,7 @@ Executable communicate-hs
   else
     build-depends: network < 2.6
 
-  Exposed-modules:
+  exposed-modules:
     Ideas.Common.Algebra.Boolean
     Ideas.Common.Algebra.BooleanLaws
     Ideas.Common.Algebra.Field

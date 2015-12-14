@@ -15,15 +15,27 @@ main :: IO ()
 main = scenarioReasoner >>= defaultMain
 
 maindoc :: IO ()
-maindoc = scenarioReasoner >>= flip makeDocumentation "doc"
+maindoc = do
+    drTuple <- scenarioReasoner 
+    let dr = fst drTuple
+    makeDocumentation dr "doc"
 
-scenarioReasoner :: IO DomainReasoner
+scenarioReasoner :: IO (DomainReasoner, DomainReasoner)
 scenarioReasoner = do
-    exerciselist <- E.exercises
-    let scenarioPaths = map snd exerciselist
-    let exs = map (Some . fst) exerciselist
+    exerciseList <- E.exercises    
+    let sps = map snd exerciseList
+    let exs = map (Some . fst) exerciseList
         dr  = (newDomainReasoner "ideas.scenarios")
             { exercises = exs
-            , services  = S.customServices scenarioPaths ++ metaServiceList dr ++ serviceList
+            , services  = S.customServices sps ++ metaServiceList dr ++ serviceList
             }
-    return dr
+            
+    tExerciseList <- E.testingExercises
+    let tsps = map snd tExerciseList
+    let texs = map (Some . fst) tExerciseList
+        tdr = (newDomainReasoner "ideas.scenarios.test")
+            { exercises = texs
+            , services  = S.customServices tsps ++ metaServiceList dr ++ serviceList
+            }
+            
+    return (dr, tdr)
