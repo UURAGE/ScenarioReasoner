@@ -34,9 +34,9 @@ instance Binary Scenario
 
 instance HasId Scenario where
     getId (Scenario metadata _ _) = either error id $ do
-                let id = scenarioID metadata
+                let sID = scenarioID metadata
                 let descr = scenarioDescription metadata
-                return $ describe descr $ "scenarios" # id
+                return $ describe descr $ "scenarios" # sID
     changeId _ _ = error "The ID of a Script is determined externally."
 
 data MetaData = MetaData    
@@ -73,8 +73,8 @@ instance Binary Difficulty where
                         put (show difficulty)-}
 
 instance Show MetaData where 
-    show (MetaData id name desc diff bi ci model emo ps loc pet ts sf se) =
-        "id: " ++ show id   ++ "  name: " ++ show name ++ "\n" ++ 
+    show (MetaData sid name desc diff bi ci model emo ps loc pet ts sf se) =
+        "scenarioID: "      ++ show sid   ++ "  name: " ++ show name ++ "\n" ++ 
         "description: "     ++ show desc  ++ "\n" ++ 
         "difficulty: "      ++ show diff  ++ "\n" ++
         "bannerImage: "     ++ show bi    ++ "\n" ++ 
@@ -120,8 +120,8 @@ data Tree = Tree
 instance Binary Tree
 
 instance Show Tree where
-    show (Tree id start atom opt stats) = "\n" ++
-        "tree: "        ++ show id    ++ 
+    show (Tree tid start atom opt stats) = "\n" ++
+        "tree: "        ++ show tid   ++ 
         " start: "      ++ show start ++
         " atomic: "     ++ show atom  ++
         " optional: "   ++ show opt   ++
@@ -142,21 +142,21 @@ data Statement = Statement
 instance Binary Statement
 
 instance Show Statement where
-    show (Statement id info pc pes ees jp inits nexts) = "\n  " ++
-        "statement: "     ++ show id    ++ "\n\t" ++ 
+    show (Statement sid info pc pes ees jp ini nexts) = "\n  " ++
+        "statement: "     ++ show sid   ++ "\n\t" ++ 
         " info: "         ++ show info  ++ "\n\t" ++
         " precondition: " ++ show pc    ++ "\n\t" ++
         " paramEffects: " ++ show pes   ++ "\n\t" ++
         " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
-        " inits: "        ++ show inits ++ "\n\t" ++
+        " inits: "        ++ show ini   ++ "\n\t" ++
         " nextIDs: "      ++ show nexts ++ "\n\t" 
         
 instance HasId Statement where
     getId statement = either error id $ do
-                let statementId = statID statement
+                let statementID = statID statement
                 let statementText = statText (statInfo statement)
                 let statementDescription = either id (intercalate " // " . map snd) statementText
-                return $ describe statementDescription $ newId statementId
+                return $ describe statementDescription $ newId statementID
     changeId _ _ = error "The ID of a Statement is determined externally."  
     

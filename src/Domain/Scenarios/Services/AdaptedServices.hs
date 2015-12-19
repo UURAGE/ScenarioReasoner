@@ -41,8 +41,8 @@ allfirsts state
                          
     mergeSteps :: [(StepInfo a, State a)] -> Maybe (StepInfo a, State a)
     mergeSteps xs = do
-        (step, state) <- safeHead xs 
-        return (step, state { statePrefix = newPrefix })
+        (step, hState) <- safeHead xs 
+        return (step, hState { statePrefix = newPrefix })
       where
         newPrefix = mconcat [ statePrefix st | (_, st) <- xs ]
         

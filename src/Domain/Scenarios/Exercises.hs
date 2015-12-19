@@ -29,11 +29,11 @@ testingExercises =
   where root = "test_bins" :: FilePath -- Test bin directory
 
 readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
-readExercise path = (mkExercise id strategy difficulty initialState, path)
+readExercise path = (mkExercise sId strat difficulty initialState, path)
   where 
-    id = "scenarios" # newId (takeBaseName path)    
+    sId = "scenarios" # newId (takeBaseName path)    
     Scenario metadata _ dialogue = readBinaryScenario path
-    strategy = makeStrategy (scenarioID metadata) dialogue
+    strat      = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
@@ -45,9 +45,9 @@ readExercise path = (mkExercise id strategy difficulty initialState, path)
     initialState = ScenarioState (fromList (map processParameter parameters)) initialEmotion emptyStatementInfo
     
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
-mkExercise id strat difficulty initState = 
+mkExercise sId strat difficulty initState = 
     makeExercise
-       { exerciseId     = id
+       { exerciseId     = sId
        , status         = Alpha
        , parser         = readJSON
        , prettyPrinter  = showJSON

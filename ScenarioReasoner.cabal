@@ -1,0 +1,110 @@
+name:                ScenarioReasoner
+version:             0.9.0.0
+author:              Ideas Authors <authors@ideas.example>
+                     jan709 <j.vandieren@students.uu.nl>
+                     Johan Jeuring <J.T.Jeuring@uu.nl>
+                     Jordi Vermeulen <cloud_strife559@hotmail.com>
+                     Jordy van Dortmont <ydroj@live.nl>
+                     Marcell van Geest <marcell@marcell.nl>
+                     prof1990 <prof1990@hotmail.com>
+                     Tom Bakker <tomsterb@live.nl>
+                     Wouter <wouter.cs@gmail.com>
+                     Wouter Florijn <woutermflorijn@gmail.com>
+maintainer:          Jordy van Dortmont <ydroj@live.nl>
+                     Marcell van Geest <marcell@marcell.nl>
+copyright:           (c) 2013-2016 Utrecht University
+license:             Apache-2.0
+license-file:        LICENSE.txt
+category:            Education
+build-type:          Simple
+cabal-version:       >=1.10
+tested-with:         GHC == 7.4.1, GHC == 7.6.3, GHC == 7.8.3, GHC == 7.8.4
+
+flag network-uri
+  description: Get Network.URI from the network-uri package
+  default: True
+  
+flag logging
+  description: Enable support for logging interactions to a sqlite3 database
+  default: False
+  
+-------------------------------------------------------------------------------
+
+executable ScenarioReasoner.cgi
+  Main-is:             ScenarioReasoner.hs
+  ghc-options:        -Wall -O2 -fno-warn-orphans 
+  hs-source-dirs:      src 
+  default-language:    Haskell2010
+  
+  build-depends:       base >= 4.2 && < 5,
+                       QuickCheck >= 2.4.1 && < 2.7,
+                       Diff,
+                       exceptions,
+                       mtl == 2.1.*,
+                       multipart,
+                       containers,      
+                       bytestring,      
+                       xhtml,           
+                       old-locale,             
+                       old-time,               
+                       parsec,                 
+                       wl-pprint,              
+                       uniplate,               
+                       random,                 
+                       directory,              
+                       filepath,               
+                       time,       
+                       binary, 
+                       array, 
+                       filemanip
+                       
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6, network >= 2.6
+  else
+    build-depends: network < 2.6
+    
+  if flag(logging) 
+  {
+      cpp-options:     -DDB
+      build-depends:   HDBC, HDBC-sqlite3
+  }
+  
+executable ScenarioParser.cgi
+  Main-is:             ScenarioParser.hs
+  ghc-options:        -Wall -O2 -fno-warn-orphans
+  hs-source-dirs:      src 
+  default-language:    Haskell2010
+  
+  build-depends:       base >= 4.2 && < 5, 
+                       QuickCheck >= 2.4.1 && < 2.7,
+                       Diff,
+                       exceptions,             
+                       mtl == 2.1.*,                   
+                       multipart,      
+                       containers,      
+                       bytestring,      
+                       xhtml,           
+                       old-locale,             
+                       old-time,               
+                       parsec,                 
+                       wl-pprint,              
+                       uniplate,               
+                       random,                 
+                       directory,              
+                       filepath,               
+                       time,       
+                       binary, 
+                       array, 
+                       filemanip
+                       
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6, network >= 2.6
+  else
+    build-depends: network < 2.6
+    
+  if flag(logging) 
+  {
+      cpp-options:     -DDB
+      build-depends:   HDBC, HDBC-sqlite3
+  }
+

@@ -34,15 +34,15 @@ feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm
 -- If an entry contains conditioned feedback then it checks if it is fullfilled 
 -- and returns the corresponding feedback otherwise it returns the default feedback or an empty string.
 getFeedbackFormResult :: ScenarioState -> FeedbackFormEntry -> (ID, String)
-getFeedbackFormResult state (FeedbackFormEntry paramID feedbackConditions defaultFeedback) =
-    case evaluateFBConditions feedbackConditions of
+getFeedbackFormResult state (FeedbackFormEntry paramID fbConds defaultFeedback) =
+    case evalFBConds fbConds of
         Nothing       -> (paramID, fromMaybe "" defaultFeedback)
         Just feedback -> (paramID, feedback)
   where 
-    evaluateFBConditions :: [(Condition, String)] -> Maybe String
-    evaluateFBConditions []                                                = Nothing
-    evaluateFBConditions ((cond, fb) : cfs) | evaluateCondition cond state = Just fb
-                                            | otherwise                    = evaluateFBConditions cfs
+    evalFBConds :: [(Condition, String)] -> Maybe String
+    evalFBConds []                                                = Nothing
+    evalFBConds ((cond, fb) : cfs) | evaluateCondition cond state = Just fb
+                                   | otherwise                    = evalFBConds cfs
                                             
 
 -- ScenarioList and Info Service -------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
             castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
           mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
           subScores = calculateSubScores parameters state
-          mainScoreExtremes = liftM (\(min, max) -> [min, max]) 
+          mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax]) 
             (scenarioScoreExtremes metaData) :: Maybe [Score]          
           parameters = scenarioParameters metaData
 

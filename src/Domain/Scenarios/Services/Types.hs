@@ -42,13 +42,13 @@ tScenarioInfo =
                         (Pair (Tag "pet"             tString)
                               (Tag "toggles"        (tList tToggle))))))))))))                             
       where 
-        pairify (ScenarioInfo id name descr diff bi ci model ps loc pet ts) = 
-            (id, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
+        pairify (ScenarioInfo sid name descr diff bi ci model ps loc pet ts) = 
+            (sid, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
                        
 
 instance Show ScenarioInfo where
-  show (ScenarioInfo id name desc diff bi ci model ps lc pet ss) = 
-    show id    ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
+  show (ScenarioInfo sid name desc diff bi ci model ps lc pet ss) = 
+    show sid   ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
     show diff  ++ "\n" ++ show bi    ++ "\n" ++ show ci   ++ "\n" ++ 
     show model ++ "\n" ++ show ps    ++ "\n" ++ show lc   ++ "\n" ++ 
     show pet   ++ "\n" ++ show ss    ++ "\n"   
@@ -59,12 +59,13 @@ data ParameterInfo = ParameterInfo ID
 
 
 instance Show ParameterInfo where
-  show (ParameterInfo id name descr) = show id ++ ", " ++ show name ++ ", " ++ show descr
- 
+  show (ParameterInfo pid name descr) = show pid ++ ", " ++ show name ++ ", " ++ show descr
+
+tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
                                            (Tag "description"   tString)))                                    
-        where pairify (ParameterInfo id name descr) = (id, (name, descr))
+        where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
         
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
