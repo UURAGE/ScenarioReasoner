@@ -29,7 +29,7 @@ data StatementInfo = StatementInfo
     }
     deriving (Show, Eq, Read, Generic)
 
-instance Binary	StatementInfo
+instance Binary StatementInfo
 
 -- The text of a statement is either simply a text or a conversation with a list of tuples of the types and texts 
 type StatementType = String                                         -- Conversation / Player / Computer
@@ -55,12 +55,6 @@ instance Binary Toggle
 instance Show Toggle where
     show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
     -}
-toggleNames :: [Name]
-toggleNames = ["showscore"    --score at the end of the game
-              ,"showfeedback" --feedback at the end of the game
-              , "feedback"    --feedback during the game
-              , "isSitting"]  --the character model is sitting
-
 --------------------------------------------------------------------------------------------------------------------------
     
 -- Specifies a parameter that can be an emotion or a goal of a conversation like "inleven"
@@ -91,10 +85,6 @@ errorOnFail errorMsg = fromMaybe (error errorMsg)
 
 emptyOnFail :: Maybe [a] -> [a]
 emptyOnFail = fromMaybe []
-
-nothingOnFail :: Maybe a -> Maybe a
-nothingOnFail (Just a) = Just a
-nothingOnFail _        = Nothing
 
 -- | Applies a function to the first element of a list, if there is one.
 applyToFirst :: (a -> a) -> [a] -> [a]

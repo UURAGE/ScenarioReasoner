@@ -40,4 +40,3 @@ debugMain path = do
     print scenario
     print path
     encodeFile ("bins/" ++ takeBaseName path ++ ".bin") scenario
-	

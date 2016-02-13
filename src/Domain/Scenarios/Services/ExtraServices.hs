@@ -6,8 +6,6 @@
 
 module Domain.Scenarios.Services.ExtraServices where
 
-import Control.Monad
-
 import Data.Maybe
 
 import System.FilePath(takeBaseName)
@@ -57,16 +55,11 @@ scenarioinfo fs ex = getScenarioInfo (findScript "scenarioinfo" fs ex)
 
 getScenarioInfo :: Scenario -> ScenarioInfo
 getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
-                (show (getId scenario))
                 (scenarioName           metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
-                (scenarioBannerImage    metadata)
-                (scenarioCharacterImage metadata)
-                (scenarioModel          metadata)
+                (scenarioCharacter      metadata)
                 (map describeParameter (scenarioParameters metadata))
-                (scenarioLocation       metadata)
-                (scenarioPet            metadata)
                 (scenarioToggles        metadata)
   where 
     describeParameter param = ParameterInfo
@@ -81,14 +74,12 @@ getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
 -- Score extremes are returned in a list, 
 -- because EncoderJSON merges a tuple into the main structure of the result
 score :: [FilePath] -> State a -> ScoreResult
-score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
+score fs fstate = ScoreResult mainScore subScores
     where metaData = scenarioMetaData (findScript "score" fs (exercise fstate))
           state = fromMaybe (error "Cannot score exercise: casting failed.") $
             castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
           mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
           subScores = calculateSubScores parameters state
-          mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax]) 
-            (scenarioScoreExtremes metaData) :: Maybe [Score]          
           parameters = scenarioParameters metaData
 
 

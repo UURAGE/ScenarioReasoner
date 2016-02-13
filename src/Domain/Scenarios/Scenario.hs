@@ -34,26 +34,19 @@ instance Binary Scenario
 
 instance HasId Scenario where
     getId (Scenario metadata _ _) = either error id $ do
-                let sID = scenarioID metadata
+                let name = scenarioName metadata
                 let descr = scenarioDescription metadata
-                return $ describe descr $ "scenarios" # sID
+                return $ describe descr $ "scenarios" # name
     changeId _ _ = error "The ID of a Script is determined externally."
 
 data MetaData = MetaData    
-        { scenarioID              :: ID
-        , scenarioName            :: Name
+        { scenarioName            :: Name
         , scenarioDescription     :: String
-        , scenarioDifficulty      :: Difficulty 
-        , scenarioBannerImage     :: Maybe ID
-        , scenarioCharacterImage  :: Maybe ID
-        , scenarioModel           :: Maybe ID 
-        , scenarioStartEmotion    :: Maybe Emotion
+        , scenarioDifficulty      :: Maybe Difficulty
+        , scenarioCharacter       :: Maybe ID
         , scenarioParameters      :: [Parameter]
-        , scenarioLocation        :: Name
-        , scenarioPet             :: Name
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
-        , scenarioScoreExtremes   :: Maybe (Score, Score)
         }      
  deriving Generic
         
@@ -61,32 +54,16 @@ instance Binary MetaData
 instance Binary Difficulty where
    get = do () <- get; return Medium
    put _ = put ()
-{- TODO
-instance Binary Difficulty where
-    get = do t <- get :: Get String
-             case t of
-                  "diff" -> do diff <- get
-                               return (errorOnFail "no difficulty parse"$ readDifficulty diff)
-                  _      -> error "no binary difficulty"
-                       
-    put difficulty = do put ("diff" :: String)
-                        put (show difficulty)-}
 
 instance Show MetaData where 
-    show (MetaData sid name desc diff bi ci model emo ps loc pet ts sf se) =
-        "scenarioID: "      ++ show sid   ++ "  name: " ++ show name ++ "\n" ++ 
-        "description: "     ++ show desc  ++ "\n" ++ 
+    show (MetaData name desc diff char ps ts sf) =
+        "scenario name: "   ++ show name  ++ "\n" ++
+        "description: "     ++ show desc  ++ "\n" ++
         "difficulty: "      ++ show diff  ++ "\n" ++
-        "bannerImage: "     ++ show bi    ++ "\n" ++ 
-        "characterImage: "  ++ show ci    ++ "\n" ++ 
-        "model: "           ++ show model ++ "\n" ++ 
-        "startEmotion: "    ++ show emo   ++ "\n" ++
-        "parameters: "      ++ show ps    ++ "\n" ++ 
-        "location: "        ++ show loc   ++ "\n" ++
-        "pet: "             ++ show pet   ++ "\n" ++
-        "toggles: "         ++ show ts    ++ "\n" ++ 
-        "scoringFunction: " ++ show sf    ++ "\n" ++ 
-        "scoreExtremes: "   ++ show se    ++ "\n"  
+        "character: "       ++ show char  ++ "\n" ++
+        "parameters: "      ++ show ps    ++ "\n" ++
+        "toggles: "         ++ show ts    ++ "\n" ++
+        "scoringFunction: " ++ show sf    ++ "\n"
         
 type FeedbackForm = [FeedbackFormEntry]
 

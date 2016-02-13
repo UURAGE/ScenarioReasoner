@@ -41,7 +41,7 @@ parseScenario script = Scenario
         , scenarioFeedbackForm = parseFeedbackForm script
         , scenarioDialogue     = parseDialogue     script     
         } 
-		
+
 ----------------------------------------------------------------------------------------------------        
  
 -- Functions to be used internally
@@ -51,25 +51,14 @@ parseScenario script = Scenario
 
 parseMetaData :: Script -> MetaData
 parseMetaData script = MetaData    
-        { scenarioID              = parseScenarioID              script
-        , scenarioName            = parseScenarioName            script
+        { scenarioName            = parseScenarioName            script
         , scenarioDescription     = parseScenarioDescription     script
         , scenarioDifficulty      = parseScenarioDifficulty      script
-        , scenarioBannerImage     = parseScenarioBannerImage     script
-        , scenarioCharacterImage  = parseScenarioCharacterImage  script 
-        , scenarioModel           = parseScenarioModel           script
-        , scenarioStartEmotion    = parseScenarioStartEmotion script
+        , scenarioCharacter       = parseScenarioCharacter       script
         , scenarioParameters      = parseScenarioParameters      script
-        , scenarioLocation        = parseScenarioLocation        script
-        , scenarioPet             = parseScenarioPet             script
         , scenarioToggles         = parseScenarioToggles         script
         , scenarioScoringFunction = parseScenarioScoringFunction script
-        , scenarioScoreExtremes   = parseScenarioScoreExtremes   script
         }
-        
--- | Queries the given script for its ID.
-parseScenarioID :: Script -> ID
-parseScenarioID = getMetaDataString "id"
 
 -- | Queries the given script for its name.
 parseScenarioName :: Script -> Name
@@ -79,46 +68,18 @@ parseScenarioName = getMetaDataString "name"
 parseScenarioDescription :: Script -> String
 parseScenarioDescription = getMetaDataString "description"
 
-parseScenarioLocation :: Script -> Name
-parseScenarioLocation = getMetaDataString "location"
-
-parseScenarioPet :: Script -> Name
-parseScenarioPet = getMetaDataString "pet"
-
 -- | Queries the given script for its difficulty.
-parseScenarioDifficulty :: Script -> Difficulty
-parseScenarioDifficulty script = errorOnFail errorMsg (readDifficulty difficultyString)
+parseScenarioDifficulty :: Script -> Maybe Difficulty
+parseScenarioDifficulty script = readDifficulty difficultyString
  where 
     difficultyString = getMetaDataString "difficulty" script
-    errorMsg = "Could not read difficulty: " ++ difficultyString
-
--- | Queries the given script for its banner image.
-parseScenarioBannerImage :: Script -> Maybe ID
-parseScenarioBannerImage script = nothingOnFail (
-    findChild "metadata" script >>=
-    findChild "bannerImage"         >>=
-    findAttribute "extid")
-
--- | Queries the given script for its character image.
-parseScenarioCharacterImage :: Script -> Maybe ID
-parseScenarioCharacterImage script = nothingOnFail(
-    findChild "metadata" script >>=
-    findChild "characterImage"      >>=
-    findAttribute "extid")
 
 -- | Queries the given script for its model.
-parseScenarioModel :: Script -> Maybe ID
-parseScenarioModel script = nothingOnFail(
+parseScenarioCharacter :: Script -> Maybe ID
+parseScenarioCharacter script =
     findChild "metadata" script >>=
-    findChild "model"               >>=
-    findAttribute "extid")
-    
--- | Queries the given script for its start emotion.
-parseScenarioStartEmotion :: Script -> Maybe ID
-parseScenarioStartEmotion script = case startEmotion of
-	Nothing -> Nothing
-	Just element -> Just (getData element)
-  where startEmotion = nothingOnFail (findChild "metadata" script >>= findChild "startEmotion")
+    findChild "character"       >>=
+    findAttribute "id"
 
 -- | Queries the given script for its parameters.
 parseScenarioParameters :: Script -> [Parameter]
@@ -133,7 +94,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterDescription  = case nothingOnFail (findAttribute "parameterDescription" paramElem) of 
+        , parameterDescription  = case findAttribute "parameterDescription" paramElem of 
                                     Nothing    -> "" 
                                     Just descr -> descr
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
@@ -141,9 +102,9 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         }
 
--- | Queries the given script for its defined toggles using the globally defined toggleNames variable.
+-- | Queries the given script for its defined toggles TODO: Add support in editor
 parseScenarioToggles :: Script -> [Toggle]
-parseScenarioToggles script = map parseToggle toggleNames
+parseScenarioToggles script = map parseToggle [] -- this list should contain names of toggles
     where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
     
 -- | Queries the given script for its scoring function.
@@ -168,17 +129,6 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
--- | Queries the given script for its score extremes.
-parseScenarioScoreExtremes :: Script -> Maybe (Score, Score)
-parseScenarioScoreExtremes script = 
-    findChild "metadata" script >>=
-    findChild "scoreExtremes"       >>= 
-    \scoreExtremesElem -> do
-    minimumValue <- findAttribute "minimum" scoreExtremesElem
-    maximumValue <- findAttribute "maximum" scoreExtremesElem
-    return (read minimumValue :: Score, read maximumValue :: Score)
-        
-    
 -- MetaData Parser END -----------------------------------------------------------------------------
   
 -- FeedbackForm Parser -----------------------------------------------------------------------------
@@ -195,7 +145,7 @@ parseFeedbackFormEntry :: Element -> FeedbackFormEntry
 parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     { feedbackParamID    = paramID
     , feedbackConditions = map parseConditionedFeedback conditionedFeedbackElems
-    , feedbackDefault    = nothingOnFail maybeDefaultFeedback
+    , feedbackDefault    = maybeDefaultFeedback
     }
   where 
     paramID = getAttribute "id" feedbackParamElem
@@ -413,7 +363,7 @@ parseIntents statElem = map getData (findChild "intents" statElem >>= children)
 
 -- | Parses the feedback of the given statement element
 parseFeedback :: Element -> Maybe String
-parseFeedback statElem = nothingOnFail (liftM getData (findChild "feedback" statElem))
+parseFeedback statElem = liftM getData (findChild "feedback" statElem)
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 
@@ -478,4 +428,3 @@ getMetaDataString metaDataName script = getData dataElem
 -- | Parses a value attribute from an element
 getValue :: Element -> ParameterValue
 getValue el = read (getAttribute "value" el) :: ParameterValue
-

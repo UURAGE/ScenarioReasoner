@@ -6,7 +6,7 @@
 
 module Domain.Scenarios.Exercises where
 
-import Data.Map(insert, fromList, empty)
+import Data.Map(fromList, empty)
 import Data.Maybe(fromMaybe)
 import System.FilePath(takeBaseName)
 import System.FilePath.Find as F
@@ -33,18 +33,14 @@ readExercise path = (mkExercise sId strat difficulty initialState, path)
   where 
     sId = "scenarios" # newId (takeBaseName path)    
     Scenario metadata _ dialogue = readBinaryScenario path
-    strat      = makeStrategy (scenarioID metadata) dialogue
+    strat      = makeStrategy (scenarioName metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
-    initialEmotion = 
-		maybe empty (\emotion -> case emotion of 
-			"" -> empty
-			_  -> insert emotion 1 empty)
-		(scenarioStartEmotion metadata)
+    initialEmotion = empty
     initialState = ScenarioState (fromList (map processParameter parameters)) initialEmotion emptyStatementInfo
     
-mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
+mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = 
     makeExercise
        { exerciseId     = sId
@@ -57,5 +53,5 @@ mkExercise sId strat difficulty initState =
        , suitable       = true
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
-       , examples       = [(difficulty, initState)]
+       , examples       = [(fromMaybe Medium difficulty, initState)]
        }

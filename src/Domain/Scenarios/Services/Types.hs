@@ -16,42 +16,30 @@ import Domain.Scenarios.ScoringFunction(SubScore)
 
 -- ScenarioInfo types -----------------------------------------------------------------------------------------------------------
 
-data ScenarioInfo = ScenarioInfo ID
-                                 Name
+data ScenarioInfo = ScenarioInfo Name
                                  String           -- Description
-                                 Difficulty 
-                                 (Maybe ID)       -- BannerImage
-                                 (Maybe ID)       -- CharacterImage
-                                 (Maybe ID)       -- Model
+                                 (Maybe Difficulty)
+                                 (Maybe ID)       -- Character
                                  [ParameterInfo]
-                                 Name             -- Location
-                                 Name             -- Pet
                                  [Toggle]
                                  
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo = 
-    Iso ((<-!) pairify) (Pair (Tag "id"              tString)
-                        (Pair (Tag "name"            tString)
+    Iso ((<-!) pairify) (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
-                        (Pair                        tDifficulty    
-                        (Pair (Tag "bannerImage"    (tMaybe tString))
-                        (Pair (Tag "characterImage" (tMaybe tString))
-                        (Pair (Tag "model"          (tMaybe tString))
+                        (Pair                       (tMaybe tDifficulty)
+                        (Pair (Tag "character"      (tMaybe tString))
                         (Pair (Tag "parameters"     (tList tParameterInfo))
-                        (Pair (Tag "location"        tString)
-                        (Pair (Tag "pet"             tString)
-                              (Tag "toggles"        (tList tToggle))))))))))))                             
+                              (Tag "toggles"        (tList tToggle)))))))
       where 
-        pairify (ScenarioInfo sid name descr diff bi ci model ps loc pet ts) = 
-            (sid, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
+        pairify (ScenarioInfo name descr diff char ps ts) = 
+            (name, (descr, (diff, (char, (ps, ts)))))
                        
 
 instance Show ScenarioInfo where
-  show (ScenarioInfo sid name desc diff bi ci model ps lc pet ss) = 
-    show sid   ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
-    show diff  ++ "\n" ++ show bi    ++ "\n" ++ show ci   ++ "\n" ++ 
-    show model ++ "\n" ++ show ps    ++ "\n" ++ show lc   ++ "\n" ++ 
-    show pet   ++ "\n" ++ show ss    ++ "\n"   
+  show (ScenarioInfo name desc diff char ps ts) = 
+    show name  ++ "\n" ++ show desc ++ "\n" ++ show diff  ++ "\n" ++
+    show char  ++ "\n" ++ show ps   ++ "\n" ++ show ts    ++ "\n"
 
 data ParameterInfo = ParameterInfo ID
                                    Name
@@ -76,11 +64,9 @@ tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString)
 
 data ScoreResult = ScoreResult Score           -- Total score as a percentage
                                [SubScore]      -- All subscores for all scored parameters
-                               (Maybe [Score]) -- Extremes of the total score
 
 tScoreResult :: Type a ScoreResult
 tScoreResult =
     Iso ((<-!) pairify) (Pair (Tag "mainscore"          tInt)
-                        (Pair (Tag "subscores"         (tList (tTuple3 tString tString tInt)))
-                              (Tag "extremes"          (tMaybe (tList tInt)))))
-        where pairify (ScoreResult score subscores extremes) = (score, (subscores, extremes))        
+                              (Tag "subscores"         (tList (tTuple3 tString tString tInt))))
+        where pairify (ScoreResult score subscores) = (score, subscores)        
