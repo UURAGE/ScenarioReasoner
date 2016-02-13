@@ -239,7 +239,6 @@ parseStatement statElem =
     , statInfo           = parseStatementInfo        statElem
     , statPrecondition   = parseMaybePrecondition    statElem
     , statParamEffects   = parseParameterEffects     statElem
-    , statEmotionEffects = parseEmotionEffects       statElem
     , jumpPoint          = parseJumpPoint            statElem
     , statInits          = parseInits                statElem
     , nextStatIDs        = parseNextStatIDs          statElem
@@ -281,37 +280,26 @@ parseMaybePrecondition statElem =
 parseParameterEffects :: Element -> [Effect]
 parseParameterEffects statElem = map parseParameterEffect paramElems
   where paramElems = emptyOnFail (liftM children (findChild "parameterEffects" statElem))
-    
-parseEmotionEffects :: Element -> [Effect]
-parseEmotionEffects statElem = map parseEmotionEffect emotionElems
-  where emotionElems = emptyOnFail (liftM children (findChild "emotionEffects" statElem))
-  
+
 parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
             { effectIdref      = getAttribute "idref" effectElem
             , effectChangeType = parseChangeType      effectElem
             , effectValue      = getValue             effectElem
             }
-            
-parseEmotionEffect :: Element -> Effect
-parseEmotionEffect effectElem = Effect
-            { effectIdref      = getAttribute "emotionid" effectElem
-            , effectChangeType = parseChangeType      effectElem
-            , effectValue      = getValue             effectElem
-            }            
-            
+
 -- | Parses a string to a Changetype. Gives an exception on invalid input.
 parseChangeType :: Element -> ChangeType
 parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
   where changeTypeStr = getAttribute "changeType" effectElem
-      
-parseJumpPoint :: Element -> Bool    
+
+parseJumpPoint :: Element -> Bool
 parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
 
 parseInits :: Element -> Bool
 parseInits statElem = tryParseBool (findAttribute "inits" statElem)
 
-parseEnd :: Element -> Bool    
+parseEnd :: Element -> Bool
 parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
 
 -- | Takes a statement and returns the IDs of the statements following it. TODO!!!!

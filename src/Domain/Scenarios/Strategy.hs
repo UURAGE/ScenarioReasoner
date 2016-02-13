@@ -92,7 +92,7 @@ makeGuardedRule scenID statement = guardedRule
     ["scenarios", scenID, statType (statInfo statement), statID statement]          -- create an identifier for the rule
     (either id (intercalate " // " . map snd) (statText (statInfo statement)))      -- make a description for the rule
     (evaluateMaybeCondition (statPrecondition statement))                           -- check if precondition is fulfilled
-    (\state -> applyEffects state paramEffects emotionEffects (statInfo statement)) -- apply the effects of a statement to the state
+    (\state -> applyEffects state paramEffects (statInfo statement)) -- apply the effects of a statement to the state
   where
     -- Make a rule with an identifier and a description, 
     -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
@@ -101,7 +101,6 @@ makeGuardedRule scenID statement = guardedRule
         describe descr $ makeRule ident (\state -> do guard $ precond state; Just $ applyEffs state)
     
     paramEffects   = statParamEffects statement
-    emotionEffects = statEmotionEffects statement
  
 -- Sequence a rule with the atomic combinator (!~>) if the tree is not atomic, but the statement itself is, 
 -- so it can not be interleaved and apply the inits operator if the tree can succeed here,

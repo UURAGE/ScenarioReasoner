@@ -109,7 +109,6 @@ data Statement = Statement
         , statInfo          :: StatementInfo
         , statPrecondition  :: Maybe Condition
         , statParamEffects  :: [Effect]
-        , statEmotionEffects:: [Effect]
         , jumpPoint         :: Bool
         , statInits         :: Bool
         , nextStatIDs       :: [ID]
@@ -119,12 +118,11 @@ data Statement = Statement
 instance Binary Statement
 
 instance Show Statement where
-    show (Statement sid info pc pes ees jp ini nexts) = "\n  " ++
+    show (Statement sid info pc pes jp ini nexts) = "\n  " ++
         "statement: "     ++ show sid   ++ "\n\t" ++ 
         " info: "         ++ show info  ++ "\n\t" ++
         " precondition: " ++ show pc    ++ "\n\t" ++
         " paramEffects: " ++ show pes   ++ "\n\t" ++
-        " emotionEffects: " ++ show ees ++ "\n\t" ++
         " jumpPoint: "    ++ show jp    ++ "\n\t" ++
         " inits: "        ++ show ini   ++ "\n\t" ++
         " nextIDs: "      ++ show nexts ++ "\n\t" 
