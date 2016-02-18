@@ -208,11 +208,9 @@ parseDialogue script = map parseInterleaveLevel interleaveElems
     interleaveElems = findChildren "interleave" sequenceElem    
     
 parseInterleaveLevel :: Element -> InterleaveLevel
-parseInterleaveLevel interleaveElem = (read lvl :: Int, trees)
+parseInterleaveLevel interleaveElem = map parseTree treeElems
   where
-    lvl = getAttribute "level" interleaveElem
-    treeElems = findChildren "tree" interleaveElem 
-    trees = map parseTree treeElems
+    treeElems = findChildren "tree" interleaveElem
 
 parseTree :: Element -> Tree
 parseTree treeElem = 

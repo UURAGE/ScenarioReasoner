@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving, DeriveGeneric #-}
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
 -- at Utrecht University within the Software and Game project course (2013-2015)
@@ -51,9 +51,9 @@ data MetaData = MetaData
  deriving Generic
         
 instance Binary MetaData
-instance Binary Difficulty where
-   get = do () <- get; return Medium
-   put _ = put ()
+
+deriving instance Generic Difficulty
+instance Binary Difficulty
 
 instance Show MetaData where 
     show (MetaData name desc diff char ps ts sf) =
@@ -83,7 +83,7 @@ instance Show FeedbackFormEntry where
       
 type Dialogue = [InterleaveLevel]
 
-type InterleaveLevel = (Int, [Tree])
+type InterleaveLevel = [Tree]
 
 data Tree = Tree
         { treeID          :: ID
