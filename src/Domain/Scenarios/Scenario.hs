@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving, DeriveGeneric #-}
 ------------------------------------------------------------------------------------
 -- This program has been developed by students from the bachelor Computer Science
 -- at Utrecht University within the Software and Game project course (2013-2015)
@@ -58,19 +58,9 @@ data MetaData = MetaData
  deriving Generic
         
 instance Binary MetaData
-instance Binary Difficulty where
-   get = do () <- get; return Medium
-   put _ = put ()
-{- TODO
-instance Binary Difficulty where
-    get = do t <- get :: Get String
-             case t of
-                  "diff" -> do diff <- get
-                               return (errorOnFail "no difficulty parse"$ readDifficulty diff)
-                  _      -> error "no binary difficulty"
-                       
-    put difficulty = do put ("diff" :: String)
-                        put (show difficulty)-}
+
+deriving instance Generic Difficulty
+instance Binary Difficulty
 
 instance Show MetaData where 
     show (MetaData sid name desc diff bi ci model emo ps loc pet ts sf se) =
