@@ -96,7 +96,7 @@ instance Show FeedbackFormEntry where
       
 type Dialogue = [InterleaveLevel]
 
-type InterleaveLevel = (Int, [Tree])
+type InterleaveLevel = [Tree]
 
 data Tree = Tree
         { treeID          :: ID

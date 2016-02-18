@@ -6,7 +6,6 @@
 
 module Domain.Scenarios.Strategy where
 
-import GHC.Exts(sortWith)
 import Prelude hiding (sequence)
 
 import Data.List hiding (inits)
@@ -24,15 +23,13 @@ import Domain.Scenarios.Globals
 
 type StrategyMap = M.Map ID (Strategy ScenarioState)
 
--- Sorts the dialogue with the level of interleaving trees / subjects and makes a strategy for each level          
+-- Make a strategy for each interleave level of a dialogue
 makeStrategy :: ID -> Dialogue -> Strategy ScenarioState
-makeStrategy scenID dialogue = sequence (map (makeInterleaveStrategy scenID) sortedDialogue)
-  where
-    sortedDialogue = sortWith fst dialogue
-        
+makeStrategy scenID dialogue = sequence (map (makeInterleaveStrategy scenID) dialogue)
+
 -- For each tree (subject) in an interleave level make a strategy 
 makeInterleaveStrategy :: ID -> InterleaveLevel -> Strategy ScenarioState
-makeInterleaveStrategy scenID (_, trees) = interleave (map (makeTreeStrategy scenID) trees)
+makeInterleaveStrategy scenID trees = interleave (map (makeTreeStrategy scenID) trees)
     
 
 makeTreeStrategy :: ID -> Tree-> Strategy ScenarioState
