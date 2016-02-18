@@ -20,14 +20,6 @@ build-type:          Simple
 cabal-version:       >=1.10
 tested-with:         GHC == 7.4.1, GHC == 7.6.3, GHC == 7.8.3, GHC == 7.8.4
 
-flag network-uri
-  description: Get Network.URI from the network-uri package
-  default: True
-  
-flag logging
-  description: Enable support for logging interactions to a sqlite3 database
-  default: False
-  
 -------------------------------------------------------------------------------
 
 executable ScenarioReasoner.cgi
@@ -35,76 +27,25 @@ executable ScenarioReasoner.cgi
   ghc-options:        -Wall -O2 -fno-warn-orphans 
   hs-source-dirs:      src 
   default-language:    Haskell2010
-  
+
   build-depends:       base >= 4.2 && < 5,
-                       QuickCheck >= 2.4.1 && < 2.7,
-                       Diff,
-                       exceptions,
-                       mtl == 2.1.*,
-                       multipart,
-                       containers,      
-                       bytestring,      
-                       xhtml,           
-                       old-locale,             
-                       old-time,               
-                       parsec,                 
-                       wl-pprint,              
-                       uniplate,               
-                       random,                 
-                       directory,              
-                       filepath,               
-                       time,       
-                       binary, 
-                       array, 
-                       filemanip
+                       ideas,
+                       containers,
+                       filepath,
+                       binary,
+                       filemanip,
+                       cgi
                        
-  if flag(network-uri)
-    build-depends: network-uri >= 2.6, network >= 2.6
-  else
-    build-depends: network < 2.6
-    
-  if flag(logging) 
-  {
-      cpp-options:     -DDB
-      build-depends:   HDBC, HDBC-sqlite3
-  }
-  
 executable ScenarioParser.cgi
   Main-is:             ScenarioParser.hs
   ghc-options:        -Wall -O2 -fno-warn-orphans
   hs-source-dirs:      src 
   default-language:    Haskell2010
-  
-  build-depends:       base >= 4.2 && < 5, 
-                       QuickCheck >= 2.4.1 && < 2.7,
-                       Diff,
-                       exceptions,             
-                       mtl == 2.1.*,                   
-                       multipart,      
-                       containers,      
-                       bytestring,      
-                       xhtml,           
-                       old-locale,             
-                       old-time,               
-                       parsec,                 
-                       wl-pprint,              
-                       uniplate,               
-                       random,                 
-                       directory,              
-                       filepath,               
-                       time,       
-                       binary, 
-                       array, 
-                       filemanip
-                       
-  if flag(network-uri)
-    build-depends: network-uri >= 2.6, network >= 2.6
-  else
-    build-depends: network < 2.6
-    
-  if flag(logging) 
-  {
-      cpp-options:     -DDB
-      build-depends:   HDBC, HDBC-sqlite3
-  }
 
+  build-depends:       base >= 4.2 && < 5,
+                       ideas,
+                       containers,
+                       filepath,
+                       binary,
+                       filemanip,
+                       cgi
