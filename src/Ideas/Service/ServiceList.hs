@@ -67,7 +67,7 @@ derivationS = deprecate $ makeService "basic.derivation"
    serviceFunction solutionS
 
 allfirstsS :: Service
-allfirstsS = makeService "basic._allfirsts"
+allfirstsS = makeService "basic.allfirsts"
    "Returns all next steps that are suggested by the strategy. See the \
    \onefirst service to get only one suggestion. For each suggestion, a new \
    \state, the rule used, and the location where the rule was applied are \
