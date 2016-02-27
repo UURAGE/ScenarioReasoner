@@ -91,7 +91,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterDescription  = fromMaybe "" (findAttribute "parameterDescription" paramElem)
+        , parameterDescription  = fromMaybe "" (findAttribute "description" paramElem)
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
@@ -131,7 +131,7 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
 parseFeedbackForm :: Script -> FeedbackForm
 parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
   where
-    feedbackFormElem = getChild "feedbackform" script
+    feedbackFormElem = getChild "feedbackForm" script
     feedbackParamElems = children feedbackFormElem
 
 -- | Evaluates the feedbackform entry using the given parameter and the score on the parameter
@@ -143,7 +143,7 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     , feedbackDefault    = maybeDefaultFeedback
     }
   where
-    paramID = getAttribute "id" feedbackParamElem
+    paramID = getAttribute "idref" feedbackParamElem
     conditionedFeedbackElems = filter ((/= "default") . name) (children feedbackParamElem)
     maybeDefaultFeedback = getData <$> findChild "default" feedbackParamElem
 
