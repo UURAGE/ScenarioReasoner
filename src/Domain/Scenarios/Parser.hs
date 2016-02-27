@@ -353,8 +353,8 @@ parseChangeType :: Element -> ChangeType
 parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
   where changeTypeStr = getAttribute "changeType" effectElem
       
-parseJumpPoint :: Element -> Bool    
-parseJumpPoint statElem = parseBool (getAttribute "jumpPoint" statElem)
+parseJumpPoint :: Element -> Bool
+parseJumpPoint statElem = tryParseBool (findAttribute "jumpPoint" statElem)
 
 parseInits :: Element -> Bool
 parseInits statElem = tryParseBool (findAttribute "inits" statElem)
