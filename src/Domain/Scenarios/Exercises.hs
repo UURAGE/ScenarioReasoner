@@ -38,7 +38,7 @@ readExercise path = (mkExercise sId strat difficulty initialState, path)
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
     initialState = ScenarioState (fromList (map processParameter parameters)) emptyStatementInfo
-    
+
 mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = 
     makeExercise

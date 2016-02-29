@@ -28,7 +28,7 @@ data Scenario = Scenario
         , scenarioFeedbackForm :: FeedbackForm
         , scenarioDialogue     :: Dialogue  
         }
-    deriving (Show,Generic )
+    deriving (Show, Read, Generic)
     
 instance Binary Scenario
 
@@ -48,23 +48,13 @@ data MetaData = MetaData
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         }      
- deriving Generic
+ deriving (Show, Read, Generic)
         
 instance Binary MetaData
 
 deriving instance Generic Difficulty
 instance Binary Difficulty
 
-instance Show MetaData where 
-    show (MetaData name desc diff char ps ts sf) =
-        "scenario name: "   ++ show name  ++ "\n" ++
-        "description: "     ++ show desc  ++ "\n" ++
-        "difficulty: "      ++ show diff  ++ "\n" ++
-        "character: "       ++ show char  ++ "\n" ++
-        "parameters: "      ++ show ps    ++ "\n" ++
-        "toggles: "         ++ show ts    ++ "\n" ++
-        "scoringFunction: " ++ show sf    ++ "\n"
-        
 type FeedbackForm = [FeedbackFormEntry]
 
 data FeedbackFormEntry = FeedbackFormEntry
@@ -72,15 +62,10 @@ data FeedbackFormEntry = FeedbackFormEntry
     , feedbackConditions :: [(Condition, String)]
     , feedbackDefault    :: Maybe String
     }
- deriving Generic
+ deriving (Show, Read, Generic)
 
 instance Binary FeedbackFormEntry
 
-
-instance Show FeedbackFormEntry where
-    show (FeedbackFormEntry pid cond def) = show pid ++ "\t" ++ show cond ++ "\t" ++ show def ++ "\n"
-
-      
 type Dialogue = [InterleaveLevel]
 
 type InterleaveLevel = [Tree]
@@ -92,18 +77,10 @@ data Tree = Tree
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
         }       
- deriving Generic
+ deriving (Show, Read, Generic)
 
 instance Binary Tree
 
-instance Show Tree where
-    show (Tree tid start atom opt stats) = "\n" ++
-        "tree: "        ++ show tid   ++ 
-        " start: "      ++ show start ++
-        " atomic: "     ++ show atom  ++
-        " optional: "   ++ show opt   ++
-        " statements: " ++ show stats ++ "\n"      
-        
 data Statement = Statement
         { statID            :: ID
         , statInfo          :: StatementInfo
@@ -113,20 +90,10 @@ data Statement = Statement
         , statInits         :: Bool
         , nextStatIDs       :: [ID]
         }
- deriving Generic
+ deriving (Show, Read, Generic)
 
 instance Binary Statement
 
-instance Show Statement where
-    show (Statement sid info pc pes jp ini nexts) = "\n  " ++
-        "statement: "     ++ show sid   ++ "\n\t" ++ 
-        " info: "         ++ show info  ++ "\n\t" ++
-        " precondition: " ++ show pc    ++ "\n\t" ++
-        " paramEffects: " ++ show pes   ++ "\n\t" ++
-        " jumpPoint: "    ++ show jp    ++ "\n\t" ++
-        " inits: "        ++ show ini   ++ "\n\t" ++
-        " nextIDs: "      ++ show nexts ++ "\n\t" 
-        
 instance HasId Statement where
     getId statement = either error id $ do
                 let statementID = statID statement

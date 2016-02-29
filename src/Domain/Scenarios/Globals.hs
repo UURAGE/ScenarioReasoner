@@ -50,13 +50,9 @@ data Toggle = Toggle Name Bool
  deriving (Show, Read, Generic)
     
 instance Binary Toggle
-    
-    {-
-instance Show Toggle where
-    show (Toggle name boolean) = show name ++ ": " ++ show boolean ++ "\n"
-    -}
+
 --------------------------------------------------------------------------------------------------------------------------
-    
+
 -- Specifies a parameter that can be an emotion or a goal of a conversation like "inleven"
 data Parameter = Parameter
     { parameterId           :: ID
@@ -70,13 +66,6 @@ data Parameter = Parameter
  deriving (Show, Read,Generic)
 
 instance Binary Parameter
-
-{-
-instance Show Parameter where
-    show (Parameter id name initvalue descr scored max min) = 
-        show id    ++ "\t" ++ show name ++ "\t" ++ show initvalue ++ "\t" ++ 
-        show descr ++ "\t" ++ show max  ++ "\t" ++ show min       ++ "\t" ++ 
-        show scored ++ "\n"     -}
 
 -- | Extra functions for getting a type out of Monad to catch the fail case, 
 -- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface.

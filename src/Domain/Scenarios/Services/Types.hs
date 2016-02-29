@@ -32,34 +32,24 @@ tScenarioInfo =
                         (Pair (Tag "parameters"     (tList tParameterInfo))
                               (Tag "toggles"        (tList tToggle)))))))
       where 
-        pairify (ScenarioInfo name descr diff char ps ts) = 
+        pairify (ScenarioInfo name descr diff char ps ts) =
             (name, (descr, (diff, (char, (ps, ts)))))
-                       
-
-instance Show ScenarioInfo where
-  show (ScenarioInfo name desc diff char ps ts) = 
-    show name  ++ "\n" ++ show desc ++ "\n" ++ show diff  ++ "\n" ++
-    show char  ++ "\n" ++ show ps   ++ "\n" ++ show ts    ++ "\n"
 
 data ParameterInfo = ParameterInfo ID
                                    Name
                                    String -- Description
 
-
-instance Show ParameterInfo where
-  show (ParameterInfo pid name descr) = show pid ++ ", " ++ show name ++ ", " ++ show descr
-
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
-                                           (Tag "description"   tString)))                                    
+                                           (Tag "description"   tString)))
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
-        
+
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
                                     (Tag "bool" tBool)) 
   where pairify (Toggle name boolean) = (name, boolean)
-    
+
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 
 data ScoreResult = ScoreResult Score           -- Total score as a percentage
@@ -69,4 +59,4 @@ tScoreResult :: Type a ScoreResult
 tScoreResult =
     Iso ((<-!) pairify) (Pair (Tag "mainscore"          tInt)
                               (Tag "subscores"         (tList (tTuple3 tString tString tInt))))
-        where pairify (ScoreResult score subscores) = (score, subscores)        
+        where pairify (ScoreResult score subscores) = (score, subscores)
