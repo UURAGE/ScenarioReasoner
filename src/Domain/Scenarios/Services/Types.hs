@@ -40,38 +40,26 @@ tScenarioInfo =
                         (Pair (Tag "parameters"     (tList tParameterInfo))
                         (Pair (Tag "location"        tString)
                         (Pair (Tag "pet"             tString)
-                              (Tag "toggles"        (tList tToggle))))))))))))                             
+                              (Tag "toggles"        (tList tToggle))))))))))))
       where 
         pairify (ScenarioInfo sid name descr diff bi ci model ps loc pet ts) = 
             (sid, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
-                       
-
-instance Show ScenarioInfo where
-  show (ScenarioInfo sid name desc diff bi ci model ps lc pet ss) = 
-    show sid   ++ "\n" ++ show name  ++ "\n" ++ show desc ++ "\n" ++ 
-    show diff  ++ "\n" ++ show bi    ++ "\n" ++ show ci   ++ "\n" ++ 
-    show model ++ "\n" ++ show ps    ++ "\n" ++ show lc   ++ "\n" ++ 
-    show pet   ++ "\n" ++ show ss    ++ "\n"   
 
 data ParameterInfo = ParameterInfo ID
                                    Name
                                    String -- Description
 
-
-instance Show ParameterInfo where
-  show (ParameterInfo pid name descr) = show pid ++ ", " ++ show name ++ ", " ++ show descr
-
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
-                                           (Tag "description"   tString)))                                    
+                                           (Tag "description"   tString)))
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
-        
+
 tToggle :: Type a Toggle
 tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
                                     (Tag "bool" tBool)) 
   where pairify (Toggle name boolean) = (name, boolean)
-    
+
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 
 data ScoreResult = ScoreResult Score           -- Total score as a percentage
@@ -83,4 +71,4 @@ tScoreResult =
     Iso ((<-!) pairify) (Pair (Tag "mainscore"          tInt)
                         (Pair (Tag "subscores"         (tList (tTuple3 tString tString tInt)))
                               (Tag "extremes"          (tMaybe (tList tInt)))))
-        where pairify (ScoreResult score subscores extremes) = (score, (subscores, extremes))        
+        where pairify (ScoreResult score subscores extremes) = (score, (subscores, extremes))

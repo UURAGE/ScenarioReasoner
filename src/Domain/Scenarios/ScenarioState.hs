@@ -23,16 +23,12 @@ import GHC.Generics
 import Domain.Scenarios.Globals
 
 -- | ScenarioState
--- The state is affected by every step (rule / statement) that has an effect in a strategy.
+-- The state is affected by every step (rule / statement) that has an effect in a strategy
 data ScenarioState = ScenarioState ParameterMap EmotionMap StatementInfo 
     deriving (Show, Eq, Typeable, Read, Generic)
 
 instance Binary ScenarioState
 
-{-
-instance Show ScenarioState where
-    show (ScenarioState pmap emap end) = show pmap ++ show emap ++ show end  -}
-  
 type ParameterMap = M.Map ID ParameterValue
 type EmotionMap = M.Map Emotion ParameterValue
 
@@ -45,13 +41,10 @@ data Effect = Effect
  deriving (Show, Read, Generic)
 
 instance Binary Effect
-{-
-instance Show Effect where
-    show (Effect id ct value) = "\n\t\t" ++ show id ++ show ct ++ show value -}
-    
--- This datatype specifies the type of change to be made to the parameter, 
+
+-- This datatype specifies the type of change to be made to the parameter,
 -- Set for setting the parameter to a specific value
--- Delta for adding / subtracting the new value to / from the existing value     
+-- Delta for adding / subtracting the new value to / from the existing value
 data ChangeType = Set | Delta deriving (Show, Eq, Read, Generic)
 
 instance Binary ChangeType
@@ -66,9 +59,10 @@ applyEffect effect stateMap = case effectChangeType effect of
         Set   -> M.insert idref value stateMap
         Delta -> M.insert idref (M.findWithDefault 0 idref stateMap + value) stateMap
     where idref = effectIdref effect
-          value = effectValue effect          
+          value = effectValue effect
 
--- ScenarioState to JSON for sending and receiving a Map datatype in JSON ---------------------------
+
+-- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 
 instance InJSON ScenarioState where
     toJSON (ScenarioState params emos stat) = Object [parametersToJSON, emotionsToJSON, statInfoToJSON]
@@ -168,5 +162,3 @@ instance IsTerm Bool where
     fromTerm boolTerm = do
         bool <- fromTerm boolTerm
         return (fromShowString bool == "true")
-   
-----------------------------------------------------------------------------------------------------

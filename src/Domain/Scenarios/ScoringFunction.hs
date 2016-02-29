@@ -24,16 +24,9 @@ data ScoringFunction = Constant Score
  deriving (Show, Read,Generic)
  
 instance Binary ScoringFunction
-      
-{-
-instance Show ScoringFunction where
-    show (Constant score)          = "Constant: "  ++ show score  ++ "\n"
-    show (Sum sflist)              = "Sum: "       ++ show sflist ++ "\n"
-    show (Scale scalar sf)         = "Scale: "     ++ show scalar ++ "\n\t" ++ show sf ++ "\n"
-    show (ParamRef id)             = "ParamID: "   ++ show id     ++ "\n" -}
-    
+
 type SubScore = (ID, Name, Score) -- Score as a percentage
-                     
+
 -- | Calculates the score based on the given state with a scoring function
 calculateScore :: [SubScore] -> ScoringFunction -> ScenarioState -> Score
 calculateScore subScores mainScoringFunction _ =
