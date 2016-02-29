@@ -31,8 +31,8 @@ feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm
         castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
     scenario = findScript "feedbackform" fs (exercise fstate)
     
--- If an entry contains conditioned feedback then it checks if it is fullfilled 
--- and returns the corresponding feedback otherwise it returns the default feedback or an empty string.
+-- If an entry contains conditioned feedback then it checks if it is fullfilled
+-- and returns the corresponding feedback otherwise it returns the default feedback or an empty string
 getFeedbackFormResult :: ScenarioState -> FeedbackFormEntry -> (ID, String)
 getFeedbackFormResult state (FeedbackFormEntry paramID fbConds defaultFeedback) =
     case evalFBConds fbConds of
@@ -76,10 +76,7 @@ getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
         
                                             
 -- Score Service --------------------------------------------------------------------------------------------
-      
--- Type-customized result structure
--- Score extremes are returned in a list, 
--- because EncoderJSON merges a tuple into the main structure of the result
+
 score :: [FilePath] -> State a -> ScoreResult
 score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
     where metaData = scenarioMetaData (findScript "score" fs (exercise fstate))
@@ -90,7 +87,6 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
           mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax]) 
             (scenarioScoreExtremes metaData) :: Maybe [Score]          
           parameters = scenarioParameters metaData
-
 
 -- | Finds the script of the exercise in the given filepaths list
 findScript :: String -> [FilePath] -> Exercise a -> Scenario

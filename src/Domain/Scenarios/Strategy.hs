@@ -68,7 +68,7 @@ makeStatementStrategy strategyMap tree scenID statementID =
             rule = makeGuardedRule scenID statement
     
 -- Folds over all the next statements, makes strategies for them
--- and then combines them with the choice operator.
+-- and then combines them with the choice operator
 makeAlternativesStrategy :: StrategyMap -> Tree -> ID -> [ID] -> (Strategy ScenarioState, StrategyMap) 
 makeAlternativesStrategy _           _    _          []                  = 
     error "failed to make alternative strategy"  
@@ -83,7 +83,7 @@ foldAlternatives :: Tree -> ID -> (Strategy ScenarioState, StrategyMap) -> ID ->
 foldAlternatives tree scenID (stratSoFar, stratMap) statementID = (stratSoFar .|. nextStrategy, newStrategyMap)
   where  (nextStrategy, newStrategyMap) = makeStatementStrategy stratMap tree scenID statementID 
       
--- Make a rule using all the specific properties for a scenario 
+-- Make a rule using all the specific properties for a scenario
 makeGuardedRule :: ID -> Statement -> Rule ScenarioState
 makeGuardedRule scenID statement = guardedRule
     ["scenarios", scenID, statType (statInfo statement), statID statement]          -- create an identifier for the rule
@@ -100,9 +100,9 @@ makeGuardedRule scenID statement = guardedRule
     paramEffects   = statParamEffects statement
     emotionEffects = statEmotionEffects statement
  
--- Sequence a rule with the atomic combinator (!~>) if the tree is not atomic, but the statement itself is, 
+-- Sequence a rule with the atomic combinator (!~>) if the tree is not atomic, but the statement itself is,
 -- so it can not be interleaved and apply the inits operator if the tree can succeed here,
--- so the strategy does not have to be finished.
+-- so the strategy does not have to be finished
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement tree rule nextStrategy 
     | jumpPoint statement && statInits statement   = rule .*. inits nextStrategy

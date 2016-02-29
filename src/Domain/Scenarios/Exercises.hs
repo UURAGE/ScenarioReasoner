@@ -21,12 +21,12 @@ import Domain.Scenarios.ScenarioState
 exercises :: IO [(Exercise ScenarioState, FilePath)]
 exercises = 
     F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise
-  where root = "bins" :: FilePath-- : Bin directory
+  where root = "bins" :: FilePath
   
 testingExercises :: IO [(Exercise ScenarioState, FilePath)]
 testingExercises = 
     F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise 
-  where root = "test_bins" :: FilePath -- Test bin directory
+  where root = "test_bins" :: FilePath
 
 readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
 readExercise path = (mkExercise sId strat difficulty initialState, path)

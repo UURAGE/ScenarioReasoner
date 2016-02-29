@@ -24,7 +24,7 @@ import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy
-data ScenarioState = ScenarioState ParameterMap EmotionMap StatementInfo 
+data ScenarioState = ScenarioState ParameterMap EmotionMap StatementInfo
     deriving (Show, Eq, Typeable, Read, Generic)
 
 instance Binary ScenarioState

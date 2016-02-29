@@ -109,4 +109,3 @@ instance HasId Statement where
                 let statementDescription = either id (intercalate " // " . map snd) statementText
                 return $ describe statementDescription $ newId statementID
     changeId _ _ = error "The ID of a Statement is determined externally."  
-    

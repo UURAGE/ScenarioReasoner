@@ -53,7 +53,7 @@ calculateScore subScores mainScoringFunction _ =
     trd3 :: (a, b, c) -> c 
     trd3 (_, _, z) = z
 
--- | Calculates the values of the scored parameters given a state.
+-- | Calculates the values of the scored parameters given a state
 calculateSubScores :: [Parameter] -> ScenarioState -> [SubScore]
 calculateSubScores parameters (ScenarioState paramMap _ _) = 
     map (\param -> ( parameterId     param
@@ -64,7 +64,7 @@ calculateSubScores parameters (ScenarioState paramMap _ _) =
   where 
     getParamValue param = M.findWithDefault 0 (parameterId param) paramMap
   
--- Clamps the values between 0 and 100 (%)
+-- Clamps the values between 0 and 100%
 clamp :: ParameterValue -> Maybe ParameterValue -> Maybe ParameterValue -> Score
 clamp value (Just maxValue) (Just minValue) | shiftedValue > shiftedMax = 100
                                             | shiftedValue < shiftedMin = 0
@@ -81,7 +81,7 @@ shift :: ParameterValue -> ParameterValue -> ParameterValue
 shift value minValue | minValue < 0 = value + (0 - minValue)
                      | otherwise    = value
 
--- Divides two integers and returns the result. If dividing by zero (weight) then return 0 
+-- Divides two integers and returns the result. If dividing by zero (weight) then return 0
 divInt :: Int -> Int -> Double
 divInt _         0           = 0
 divInt numerator denominator = fromIntegral numerator / fromIntegral denominator
