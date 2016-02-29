@@ -18,9 +18,7 @@ customServices :: [FilePath] -> [Service]
 customServices fs = [allfirstsS] ++ map ($ fs)
     [feedbackformS, scenariolistS, scenarioinfoS, scoreS]
    
--- Adapted allfirsts 
--- for more info see the wiki: 
--- http://science-vs75.science.uu.nl/codewiki/doku.php?id=code:haskellcode:services 
+-- Adapted allfirsts
 allfirstsS :: Service
 allfirstsS = makeService "scenarios.allfirsts"
    "Returns all next steps that are suggested by the strategy. See the \
@@ -29,7 +27,7 @@ allfirstsS = makeService "scenarios.allfirsts"
    \returned." $
    allfirsts ::: tState .-> tError (tList (tPair tStepInfo tState))
 
--- Service that gives back the computed feedbackform defined in the xml   
+-- Service that gives back the computed feedbackform defined in the xml
 feedbackformS :: [FilePath] -> Service
 feedbackformS fs = makeService "scenarios.feedbackform"
     "Gives detailed feedback for every parameter." $
@@ -53,6 +51,3 @@ scoreS :: [FilePath] -> Service
 scoreS fs = makeService "scenarios.score"
     "Calculates the score of a given state." $
     score fs ::: tState .-> tScoreResult
-    
-
-

@@ -13,9 +13,9 @@ import Ideas.Common.Library
 import Ideas.Service.BasicServices (StepInfo)
 import Ideas.Service.State
 
--- This adaptation of allfirsts in Ideas.Service.BasicServices 
--- merges duplicate rules with different states together, 
--- when the strategy is not left factorised.
+-- This adaptation of allfirsts in Ideas.Service.BasicServices
+-- merges duplicate rules with different states together,
+-- when the strategy is not left factorised
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
@@ -24,8 +24,8 @@ allfirsts state
   where 
     make ((r, ctx, env), st) =
       let pfx      = statePrefix st
-          newState = (makeState (exercise state) pfx $ ctx) 
-                       { stateSession   = stateSession state   -- we clean the env because we don't want to send lots of internal info to the webapp
+          newState = (makeState (exercise state) pfx $ ctx)
+                       { stateSession   = stateSession state
                        , stateUser      = stateUser state
                        , stateStartTerm = stateStartTerm state }
       in ((r, location ctx, env), newState)
@@ -49,4 +49,3 @@ allfirsts state
     safeHead :: [a] -> Maybe a
     safeHead (x:_) = Just x
     safeHead []    = Nothing
-    

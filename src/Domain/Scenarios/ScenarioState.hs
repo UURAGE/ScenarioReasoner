@@ -23,7 +23,7 @@ import GHC.Generics
 import Domain.Scenarios.Globals
 
 -- | ScenarioState
--- The state is affected by every step (rule / statement) that has an effect in a strategy.
+-- The state is affected by every step (rule / statement) that has an effect in a strategy
 data ScenarioState = ScenarioState ParameterMap StatementInfo
     deriving (Show, Eq, Typeable, Read, Generic)
 

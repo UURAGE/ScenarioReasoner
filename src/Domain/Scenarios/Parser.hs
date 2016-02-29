@@ -28,13 +28,13 @@ type Script = Element
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
    
--- | Parses the XML script at "filepath" to a Script. lazy.
+-- | Parses the XML at the path to a Script
 parseScript :: FilePath -> IO Script
 parseScript filepath = withBinaryFile filepath ReadMode 
         (hGetContents >=> (either fail return . parseXML))
         -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
 
--- | Parses a script from a script element
+-- | Parses a scenario from a script element
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario 
         { scenarioMetaData     = parseMetaData     script
@@ -60,35 +60,35 @@ parseMetaData script = MetaData
         , scenarioScoringFunction = parseScenarioScoringFunction script
         }
 
--- | Queries the given script for its name.
+-- | Queries the given script for its name
 parseScenarioName :: Script -> Name
 parseScenarioName = getMetaDataString "name"
 
--- | Queries the given script for its description.
+-- | Queries the given script for its description
 parseScenarioDescription :: Script -> String
 parseScenarioDescription = getMetaDataString "description"
 
--- | Queries the given script for its difficulty.
+-- | Queries the given script for its difficulty
 parseScenarioDifficulty :: Script -> Maybe Difficulty
 parseScenarioDifficulty script = readDifficulty difficultyString
  where 
     difficultyString = getMetaDataString "difficulty" script
 
--- | Queries the given script for its model.
+-- | Queries the given script for its character
 parseScenarioCharacter :: Script -> Maybe ID
 parseScenarioCharacter script =
     findChild "metadata" script >>=
     findChild "character"       >>=
     findAttribute "id"
 
--- | Queries the given script for its parameters.
+-- | Queries the given script for its parameters
 parseScenarioParameters :: Script -> [Parameter]
 parseScenarioParameters script = map parseParameter (children parameterElem)
   where
     metaDataElem  = getChild "metadata" script
     parameterElem = getChild "parameters" metaDataElem
     
-    -- | Parses a parameter Element inside the parameters inside the metadata of the script.
+    -- | Parses a parameter Element inside the parameters inside the metadata of the script
     parseParameter :: Element -> Parameter
     parseParameter paramElem = Parameter
         { parameterId           = getAttribute "id" paramElem
@@ -102,12 +102,12 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         }
 
--- | Queries the given script for its defined toggles TODO: Add support in editor
+-- | Queries the given script for its defined toggles (unavailable)
 parseScenarioToggles :: Script -> [Toggle]
-parseScenarioToggles script = map parseToggle [] -- this list should contain names of toggles
+parseScenarioToggles script = map parseToggle []
     where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
     
--- | Queries the given script for its scoring function.
+-- | Queries the given script for its scoring function
 parseScenarioScoringFunction :: Script -> ScoringFunction
 parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
   where 
@@ -116,7 +116,7 @@ parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild
     scoringFunctionChild [sf] = sf
     scoringFunctionChild _    = error "could not parse scoringFunction" 
     
--- | Parses a scoring function element.
+-- | Parses a scoring function element
 parseScoringFunction :: Element -> ScoringFunction
 parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     "constant"           -> Constant            parseConstant
@@ -139,8 +139,8 @@ parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
     feedbackFormElem = getChild "feedbackform" script
     feedbackParamElems = children feedbackFormElem
 
--- Evaluates the feedbackform entry using the given parameter and the score on the parameter 
--- and then gives the appriopriate feedback   
+-- | Evaluates the feedbackform entry using the given parameter and the score on the parameter 
+-- | and then gives the appropriate feedback
 parseFeedbackFormEntry :: Element -> FeedbackFormEntry
 parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
     { feedbackParamID    = paramID
@@ -253,11 +253,11 @@ parseStatementInfo statElem =
     ,   statEnd         = parseEnd      statElem
     }
 
--- | Takes a statement and returns its type.
+-- | Takes a statement and returns its type
 parseType :: Element -> StatementType
 parseType statElem = takeWhile isLower (name statElem)
 
--- | Takes a statement and returns its text.
+-- | Takes a statement and returns its text
 parseText :: Element -> StatementText
 parseText statElem = case name statElem of
         "conversation" -> Right (map toConversationText (filterText conversationElems))
@@ -267,14 +267,13 @@ parseText statElem = case name statElem of
     conversationElems = children statElem
     filterText = filter (isSuffixOf "Text" . name)
 
--- | Takes a statement element and returns its precondition, if it has one.
--- | Uses the monadic findChild for Maybe Monad
+-- | Takes a statement element and returns its precondition, if it has one
 parseMaybePrecondition :: Element -> Maybe Condition
 parseMaybePrecondition statElem =
     fmap (parseCondition . getExactlyOneChild) conditionElem
       where conditionElem = findChild "preconditions" statElem
 
--- | Takes a statement element and returns its effects.
+-- | Takes a statement element and returns its effects
 parseParameterEffects :: Element -> [Effect]
 parseParameterEffects statElem = map parseParameterEffect paramElems
   where paramElems = emptyOnFail (liftM children (findChild "parameterEffects" statElem))
@@ -286,7 +285,7 @@ parseParameterEffect effectElem = Effect
             , effectValue      = getValue             effectElem
             }
 
--- | Parses a string to a Changetype. Gives an exception on invalid input.
+-- | Parses an element to a Changetype
 parseChangeType :: Element -> ChangeType
 parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
   where changeTypeStr = getAttribute "changeType" effectElem
@@ -300,7 +299,7 @@ parseInits statElem = tryParseBool (findAttribute "inits" statElem)
 parseEnd :: Element -> Bool
 parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
 
--- | Takes a statement and returns the IDs of the statements following it. TODO!!!!
+-- | Takes a statement and returns the IDs of the statements following it
 parseNextStatIDs :: Element -> [ID]
 parseNextStatIDs element = errorOnFail errorMsg nextIDs
   where 
@@ -317,13 +316,13 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
             getNextComputerStatements =
                 case findChild "nextComputerStatements" element of
                       Just nextElem -> return $ children nextElem
-                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element         
+                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element
 
 -- | Parses media of the statement element
 parseMedia :: Element -> MediaInfo
 parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
   where 
-    -- | Takes a statement and returns its visual media.
+    -- | Takes a statement and returns its visual media
     parseMediaVisuals :: [(Name, ID)]
     parseMediaVisuals = map parseMediaVisual visualElems
       where 
@@ -335,7 +334,7 @@ parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
         parseMediaVisual :: Element -> (Name, ID)
         parseMediaVisual e = (name e, getAttribute "extid" e)
 
-    -- | Takes a statement and returns its audio.
+    -- | Takes a statement and returns its audio
     parseMediaAudios :: [ID]
     parseMediaAudios = map (getAttribute "extid") audioElems
       where audioElems =
@@ -343,7 +342,7 @@ parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
                 findChild "audios"          >>= 
                 children 
             
--- | Takes a statement and returns its intents.
+-- | Takes a statement and returns its intents
 parseIntents :: Element -> [String]
 parseIntents statElem = map getData (findChild "intents" statElem >>= children)
 
@@ -353,11 +352,11 @@ parseFeedback statElem = liftM getData (findChild "feedback" statElem)
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 
--- | Parses a Bool.
+-- | Parses a Bool
 parseBool :: String -> Bool
 parseBool boolStr = read (applyToFirst toUpper boolStr) :: Bool
 
--- | Tries to parse bool, False on Nothing
+-- | Tries to parse bool from a string
 tryParseBool :: Maybe String -> Bool
 tryParseBool (Just boolStr) = parseBool boolStr
 tryParseBool _              = False
@@ -383,14 +382,14 @@ parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "t
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------
 
--- | Returns the child element with the given name out of the Monad defined in the framework 
+-- | Returns the child element with the given name out of the Monad defined in the framework
 getChild :: Name -> Element -> Element 
 getChild elemName element = errorOnFail errorMsg mChild
   where 
     errorMsg = "Failed to find child: " ++ elemName
     mChild = findChild elemName element
 
--- | Finds an attribute and gets it out of the Monad defined in the framework 
+-- | Finds an attribute and gets it out of the Monad defined in the framework
 getAttribute :: String -> Element -> String
 getAttribute attributeName element = errorOnFail errorMsg mAttribute
   where 
@@ -404,7 +403,7 @@ getExactlyOneChild element = case children element of
     _       -> error "multiple children found"
     
 -- | Queries the given script for basic information. Which information being queried is specified
---  in the "metaDataName". This could be the name of the script, the difficulty, location, etc.
+-- | in the "metaDataName". This could be the name of the script, the difficulty etc.
 getMetaDataString :: Name -> Script -> String
 getMetaDataString metaDataName script = getData dataElem
   where 
