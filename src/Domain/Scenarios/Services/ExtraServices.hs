@@ -82,7 +82,7 @@ score fs fstate = ScoreResult mainScore subScores
 -- | Finds the script of the exercise in the given filepaths list
 findScript :: String -> [FilePath] -> Exercise a -> Scenario
 findScript usage fs ex =
-    case filter (\path -> "scenarios" # newId (takeBaseName path) == getId ex) fs of
+    case filter (\path -> newId (takeBaseName path) == getId ex) fs of
             [path] -> readBinaryScenario path
-            _             ->
+            _      ->
                 error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario."

@@ -31,9 +31,9 @@ testingExercises =
 readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
 readExercise path = (mkExercise sId strat difficulty initialState, path)
   where 
-    sId = "scenarios" # newId (takeBaseName path)    
+    sId = newId (takeBaseName path)
     Scenario metadata _ dialogue = readBinaryScenario path
-    strat      = makeStrategy (scenarioName metadata) dialogue
+    strat      = makeStrategy (showId sId) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))

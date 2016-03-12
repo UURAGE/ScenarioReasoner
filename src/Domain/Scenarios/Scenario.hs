@@ -32,12 +32,6 @@ data Scenario = Scenario
     
 instance Binary Scenario
 
-instance HasId Scenario where
-    getId (Scenario metadata _ _) = either error id $ do
-                let name = scenarioName metadata
-                let descr = scenarioDescription metadata
-                return $ describe descr $ "scenarios" # name
-    changeId _ _ = error "The ID of a Script is determined externally."
 
 data MetaData = MetaData    
         { scenarioName            :: Name
@@ -93,11 +87,3 @@ data Statement = Statement
  deriving (Show, Read, Generic)
 
 instance Binary Statement
-
-instance HasId Statement where
-    getId statement = either error id $ do
-                let statementID = statID statement
-                let statementText = statText (statInfo statement)
-                let statementDescription = either id (intercalate " // " . map snd) statementText
-                return $ describe statementDescription $ newId statementID
-    changeId _ _ = error "The ID of a Statement is determined externally."  

@@ -7,10 +7,10 @@
 
 module Domain.Scenarios.Globals where
 
-import Data.Maybe
-
 import GHC.Generics
+
 import Data.Binary
+import Data.Maybe
 
 type ParameterValue = Int
 type ID = String
