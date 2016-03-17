@@ -83,7 +83,8 @@ parseScenarioParameters :: Script -> [Parameter]
 parseScenarioParameters script = map parseParameter (children parameterElem)
   where
     metaDataElem  = getChild "metadata" script
-    parameterElem = getChild "parameters" metaDataElem
+    definitionsElem = getChild "definitions" metaDataElem
+    parameterElem = getChild "parameters" definitionsElem
 
     -- | Parses a parameter Element inside the parameters inside the metadata of the script
     parseParameter :: Element -> Parameter
