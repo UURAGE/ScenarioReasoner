@@ -17,6 +17,7 @@ import Data.Binary
 import Ideas.Common.Library
 import Ideas.Common.Utils 
 import Ideas.Text.JSON
+import qualified Ideas.Text.UTF8 as UTF8
 
 import GHC.Generics
 
@@ -109,10 +110,10 @@ instance InJSON (Maybe String) where
     fromJSON _ = fail "fail: the response is a default value in the statement info"
     
 showJSON :: ScenarioState -> String
-showJSON = compactJSON . toJSON
+showJSON = UTF8.decode . compactJSON . toJSON
 
 readJSON :: String -> Either String ScenarioState
-readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON
+readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON . UTF8.encode
 
 -- Instances of isTerm
 --   toTerm   :: a -> Term
