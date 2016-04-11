@@ -20,32 +20,60 @@ build-type:          Simple
 cabal-version:       >=1.10
 tested-with:         GHC == 7.4.1, GHC == 7.6.3, GHC == 7.8.3, GHC == 7.8.4
 
+flag network-uri
+  description: Get Network.URI from the network-uri package
+  default: True
+
 -------------------------------------------------------------------------------
 
 executable ScenarioReasoner.cgi
   Main-is:             ScenarioReasoner.hs
-  ghc-options:        -Wall -O2 -fno-warn-orphans 
-  hs-source-dirs:      src 
+  ghc-options:        -Wall -O2 -fno-warn-orphans
+  hs-source-dirs:      src
   default-language:    Haskell2010
 
   build-depends:       base >= 4.2 && < 5,
                        ideas,
+                       exceptions,
+                       mtl == 2.1.*,
+                       multipart,
                        containers,
+                       bytestring,
+                       xhtml,
+                       old-locale,
+                       old-time,
+                       parsec,
                        filepath,
                        binary,
-                       filemanip,
-                       cgi
-                       
+                       filemanip
+
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6, network >= 2.6
+  else
+    build-depends: network < 2.6
+
 executable ScenarioParser.cgi
   Main-is:             ScenarioParser.hs
   ghc-options:        -Wall -O2 -fno-warn-orphans
-  hs-source-dirs:      src 
+  hs-source-dirs:      src
   default-language:    Haskell2010
 
   build-depends:       base >= 4.2 && < 5,
                        ideas,
+                       exceptions,
+                       mtl == 2.1.*,
+                       multipart,
                        containers,
+                       bytestring,
+                       xhtml,
+                       old-locale,
+                       old-time,
+                       parsec,
                        filepath,
                        binary,
-                       filemanip,
-                       cgi
+                       filemanip
+
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6, network >= 2.6
+  else
+    build-depends: network < 2.6
