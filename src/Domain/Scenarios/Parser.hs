@@ -386,7 +386,7 @@ parseMedia :: Element -> MediaInfo
 parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
   where 
     -- | Takes a statement and returns its visual media
-    parseMediaVisuals :: [(Name, ID)]
+    parseMediaVisuals :: [(VisualType, ID)]
     parseMediaVisuals = map parseMediaVisual visualElems
       where 
         visualElems = 
@@ -394,7 +394,7 @@ parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
             findChild "visuals"        >>= 
             children
         -- | Parses video or image
-        parseMediaVisual :: Element -> (Name, ID)
+        parseMediaVisual :: Element -> (VisualType, ID)
         parseMediaVisual e = (name e, getAttribute "extid" e)
 
     -- | Takes a statement and returns its audio
@@ -466,7 +466,7 @@ getExactlyOneChild element = case children element of
     _       -> error "multiple children found"
     
 -- | Queries the given script for basic information. Which information being queried is specified
--- | in the "metaDataName". This could be the name of the script, the difficulty etc.
+-- in the "metaDataName". This could be the name of the script, the difficulty etc.
 getMetaDataString :: Name -> Script -> String
 getMetaDataString metaDataName script = getData dataElem
   where 

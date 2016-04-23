@@ -41,10 +41,10 @@ data Effect = Effect
 
 instance Binary Effect
 
--- This datatype specifies the type of change to be made to the parameter,
--- Set for setting the parameter to a specific value
--- Delta for adding / subtracting the new value to / from the existing value
-data ChangeType = Set | Delta deriving (Show, Eq, Read, Generic)
+-- | The type of change to be made to a parameter
+data ChangeType = Set   -- ^ Set the parameter to the given value
+                | Delta -- ^ Add a given value to the existing value
+    deriving (Show, Eq, Read, Generic)
 
 instance Binary ChangeType
 
@@ -73,14 +73,14 @@ instance InJSON ScenarioState where
         do params <- fromJSON paramsJSON
            emotions <- fromJSON emotionsJSON
            return (ScenarioState params emotions emptyStatementInfo)
-    fromJSON _ = fail "expecting an object"
+    fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
         where kvpToJSON (key, value) = (key, toJSON value)
     fromJSON (Object kjvps) = liftM M.fromList (mapM kvpFromJSON kjvps)
         where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue) 
-    fromJSON _ = fail "expecting an object"
+    fromJSON _ = fail "fromJSON: expecting an object"
     
 instance InJSON StatementInfo  where
     toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON, endToJSON]
@@ -91,21 +91,21 @@ instance InJSON StatementInfo  where
         feedbackToJSON  = ("feedback",  toJSON (statFeedback    statInfo))
         mediaToJSON     = ("media",     toJSON (statMedia       statInfo))
         endToJSON       = ("end",       toJSON (statEnd         statInfo))
-    fromJSON _ = fail "expecting an object"
+    fromJSON _ = fail "fromJSON: not supported"
     
 instance InJSON (Either String [(String, String)]) where
     toJSON (Left text) = toJSON text
     toJSON (Right conversation) = toJSON conversation
-    fromJSON _ = fail "fail: the response is a default value in the statement info"
+    fromJSON _ = fail "fromJSON: not supported"
     
 instance InJSON MediaInfo where
     toJSON (MediaInfo visuals audios) = Object [("visuals", toJSON visuals), ("audios", toJSON audios)]
-    fromJSON _ = fail "fail: the response is a default value in the statement info"
+    fromJSON _ = fail "fromJSON: not supported"
     
 instance InJSON (Maybe String) where
     toJSON (Just string) = toJSON string 
     toJSON Nothing = Null
-    fromJSON _ = fail "fail: the response is a default value in the statement info"
+    fromJSON _ = fail "fromJSON: not supported"
     
 showJSON :: ScenarioState -> String
 showJSON = UTF8.decode . compactJSON . toJSON

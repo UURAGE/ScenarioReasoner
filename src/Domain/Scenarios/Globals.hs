@@ -12,18 +12,18 @@ import Data.Maybe
 import GHC.Generics
 import Data.Binary
 
--- | Type definitions 
+-- Type definitions
 type ParameterValue = Int
 type Emotion = String
 type ID = String
 type Name = String
 type Score = Int
 
-data StatementInfo = StatementInfo 
-    { statType     :: StatementType  
+data StatementInfo = StatementInfo
+    { statType     :: StatementType
     , statText     :: StatementText
-    , statIntents  :: [String]       -- intentions
-    , statFeedback :: (Maybe String) -- feedback
+    , statIntents  :: [String]
+    , statFeedback :: Maybe String
     , statMedia    :: MediaInfo
     , statEnd      :: Bool
     }
@@ -31,23 +31,27 @@ data StatementInfo = StatementInfo
 
 instance Binary	StatementInfo
 
+type StatementType = String                                         -- conversation / player / computer
 -- The text of a statement is either simply a text or a conversation with a list of tuples of the types and texts
-type StatementType = String                                         -- Conversation / Player / Computer
 type StatementText = Either String [(ConversationTextType, String)] -- Either Text [(Type, Text)]
-type ConversationTextType = String                                  -- Player / Computer / Situation
+type ConversationTextType = String                                  -- player / computer / situation
 
--- MediaInfo [(VisualType, VisualID)] [AudioID] where VisualType is either an "image" or a "video"
-data MediaInfo = MediaInfo [(String, ID)] [ID] 
-    deriving(Show, Eq, Read, Generic)
-    
+data MediaInfo = MediaInfo
+    { mediaVisuals :: [(VisualType, ID)]
+    , mediaAudios  :: [ID]
+    }
+    deriving (Show, Eq, Read, Generic)
+
+type VisualType = String -- image / video
+
 instance Binary MediaInfo
     
 emptyStatementInfo :: StatementInfo
 emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False
                 
--- Specifies if a certain feature should be on or off
+-- | Specifies if a certain feature should be on or off
 data Toggle = Toggle Name Bool
- deriving (Show, Read, Generic)
+    deriving (Show, Read, Generic)
     
 instance Binary Toggle
 
@@ -70,8 +74,10 @@ data Parameter = Parameter
 
 instance Binary Parameter
 
--- | Extra functions for getting a type out of Monad to catch the fail case, 
--- | which needs to be done when calling findAttribute and findChild from the Ideas XML interface
+-- Functions for dealing with the Nothing case of a Maybe value produced by the
+-- implementation of fail in the Monad instance of Maybe.
+-- Useful for handling failure of findAttribute and findChild (from Ideas.Text.XML.Interface).
+
 errorOnFail :: String -> Maybe a -> a
 errorOnFail errorMsg = fromMaybe (error errorMsg) 
 
