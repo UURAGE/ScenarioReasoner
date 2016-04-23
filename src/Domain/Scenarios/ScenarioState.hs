@@ -23,7 +23,7 @@ import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy
-data ScenarioState = ScenarioState ParameterMap EmotionMap StatementInfo
+data ScenarioState = ScenarioState ParameterMap EmotionMap (Maybe StatementInfo)
     deriving (Show, Eq, Typeable, Read, Generic)
 
 instance Binary ScenarioState
@@ -50,7 +50,7 @@ instance Binary ChangeType
 
 applyEffects :: ScenarioState -> [Effect] -> [Effect] -> StatementInfo -> ScenarioState
 applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects statInfo = 
-    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) statInfo
+    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) (Just statInfo)
 
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
@@ -72,16 +72,16 @@ instance InJSON ScenarioState where
     fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : ("statement", _) : [])) = 
         do params <- fromJSON paramsJSON
            emotions <- fromJSON emotionsJSON
-           return (ScenarioState params emotions emptyStatementInfo)
+           return (ScenarioState params emotions Nothing)
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
         where kvpToJSON (key, value) = (key, toJSON value)
     fromJSON (Object kjvps) = liftM M.fromList (mapM kvpFromJSON kjvps)
-        where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue) 
+        where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue)
     fromJSON _ = fail "fromJSON: expecting an object"
-    
+
 instance InJSON StatementInfo  where
     toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON, endToJSON]
       where 
@@ -92,21 +92,22 @@ instance InJSON StatementInfo  where
         mediaToJSON     = ("media",     toJSON (statMedia       statInfo))
         endToJSON       = ("end",       toJSON (statEnd         statInfo))
     fromJSON _ = fail "fromJSON: not supported"
-    
+
 instance InJSON (Either String [(String, String)]) where
     toJSON (Left text) = toJSON text
     toJSON (Right conversation) = toJSON conversation
     fromJSON _ = fail "fromJSON: not supported"
-    
+
 instance InJSON MediaInfo where
     toJSON (MediaInfo visuals audios) = Object [("visuals", toJSON visuals), ("audios", toJSON audios)]
     fromJSON _ = fail "fromJSON: not supported"
-    
-instance InJSON (Maybe String) where
-    toJSON (Just string) = toJSON string 
+
+instance InJSON a => InJSON (Maybe a) where
     toJSON Nothing = Null
-    fromJSON _ = fail "fromJSON: not supported"
-    
+    toJSON (Just val) = toJSON val
+    fromJSON Null = return Nothing
+    fromJSON val = fromJSON val
+
 showJSON :: ScenarioState -> String
 showJSON = UTF8.decode . compactJSON . toJSON
 

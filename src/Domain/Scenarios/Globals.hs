@@ -45,10 +45,7 @@ data MediaInfo = MediaInfo
 type VisualType = String -- image / video
 
 instance Binary MediaInfo
-    
-emptyStatementInfo :: StatementInfo
-emptyStatementInfo = StatementInfo "" (Left "") [] Nothing (MediaInfo [] []) False
-                
+
 -- | Specifies if a certain feature should be on or off
 data Toggle = Toggle Name Bool
     deriving (Show, Read, Generic)
