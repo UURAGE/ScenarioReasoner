@@ -14,8 +14,6 @@ import qualified Data.Map as M
 import Data.Typeable
 import Data.Binary
 
-import Ideas.Common.Library
-import Ideas.Common.Utils 
 import Ideas.Text.JSON
 import qualified Ideas.Text.UTF8 as UTF8
 
@@ -114,52 +112,3 @@ showJSON = UTF8.decode . compactJSON . toJSON
 
 readJSON :: String -> Either String ScenarioState
 readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON . UTF8.encode
-
--- Instances of isTerm
---   toTerm   :: a -> Term
---   fromTerm :: MonadPlus m => Term -> m a
-
-instance IsTerm ScenarioState where
-    toTerm (ScenarioState paramMap emotionMap statInfo) = toTerm (paramMap, toTerm (emotionMap, statInfo))
-    fromTerm term = do
-        (params, emotionAndStatTerm) <- fromTerm term 
-        (emotions, statInfo) <- fromTerm emotionAndStatTerm
-        return (ScenarioState params emotions statInfo)
-    
-
-instance IsTerm (M.Map ID ParameterValue) where
-    toTerm = toTerm . M.toAscList . M.mapKeysMonotonic ShowString
-    fromTerm x = do 
-        x' <- fromTerm x
-        return (M.mapKeysMonotonic fromShowString (M.fromDistinctAscList x'))
-   
-instance IsTerm StatementInfo where
-    toTerm statInfo = 
-        toTerm [toTerm (statType statInfo),     toTerm (statText statInfo)
-               ,toTerm (statIntents statInfo),  toTerm (statFeedback statInfo)
-               ,toTerm (statMedia statInfo),    toTerm (statEnd statInfo)]
-    fromTerm statTerm = do
-        statInfo <- fromTerm statTerm
-        return statInfo
-        
-instance IsTerm MediaInfo where
-    toTerm (MediaInfo visuals audios) =
-        toTerm (toTerm visuals, toTerm audios)
-    fromTerm mediaInfoTerm = do
-        (visualsTerm, audiosTerm) <- fromTerm mediaInfoTerm
-        return (MediaInfo (fromTerm visualsTerm) (fromTerm audiosTerm))
-        
-instance IsTerm (Maybe String) where
-    toTerm (Just string) = toTerm (ShowString string)
-    toTerm Nothing       = toTerm (ShowString "")
-    fromTerm term = do
-        sString <- fromTerm term
-        let string = fromShowString sString
-        return (if null string then Nothing else (Just string))
-   
-instance IsTerm Bool where
-    toTerm True = toTerm $ ShowString "true"
-    toTerm False = toTerm $ ShowString "false"
-    fromTerm boolTerm = do
-        bool <- fromTerm boolTerm
-        return (fromShowString bool == "true")

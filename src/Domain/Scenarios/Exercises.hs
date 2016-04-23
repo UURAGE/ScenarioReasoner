@@ -46,7 +46,7 @@ readExercise path = (mkExercise sId strat difficulty initialState, path)
     
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = 
-    makeExercise
+    emptyExercise
        { exerciseId     = sId
        , status         = Alpha
        , parser         = readJSON
@@ -55,6 +55,7 @@ mkExercise sId strat difficulty initState =
        , similarity     = \_ _-> True
        , ready          = true
        , suitable       = true
+       , hasTermView    = Nothing
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
        , examples       = [(difficulty, initState)]
