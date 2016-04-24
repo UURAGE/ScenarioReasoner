@@ -40,19 +40,15 @@ scenarioReasoner = do
     -- Filter the serviceList of Ideas, because we have our own allfirsts in adapted services
     let filteredServiceList = filter (\s -> getId s /= "basic" # "allfirsts") serviceList
     
-    exerciseList <- E.exercises    
-    let sps = map snd exerciseList
-    let exs = map (Some . fst) exerciseList
-        dr  = (newDomainReasoner "ideas.scenarios")
-            { exercises = exs
+    (exs, sps) <- E.exercises "bins"
+    let dr  = (newDomainReasoner "ideas.scenarios")
+            { exercises = map Some exs
             , services  = S.customServices sps ++ metaServiceList dr ++ filteredServiceList
             }
             
-    tExerciseList <- E.testingExercises
-    let tsps = map snd tExerciseList
-    let texs = map (Some . fst) tExerciseList
-        tdr = (newDomainReasoner "ideas.scenarios.test")
-            { exercises = texs
+    (texs, tsps) <- E.exercises "test_bins"
+    let tdr = (newDomainReasoner "ideas.scenarios.test")
+            { exercises = map Some texs
             , services  = S.customServices tsps ++ metaServiceList dr ++ filteredServiceList
             }
             

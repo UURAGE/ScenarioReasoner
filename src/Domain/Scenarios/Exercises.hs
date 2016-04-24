@@ -18,18 +18,13 @@ import Domain.Scenarios.Strategy(makeStrategy)
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState
 
-exercises :: IO [(Exercise ScenarioState, FilePath)]
-exercises = 
-    F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise
-  where root = "bins" :: FilePath
-  
-testingExercises :: IO [(Exercise ScenarioState, FilePath)]
-testingExercises = 
-    F.find F.always (F.extension ==? ".bin") root >>= return . map readExercise 
-  where root = "test_bins" :: FilePath
+exercises :: FilePath -> IO ([Exercise ScenarioState], [FilePath])
+exercises root = do
+    paths <- F.find F.always (F.extension ==? ".bin") root
+    return (map readExercise paths, paths)
 
-readExercise :: FilePath -> (Exercise ScenarioState, FilePath)
-readExercise path = (mkExercise sId strat difficulty initialState, path)
+readExercise :: FilePath -> Exercise ScenarioState
+readExercise path = mkExercise sId strat difficulty initialState
   where 
     sId = "scenarios" # newId (takeBaseName path)    
     Scenario metadata _ dialogue = readBinaryScenario path
@@ -42,8 +37,9 @@ readExercise path = (mkExercise sId strat difficulty initialState, path)
             "" -> empty
             _  -> insert emotion 1 empty)
         (scenarioStartEmotion metadata)
-    initialState = ScenarioState (fromList (map processParameter parameters)) initialEmotion Nothing
-    
+    initialParameters = fromList (map processParameter parameters)
+    initialState = ScenarioState initialParameters initialEmotion Nothing
+
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = 
     emptyExercise
