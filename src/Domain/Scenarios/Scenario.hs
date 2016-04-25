@@ -23,30 +23,30 @@ import System.IO.Unsafe
 readBinaryScenario :: FilePath -> Scenario
 readBinaryScenario path = unsafePerformIO $ decodeFile path
 
-data Scenario = Scenario 
+data Scenario = Scenario
         { scenarioMetaData     :: MetaData
         , scenarioFeedbackForm :: FeedbackForm
-        , scenarioDialogue     :: Dialogue  
+        , scenarioDialogue     :: Dialogue
         }
     deriving (Show, Read, Generic)
-    
+
 instance Binary Scenario
 
 instance HasId Scenario where
-    getId (Scenario metadata _ _) = either error id $ do
-                let sID = scenarioID metadata
-                let descr = scenarioDescription metadata
-                return $ describe descr $ "scenarios" # sID
-    changeId _ _ = error "The ID of a Script is determined externally."
+    getId (Scenario metadata _ _) = either error id $ return (describe descr $ scenId)
+      where
+        descr  = scenarioDescription metadata
+        scenId = "scenarios" # scenarioID metadata
+    changeId _ _ = error "The Id of a scenario is determined externally."
 
-data MetaData = MetaData    
+data MetaData = MetaData
         { scenarioID              :: ID
         , scenarioName            :: Name
         , scenarioDescription     :: String
-        , scenarioDifficulty      :: Difficulty 
+        , scenarioDifficulty      :: Difficulty
         , scenarioBannerImage     :: Maybe ID
         , scenarioCharacterImage  :: Maybe ID
-        , scenarioModel           :: Maybe ID 
+        , scenarioModel           :: Maybe ID
         , scenarioStartEmotion    :: Maybe Emotion
         , scenarioParameters      :: [Parameter]
         , scenarioLocation        :: Name
@@ -54,9 +54,9 @@ data MetaData = MetaData
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         , scenarioScoreExtremes   :: Maybe (Score, Score)
-        }      
+        }
  deriving (Show, Read, Generic)
-        
+
 instance Binary MetaData
 
 deriving instance Generic Difficulty
@@ -80,10 +80,10 @@ type InterleaveLevel = [Tree]
 data Tree = Tree
         { treeID          :: ID
         , treeStartIDs    :: [ID]
-        , treeAtomic      :: Bool 
+        , treeAtomic      :: Bool
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
-        }       
+        }
  deriving (Show, Read, Generic)
 
 instance Binary Tree
@@ -103,9 +103,9 @@ data Statement = Statement
 instance Binary Statement
 
 instance HasId Statement where
-    getId statement = either error id $ do
-                let statementID = statID statement
-                let statementText = statText (statInfo statement)
-                let statementDescription = either id (intercalate " // " . map snd) statementText
-                return $ describe statementDescription $ newId statementID
-    changeId _ _ = error "The ID of a Statement is determined externally."  
+    getId statement = either error id $ return (describe descr $ statId)
+      where
+        statId = newId [statType (statInfo statement), statID statement]
+        text   = statText (statInfo statement)
+        descr  = either id (intercalate " // " . map snd) text
+    changeId _ _ = error "The ID of a Statement is determined externally."
