@@ -33,7 +33,7 @@ data Scenario = Scenario
 instance Binary Scenario
 
 instance HasId Scenario where
-    getId (Scenario metadata _ _) = either error id $ return (describe descr $ scenId)
+    getId (Scenario metadata _ _) = describe descr $ scenId
       where
         descr  = scenarioDescription metadata
         scenId = "scenarios" # scenarioID metadata
@@ -103,7 +103,7 @@ data Statement = Statement
 instance Binary Statement
 
 instance HasId Statement where
-    getId statement = either error id $ return (describe descr $ statId)
+    getId statement = describe descr $ statId
       where
         statId = newId [statType (statInfo statement), statID statement]
         text   = statText (statInfo statement)
