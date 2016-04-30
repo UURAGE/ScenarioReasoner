@@ -7,6 +7,9 @@
 module Main where
 
 import Ideas.Main.Documentation
+import Domain.Scenarios.Scenario
+import System.FilePath (takeBaseName)
+import System.FilePath.Find as F
 import qualified Domain.Scenarios.Services.ServiceList as S
 import qualified Domain.Scenarios.Exercises as E
 
@@ -39,20 +42,26 @@ scenarioReasoner :: IO (DomainReasoner, DomainReasoner)
 scenarioReasoner = do
     -- Filter the serviceList of Ideas, because we have our own allfirsts in adapted services
     let filteredServiceList = filter (\s -> getId s /= "basic" # "allfirsts") serviceList
-    
-    (exs, sps) <- E.exercises "bins"
+
+    iss <- readBinaryScenarios "bins"
     let dr  = (newDomainReasoner "ideas.scenarios")
-            { exercises = map Some exs
-            , services  = S.customServices sps ++ metaServiceList dr ++ filteredServiceList
+            { exercises = map Some (E.exercises iss)
+            , services  = S.customServices iss ++ metaServiceList dr ++ filteredServiceList
             }
-            
-    (texs, tsps) <- E.exercises "test_bins"
+
+    tiss <- readBinaryScenarios "test_bins"
     let tdr = (newDomainReasoner "ideas.scenarios.test")
-            { exercises = map Some texs
-            , services  = S.customServices tsps ++ metaServiceList dr ++ filteredServiceList
+            { exercises = map Some (E.exercises tiss)
+            , services  = S.customServices tiss ++ metaServiceList dr ++ filteredServiceList
             }
-            
+
     return (dr, tdr)
+
+readBinaryScenarios :: FilePath -> IO [(Id, Scenario)]
+readBinaryScenarios root = do
+    paths <- F.find F.always (F.extension ==? ".bin") root
+    let readOne path = ("scenarios" # newId (takeBaseName path), readBinaryScenario path)
+    return (map readOne paths)
 
 -- Invoked as a cgi binary
 scenarioReasonerCGI :: (DomainReasoner, DomainReasoner) -> IO ()

@@ -8,8 +8,6 @@ module Domain.Scenarios.Exercises where
 
 import Data.Map(insert, fromList, empty)
 import Data.Maybe(fromMaybe)
-import System.FilePath(takeBaseName)
-import System.FilePath.Find as F
 
 import Ideas.Common.Library
 
@@ -18,22 +16,18 @@ import Domain.Scenarios.Strategy(makeStrategy)
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.ScenarioState
 
-exercises :: FilePath -> IO ([Exercise ScenarioState], [FilePath])
-exercises root = do
-    paths <- F.find F.always (F.extension ==? ".bin") root
-    return (map readExercise paths, paths)
+exercises :: [(Id, Scenario)] -> [Exercise ScenarioState]
+exercises = map readExercise
 
-readExercise :: FilePath -> Exercise ScenarioState
-readExercise path = mkExercise sId strat difficulty initialState
+readExercise :: (Id, Scenario) -> Exercise ScenarioState
+readExercise (sId, Scenario metadata _ dialogue) = mkExercise sId strat difficulty initialState
   where 
-    sId = "scenarios" # newId (takeBaseName path)    
-    Scenario metadata _ dialogue = readBinaryScenario path
     strat      = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
     initialEmotion = 
-        maybe empty (\emotion -> case emotion of 
+        maybe empty (\emotion -> case emotion of
             "" -> empty
             _  -> insert emotion 1 empty)
         (scenarioStartEmotion metadata)
@@ -41,7 +35,7 @@ readExercise path = mkExercise sId strat difficulty initialState
     initialState = ScenarioState initialParameters initialEmotion Nothing
 
 mkExercise :: Id -> Strategy ScenarioState -> Difficulty -> ScenarioState -> Exercise ScenarioState
-mkExercise sId strat difficulty initState = 
+mkExercise sId strat difficulty initState =
     emptyExercise
        { exerciseId     = sId
        , status         = Alpha
