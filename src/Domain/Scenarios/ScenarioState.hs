@@ -69,7 +69,7 @@ instance InJSON ScenarioState where
             emotionsToJSON = ("emotions", toJSON emos)
             parametersToJSON  =  ("parameters", toJSON params)
             statInfoToJSON = ("statement", toJSON stat)
-    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : ("statement", _) : [])) = 
+    fromJSON (Object (("parameters", paramsJSON) : ("emotions", emotionsJSON) : _)) =
         do params <- fromJSON paramsJSON
            emotions <- fromJSON emotionsJSON
            return (ScenarioState params emotions Nothing)
