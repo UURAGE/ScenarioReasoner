@@ -23,7 +23,7 @@ import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy
-data ScenarioState = ScenarioState ParameterMap EmotionMap (Maybe StatementInfo)
+data ScenarioState = ScenarioState ParameterMap EmotionMap (Maybe StatementInfo) Bool
     deriving (Show, Eq, Typeable, Read, Generic)
 
 instance Binary ScenarioState
@@ -48,9 +48,9 @@ data ChangeType = Set   -- ^ Set the parameter to the given value
 
 instance Binary ChangeType
 
-applyEffects :: ScenarioState -> [Effect] -> [Effect] -> StatementInfo -> ScenarioState
-applyEffects (ScenarioState paramMap emotionMap _) paramEffects emotionEffects statInfo =
-    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) (Just statInfo)
+applyEffects :: ScenarioState -> [Effect] -> [Effect] -> StatementInfo -> Bool -> ScenarioState
+applyEffects (ScenarioState paramMap emotionMap _ _) paramEffects emotionEffects statInfo end =
+    ScenarioState (foldr applyEffect paramMap paramEffects) (foldr applyEffect emotionMap emotionEffects) (Just statInfo) end
 
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
@@ -64,15 +64,18 @@ applyEffect effect stateMap = case effectChangeType effect of
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 
 instance InJSON ScenarioState where
-    toJSON (ScenarioState params emos stat) = Object [parametersToJSON, emotionsToJSON, statInfoToJSON]
+    toJSON (ScenarioState params emos stat end) = Object [parametersToJSON, emotionsToJSON, statInfoToJSON, endToJSON]
         where
             emotionsToJSON = ("emotions", toJSON emos)
             parametersToJSON  =  ("parameters", toJSON params)
             statInfoToJSON = ("statement", toJSON stat)
+            endToJSON = ("internal", Object[("end", toJSON end)])
     fromJSON val@(Object _) =
         do params <- lookupM "parameters" val >>= fromJSON
            emotions <- lookupM "emotions" val >>= fromJSON
-           return (ScenarioState params emotions Nothing)
+           -- The internal object containing end MUST be sent back to the reasoner if it exists
+           end <- lookupM "internal" val >>= lookupM "end" >>= fromJSON
+           return (ScenarioState params emotions Nothing end)
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON a => InJSON (M.Map String a)  where
@@ -83,14 +86,13 @@ instance InJSON a => InJSON (M.Map String a)  where
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON StatementInfo  where
-    toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON, endToJSON]
+    toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON]
       where
         typeToJSON      = ("type",      toJSON (statType        statInfo))
         textToJSON      = ("text",      toJSON (statText        statInfo))
         intentsToJSON   = ("intentions", toJSON (statIntents     statInfo))
         feedbackToJSON  = ("feedback",  toJSON (statFeedback    statInfo))
         mediaToJSON     = ("media",     toJSON (statMedia       statInfo))
-        endToJSON       = ("end",       toJSON (statEnd         statInfo))
     fromJSON _ = fail "fromJSON: not supported"
 
 instance InJSON (Either String [(String, String)]) where

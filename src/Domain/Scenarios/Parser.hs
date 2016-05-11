@@ -289,6 +289,7 @@ parseStatement statElem =
     , statEmotionEffects = parseEmotionEffects       statElem
     , statJumpPoint      = parseJumpPoint            statElem
     , statInits          = parseInits                statElem
+    , statEnd            = parseEnd                  statElem
     , statNextStatIDs    = parseNextStatIDs          statElem
     }
 
@@ -300,7 +301,6 @@ parseStatementInfo statElem =
     ,   statIntents     = parseIntents  statElem
     ,   statFeedback    = parseFeedback statElem
     ,   statMedia       = parseMedia    statElem
-    ,   statEnd         = parseEnd      statElem
     }
 
 -- | Takes a statement and returns its type
