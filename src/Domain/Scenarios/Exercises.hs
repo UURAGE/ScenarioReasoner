@@ -33,11 +33,11 @@ readExercise path = (mkExercise sId strat difficulty initialState, path)
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
-    initialState = ScenarioState (fromList (map processParameter parameters)) emptyStatementInfo
+    initialState = ScenarioState (fromList (map processParameter parameters)) Nothing
 
 mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = 
-    makeExercise
+    emptyExercise
        { exerciseId     = sId
        , status         = Alpha
        , parser         = readJSON
@@ -46,6 +46,7 @@ mkExercise sId strat difficulty initState =
        , similarity     = \_ _-> True
        , ready          = true
        , suitable       = true
+       , hasTermView    = Nothing
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
        , examples       = [(fromMaybe Medium difficulty, initState)]
