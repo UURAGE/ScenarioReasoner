@@ -35,12 +35,10 @@ makeInterleaveStrategy scenID trees = interleave (map (makeTreeStrategy scenID) 
 
 
 makeTreeStrategy :: ID -> Tree-> Strategy ScenarioState
-makeTreeStrategy scenID tree
-    | treeOptional tree && treeAtomic tree = option (atomic treeStrategy)
-    | treeOptional tree                    = option treeStrategy
-    | treeAtomic tree                      = atomic treeStrategy
-    | otherwise                            = treeStrategy
+makeTreeStrategy scenID tree = optioned (atomiced treeStrategy)
   where
+    optioned = if treeOptional tree then option else id
+    atomiced = if treeAtomic   tree then atomic else id
     treeStrategy = evalState (makeAlternativesStrategy tree scenID (treeStartIDs tree)) M.empty
 
 -- Recursively make a strategy for a tree of statements by making a strategy for the starting statement,
@@ -99,10 +97,11 @@ makeGuardedRule scenID statement = guardedRule
 -- so it can not be interleaved and apply the inits operator if the tree can succeed here,
 -- so the strategy does not have to be finished
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
-sequenceRule statement tree rule nextStrategy
-    | jumpPoint statement && statInits statement   = rule .*. inits nextStrategy
-    | jumpPoint statement                          = rule .*. nextStrategy
-    | statInits statement && treeAtomic tree       = rule .*. inits nextStrategy
-    | statInits statement && not (treeAtomic tree) = rule !~> inits nextStrategy
-    | treeAtomic tree                              = rule .*. nextStrategy
-    | otherwise                                    = rule !~> nextStrategy
+sequenceRule statement tree rule nextStrategy =
+    if jumpPoint statement || treeAtomic tree
+        then rule .*. processedNextStrategy
+        else rule !~> processedNextStrategy
+    where processedNextStrategy =
+            if statInits statement
+                then inits nextStrategy
+                else nextStrategy
