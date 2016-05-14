@@ -19,17 +19,16 @@ import System.IO.Unsafe
 readBinaryScenario :: FilePath -> Scenario
 readBinaryScenario path = unsafePerformIO $ decodeFile path
 
-data Scenario = Scenario 
+data Scenario = Scenario
         { scenarioMetaData     :: MetaData
         , scenarioFeedbackForm :: FeedbackForm
-        , scenarioDialogue     :: Dialogue  
+        , scenarioDialogue     :: Dialogue
         }
     deriving (Show, Read, Generic)
-    
+
 instance Binary Scenario
 
-
-data MetaData = MetaData    
+data MetaData = MetaData
         { scenarioName            :: Name
         , scenarioDescription     :: String
         , scenarioDifficulty      :: Maybe Difficulty
@@ -37,9 +36,9 @@ data MetaData = MetaData
         , scenarioParameters      :: [Parameter]
         , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
-        }      
+        }
  deriving (Show, Read, Generic)
-        
+
 instance Binary MetaData
 
 deriving instance Generic Difficulty
@@ -63,10 +62,10 @@ type InterleaveLevel = [Tree]
 data Tree = Tree
         { treeID          :: ID
         , treeStartIDs    :: [ID]
-        , treeAtomic      :: Bool 
+        , treeAtomic      :: Bool
         , treeOptional    :: Bool
         , treeStatements  :: [Statement]
-        }       
+        }
  deriving (Show, Read, Generic)
 
 instance Binary Tree
@@ -83,3 +82,11 @@ data Statement = Statement
  deriving (Show, Read, Generic)
 
 instance Binary Statement
+
+instance HasId Statement where
+    getId statement = describe descr $ statId
+      where
+        statId = newId [statType (statInfo statement), statID statement]
+        text   = statText (statInfo statement)
+        descr  = either id (intercalate " // " . map snd) text
+    changeId _ _ = error "The ID of a Statement is determined externally."
