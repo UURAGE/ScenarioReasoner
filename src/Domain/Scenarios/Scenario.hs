@@ -94,9 +94,9 @@ data Statement = Statement
         , statPrecondition  :: Maybe Condition
         , statParamEffects  :: [Effect]
         , statEmotionEffects:: [Effect]
-        , jumpPoint         :: Bool
+        , statJumpPoint     :: Bool
         , statInits         :: Bool
-        , nextStatIDs       :: [ID]
+        , statNextStatIDs   :: [ID]
         }
  deriving (Show, Read, Generic)
 

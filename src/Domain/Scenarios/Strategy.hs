@@ -50,7 +50,7 @@ makeStatementStrategy tree scenID statementID = do
     case M.lookup statementID strategyMap of
         Just mStrategy -> return mStrategy
         Nothing        ->
-            case nextStatIDs statement of
+            case statNextStatIDs statement of
                 []       -> modify (M.insert statementID (toStrategy rule)) >> return (toStrategy rule)
                 nextIDs  -> do
                     -- Make a strategy of alternative strategies for the strategies following from the rule
@@ -99,7 +99,7 @@ makeGuardedRule scenID statement = guardedRule
 -- Apply the inits operator if the tree can succeed here, so the strategy does not have to be finished.
 sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement tree rule nextStrategy =
-    if jumpPoint statement || treeAtomic tree
+    if statJumpPoint statement || treeAtomic tree
         then rule .*. processedNextStrategy
         else rule !~> processedNextStrategy
     where processedNextStrategy =

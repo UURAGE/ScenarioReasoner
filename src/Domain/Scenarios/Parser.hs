@@ -267,7 +267,7 @@ parseTree treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
     , treeStartIDs   = map (getAttribute "idref") (findChildren "start" treeElem)
-    , treeAtomic     = null (filter jumpPoint statements)
+    , treeAtomic     = null (filter statJumpPoint statements)
     , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
     , treeStatements = statements
     }
@@ -288,9 +288,9 @@ parseStatement statElem =
     , statPrecondition   = parseMaybePrecondition    statElem
     , statParamEffects   = parseParameterEffects     statElem
     , statEmotionEffects = parseEmotionEffects       statElem
-    , jumpPoint          = parseJumpPoint            statElem
+    , statJumpPoint      = parseJumpPoint            statElem
     , statInits          = parseInits                statElem
-    , nextStatIDs        = parseNextStatIDs          statElem
+    , statNextStatIDs    = parseNextStatIDs          statElem
     }
     
 parseStatementInfo :: Element -> StatementInfo
