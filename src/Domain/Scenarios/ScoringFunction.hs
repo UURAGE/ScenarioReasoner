@@ -35,7 +35,7 @@ calculateScore subScores mainScoringFunction _ =
     calculate :: ScoringFunction -> Int -> (Score, Int)
     calculate scoringFunction weight = case scoringFunction of
         Constant     score        -> (score, weight + 1)
-        Sum          subFunctions -> sumScoreAndWeight (map (flip calculate $ weight) subFunctions)
+        Sum          subFunctions -> sumScoreAndWeight (map (flip calculate weight) subFunctions)
         Scale scalar subFunction  -> (\(subScore, _) -> (scalar * subScore, weight + scalar)) (calculate subFunction scalar)
         ParamRef     _            | weight == 0 -> (0, 0)
         ParamRef     paramId      | otherwise   -> (findSubScore paramId, weight)
@@ -78,7 +78,7 @@ clamp _ _ _ = error "no maximum and minimum given"
 
 -- Shifts the possible negative values to positive values given that maxValue >= minValue
 shift :: ParameterValue -> ParameterValue -> ParameterValue
-shift value minValue | minValue < 0 = value + (0 - minValue)
+shift value minValue | minValue < 0 = value - minValue
                      | otherwise    = value
 
 -- Divides two integers and returns the result. If dividing by zero (weight) then return 0

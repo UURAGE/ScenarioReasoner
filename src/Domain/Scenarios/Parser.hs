@@ -10,6 +10,7 @@ import Control.Monad
 
 import Data.Char
 import Data.List
+import Data.Maybe
 import Text.Read(readMaybe)
 
 import System.IO
@@ -133,9 +134,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         { parameterId           = getAttribute "id" paramElem
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterDescription  = case nothingOnFail (findAttribute "parameterDescription" paramElem) of 
-                                    Nothing    -> "" 
-                                    Just descr -> descr
+        , parameterDescription  = fromMaybe "" (findAttribute "parameterDescription" paramElem)
         , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
         , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
@@ -267,7 +266,7 @@ parseTree treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
     , treeStartIDs   = map (getAttribute "idref") (findChildren "start" treeElem)
-    , treeAtomic     = null (filter statJumpPoint statements)
+    , treeAtomic     = not (any statJumpPoint statements)
     , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
     , treeStatements = statements
     }

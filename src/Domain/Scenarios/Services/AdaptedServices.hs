@@ -24,7 +24,7 @@ allfirsts state
   where 
     make ((r, ctx, env), st) =
       let pfx      = statePrefix st
-          newState = (makeState (exercise state) pfx $ ctx)
+          newState = (makeState (exercise state) pfx ctx)
                        { stateSession   = stateSession state
                        , stateUser      = stateUser state
                        , stateStartTerm = stateStartTerm state }
