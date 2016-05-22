@@ -13,7 +13,7 @@ import Control.Monad hiding (sequence)
 import Data.List hiding (inits)
 import qualified Data.Map as M
 
-import Control.Monad.State hiding (sequence, state)
+import Control.Monad.Trans.State hiding (state)
 
 import Ideas.Common.Library
 import Ideas.Common.Strategy.Combinators hiding (not)
