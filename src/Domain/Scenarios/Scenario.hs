@@ -75,16 +75,16 @@ data Statement = Statement
         , statInfo          :: StatementInfo
         , statPrecondition  :: Maybe Condition
         , statParamEffects  :: [Effect]
-        , jumpPoint         :: Bool
+        , statJumpPoint     :: Bool
         , statInits         :: Bool
-        , nextStatIDs       :: [ID]
+        , statNextStatIDs   :: [ID]
         }
  deriving (Show, Read, Generic)
 
 instance Binary Statement
 
 instance HasId Statement where
-    getId statement = describe descr $ statId
+    getId statement = describe descr statId
       where
         statId = newId [statType (statInfo statement), statID statement]
         text   = statText (statInfo statement)
