@@ -300,19 +300,9 @@ parseNextStatIDs :: Element -> [ID]
 parseNextStatIDs element = errorOnFail errorMsg nextIDs
   where
     errorMsg = "Failed to get the nextIDs of: " ++ name element
-    nextIDs =
-        case name element of
-            "conversation"      -> getResponses >>= getIdrefs
-            "computerStatement" -> getResponses >>= getIdrefs
-            "playerStatement"   -> getNextComputerStatements >>= getIdrefs
-            _                   -> fail $
-                "Cannot get nexts of statement represented by element named " ++ name element
+    nextIDs = getResponses >>= getIdrefs
       where getIdrefs = mapM (findAttribute "idref")
             getResponses = children <$> findChild "responses" element
-            getNextComputerStatements =
-                case findChild "nextComputerStatements" element of
-                      Just nextElem -> return $ children nextElem
-                      Nothing       -> singleton <$> findChild "nextComputerStatement" element
 
 -- | Parses media of the statement element
 parseMedia :: Element -> MediaInfo
