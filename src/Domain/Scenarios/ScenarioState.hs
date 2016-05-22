@@ -62,8 +62,8 @@ instance InJSON ScenarioState where
         where
             parametersToJSON  =  ("parameters", toJSON params)
             statInfoToJSON = ("statement", toJSON stat)
-    fromJSON (Object (("parameters", paramsJSON) : ("statement", _) : [])) = 
-        do params <- fromJSON paramsJSON
+    fromJSON val@(Object _) =
+        do params <- lookupM "parameters" val >>= fromJSON
            return (ScenarioState params Nothing)
     fromJSON _ = fail "fromJSON: expecting an object"
 
