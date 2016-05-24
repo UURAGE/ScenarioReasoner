@@ -6,6 +6,7 @@ import Data.Map(fromList)
 import Data.Maybe(fromMaybe)
 
 import Ideas.Common.Library
+import Ideas.Encoding.Encoder
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Strategy(makeStrategy)
@@ -37,7 +38,7 @@ mkExercise sId strat difficulty initState =
        , similarity     = \_ _-> True
        , ready          = true
        , suitable       = true
-       , hasTermView    = Nothing
+       , hasTermView    = Just jsonTermView
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
        , examples       = [(fromMaybe Medium difficulty, initState)]
