@@ -15,7 +15,7 @@ import Domain.Scenarios.Services.Types
 customServices :: [(Id, Scenario)] -> [Service]
 customServices fs = [allfirstsS] ++ map ($ fs)
     [feedbackformS, scenariolistS, scenarioinfoS, scoreS]
-   
+
 -- Adapted allfirsts
 allfirstsS :: Service
 allfirstsS = makeService "scenarios.allfirsts"
@@ -43,7 +43,7 @@ scenarioinfoS fs = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     scenarioinfo fs ::: tExercise .-> tScenarioInfo
 
--- Service that returns the calculated score 
+-- Service that returns the calculated score
 -- using the scoring function defined in the xml
 scoreS :: [(Id, Scenario)] -> Service
 scoreS fs = makeService "scenarios.score"

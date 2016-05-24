@@ -18,16 +18,16 @@ data ScenarioInfo = ScenarioInfo Name
                                  (Maybe ID)       -- Character
                                  [ParameterInfo]
                                  [Toggle]
-                                 
+
 tScenarioInfo :: Type a ScenarioInfo
-tScenarioInfo = 
+tScenarioInfo =
     Iso ((<-!) pairify) (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
                         (Pair                       (tMaybe tDifficulty)
                         (Pair (Tag "character"      (tMaybe tString))
                         (Pair (Tag "parameters"     (tList tParameterInfo))
                               (Tag "toggles"        (tList tToggle)))))))
-      where 
+      where
         pairify (ScenarioInfo name descr diff char ps ts) =
             (name, (descr, (diff, (char, (ps, ts)))))
 
@@ -42,8 +42,8 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
 
 tToggle :: Type a Toggle
-tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
-                                    (Tag "bool" tBool)) 
+tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString)
+                                    (Tag "bool" tBool))
   where pairify (Toggle name boolean) = (name, boolean)
 
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------

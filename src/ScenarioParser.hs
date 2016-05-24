@@ -36,7 +36,7 @@ process script_path bin_path = do
     script <- liftIO $ parseScript script_path
     let scenario = parseScenario script
     liftIO $ encodeFile bin_path scenario
-    
+
 debugMain :: String -> IO ()
 debugMain path = do
     script <- parseScript (path)

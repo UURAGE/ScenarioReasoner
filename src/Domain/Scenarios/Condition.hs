@@ -23,9 +23,9 @@ data ComparisonCondition = ComparisonCondition
         , conditionTest  :: CompareOperator
         , conditionValue :: Int
         } deriving (Show, Eq, Read, Generic)
- 
+
 instance Binary ComparisonCondition
-        
+
 data CompareOperator = LessThan
                      | LessThanEqualTo
                      | EqualTo
@@ -33,13 +33,13 @@ data CompareOperator = LessThan
                      | GreaterThan
                      | NotEqualTo
                      deriving (Show, Eq, Read, Generic)
-        
+
 instance Binary CompareOperator
-                     
+
 -- | Evaluates the possible condition based on the given state
 evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
 evaluateMaybeCondition = maybe (const True) evaluateCondition
-                     
+
 -- | Evaluates the condition based on the given state
 evaluateCondition :: Condition -> ScenarioState -> Bool
 evaluateCondition mainCondition state = evaluate mainCondition
@@ -55,7 +55,7 @@ evaluateComparisonCondition comparison state = operator tested value
     where operator = getCompareOperator (conditionTest comparison)
           tested = getParameterValue state
           value  = conditionValue comparison
-          
+
           getParameterValue (ScenarioState paramMap _) = M.findWithDefault 0 (conditionIdref comparison) paramMap
 
 -- | Returns the binary predicate corresponding to the given operator type

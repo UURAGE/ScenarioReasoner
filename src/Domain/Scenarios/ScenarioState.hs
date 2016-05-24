@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, DeriveGeneric #-} 
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable, DeriveGeneric #-}
 {- ©Copyright Utrecht University (Department of Information and Computing Sciences) -}
 
 module Domain.Scenarios.ScenarioState where
@@ -30,7 +30,7 @@ data Effect = Effect
         { effectIdref      :: ID
         , effectChangeType :: ChangeType
         , effectValue      :: ParameterValue
-        } 
+        }
  deriving (Show, Read, Generic)
 
 instance Binary Effect
@@ -43,7 +43,7 @@ data ChangeType = Set   -- ^ Set the parameter to the given value
 instance Binary ChangeType
 
 applyEffects :: ScenarioState -> [Effect] -> StatementInfo -> ScenarioState
-applyEffects (ScenarioState paramMap _) paramEffects statInfo = 
+applyEffects (ScenarioState paramMap _) paramEffects statInfo =
     ScenarioState (foldr applyEffect paramMap paramEffects) (Just statInfo)
 
 -- | Applies the chosen effect to the state
@@ -76,7 +76,7 @@ instance InJSON a => InJSON (M.Map String a)  where
 
 instance InJSON StatementInfo  where
     toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON, endToJSON]
-      where 
+      where
         typeToJSON      = ("type",      toJSON (statType        statInfo))
         textToJSON      = ("text",      toJSON (statText        statInfo))
         intentsToJSON   = ("intentions", toJSON (statIntents     statInfo))

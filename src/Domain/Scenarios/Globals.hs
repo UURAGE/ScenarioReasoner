@@ -43,7 +43,7 @@ instance Binary MediaInfo
 -- | Specifies if a certain feature should be on or off
 data Toggle = Toggle Name Bool
     deriving (Show, Read, Generic)
-    
+
 instance Binary Toggle
 
 --------------------------------------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ data Parameter = Parameter
     , parameterScored       :: Bool
     , parameterMax          :: Maybe ParameterValue
     , parameterMin          :: Maybe ParameterValue
-    }                   
+    }
  deriving (Show, Read,Generic)
 
 instance Binary Parameter
@@ -66,7 +66,7 @@ instance Binary Parameter
 -- Useful for handling failure of findAttribute and findChild (from Ideas.Text.XML.Interface).
 
 errorOnFail :: String -> Maybe a -> a
-errorOnFail errorMsg = fromMaybe (error errorMsg) 
+errorOnFail errorMsg = fromMaybe (error errorMsg)
 
 emptyOnFail :: Maybe [a] -> [a]
 emptyOnFail = fromMaybe []

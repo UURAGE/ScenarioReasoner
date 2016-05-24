@@ -30,7 +30,7 @@ main = scenarioReasoner >>= scenarioReasonerCGI
 
 maindoc :: IO ()
 maindoc = do
-    drTuple <- scenarioReasoner 
+    drTuple <- scenarioReasoner
     let dr = fst drTuple
     makeDocumentation dr "doc"
 
@@ -68,14 +68,14 @@ scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
    addr    <- remoteAddr       -- the IP address of the remote host
    cgiBin  <- scriptName       -- get name of binary
    input   <- inputOrDefault
-   
+
    -- create a domain reasoner based on testing or not
    testingInput <- getInput "testing"
    testing <- case testingInput of
                 Just t  -> return (read t :: Bool)
                 Nothing -> return False
    let dr = if testing then srt else sr
-   
+
    -- process request
    (req, txt, ctp) <- liftIO $
       process dr logRef (Just cgiBin) input
@@ -95,7 +95,7 @@ scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
    -- about cross-site scripting
    setHeader "Access-Control-Allow-Origin" "*"
    output txt
-   
+
 inputOrDefault :: CGI String
 inputOrDefault = do
    inHtml <- acceptsHTML
@@ -116,7 +116,7 @@ inputOrDefault = do
       let htmlCT = ContentType "text" "html" []
           xs = negotiate [htmlCT] maybeAcceptCT
       return (isJust maybeAcceptCT && not (null xs))
-      
+
 process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
 process dr logRef cgiBin input = do
    format <- discoverDataFormat input
