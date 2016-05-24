@@ -22,12 +22,12 @@ exercises = map readExercise
 -- Pattern match on Scenario must be lazy to preserve laziness!
 readExercise :: (Id, Scenario) -> Exercise ScenarioState
 readExercise (sId, ~(Scenario metadata _ dialogue)) = mkExercise sId strat difficulty initialState
-  where 
+  where
     strat      = makeStrategy (scenarioID metadata) dialogue
     difficulty = scenarioDifficulty metadata
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
-    initialEmotion = 
+    initialEmotion =
         maybe empty (\emotion -> case emotion of
             "" -> empty
             _  -> insert emotion 1 empty)

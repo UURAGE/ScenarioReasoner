@@ -29,7 +29,7 @@ data StatementInfo = StatementInfo
     }
     deriving (Show, Eq, Read, Generic)
 
-instance Binary	StatementInfo
+instance Binary    StatementInfo
 
 type StatementType = String                                         -- conversation / player / computer
 -- The text of a statement is either simply a text or a conversation with a list of tuples of the types and texts
@@ -49,7 +49,7 @@ instance Binary MediaInfo
 -- | Specifies if a certain feature should be on or off
 data Toggle = Toggle Name Bool
     deriving (Show, Read, Generic)
-    
+
 instance Binary Toggle
 
 toggleNames :: [Name]
@@ -66,7 +66,7 @@ data Parameter = Parameter
     , parameterScored       :: Bool
     , parameterMax          :: Maybe ParameterValue
     , parameterMin          :: Maybe ParameterValue
-    }                   
+    }
  deriving (Show, Read,Generic)
 
 instance Binary Parameter
@@ -76,7 +76,7 @@ instance Binary Parameter
 -- Useful for handling failure of findAttribute and findChild (from Ideas.Text.XML.Interface).
 
 errorOnFail :: String -> Maybe a -> a
-errorOnFail errorMsg = fromMaybe (error errorMsg) 
+errorOnFail errorMsg = fromMaybe (error errorMsg)
 
 emptyOnFail :: Maybe [a] -> [a]
 emptyOnFail = fromMaybe []

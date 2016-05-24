@@ -19,7 +19,7 @@ import Domain.Scenarios.ScoringFunction(SubScore)
 data ScenarioInfo = ScenarioInfo ID
                                  Name
                                  String           -- Description
-                                 Difficulty 
+                                 Difficulty
                                  (Maybe ID)       -- BannerImage
                                  (Maybe ID)       -- CharacterImage
                                  (Maybe ID)       -- Model
@@ -27,13 +27,13 @@ data ScenarioInfo = ScenarioInfo ID
                                  Name             -- Location
                                  Name             -- Pet
                                  [Toggle]
-                                 
+
 tScenarioInfo :: Type a ScenarioInfo
-tScenarioInfo = 
+tScenarioInfo =
     Iso ((<-!) pairify) (Pair (Tag "id"              tString)
                         (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
-                        (Pair                        tDifficulty    
+                        (Pair                        tDifficulty
                         (Pair (Tag "bannerImage"    (tMaybe tString))
                         (Pair (Tag "characterImage" (tMaybe tString))
                         (Pair (Tag "model"          (tMaybe tString))
@@ -41,8 +41,8 @@ tScenarioInfo =
                         (Pair (Tag "location"        tString)
                         (Pair (Tag "pet"             tString)
                               (Tag "toggles"        (tList tToggle))))))))))))
-      where 
-        pairify (ScenarioInfo sid name descr diff bi ci model ps loc pet ts) = 
+      where
+        pairify (ScenarioInfo sid name descr diff bi ci model ps loc pet ts) =
             (sid, (name, (descr, (diff, (bi, (ci, (model, (ps, (loc, (pet, ts))))))))))
 
 data ParameterInfo = ParameterInfo ID
@@ -56,8 +56,8 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
 
 tToggle :: Type a Toggle
-tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString) 
-                                    (Tag "bool" tBool)) 
+tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString)
+                                    (Tag "bool" tBool))
   where pairify (Toggle name boolean) = (name, boolean)
 
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------

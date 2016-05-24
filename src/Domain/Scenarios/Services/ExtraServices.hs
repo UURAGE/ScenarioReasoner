@@ -24,11 +24,11 @@ import Domain.Scenarios.Services.Types
 
 feedbackform :: [(Id, Scenario)] -> State a -> [(ID, String)]
 feedbackform fs fstate = map (getFeedbackFormResult state) (scenarioFeedbackForm scenario)
-  where 
+  where
     state = fromMaybe (error "Cannot give feedback on exercise: casting failed.") $
         castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
     scenario = findScenario "feedbackform" fs (exercise fstate)
-    
+
 -- If an entry contains conditioned feedback then it checks if it is fullfilled
 -- and returns the corresponding feedback otherwise it returns the default feedback or an empty string
 getFeedbackFormResult :: ScenarioState -> FeedbackFormEntry -> (ID, String)
@@ -36,15 +36,15 @@ getFeedbackFormResult state (FeedbackFormEntry paramID fbConds defaultFeedback) 
     case evalFBConds fbConds of
         Nothing       -> (paramID, fromMaybe "" defaultFeedback)
         Just feedback -> (paramID, feedback)
-  where 
+  where
     evalFBConds :: [(Condition, String)] -> Maybe String
     evalFBConds []                                                = Nothing
     evalFBConds ((cond, fb) : cfs) | evaluateCondition cond state = Just fb
                                    | otherwise                    = evalFBConds cfs
-                                            
+
 
 -- ScenarioList and Info Service -------------------------------------------------------------------------------------
-  
+
 -- Scenariolist service: lists all info for each scenario
 scenariolist :: [(Id, Scenario)] -> [ScenarioInfo]
 scenariolist = map (getScenarioInfo . snd)
@@ -66,13 +66,13 @@ getScenarioInfo scenario@(Scenario metadata _ _) = ScenarioInfo
                 (scenarioLocation       metadata)
                 (scenarioPet            metadata)
                 (scenarioToggles        metadata)
-  where 
+  where
     describeParameter param = ParameterInfo
         (parameterId          param)
-        (parameterName        param)      
+        (parameterName        param)
         (parameterDescription param)
-        
-                                            
+
+
 -- Score Service --------------------------------------------------------------------------------------------
 
 score :: [(Id, Scenario)] -> State a -> ScoreResult
@@ -82,8 +82,8 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
             castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
           mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
           subScores = calculateSubScores parameters state
-          mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax]) 
-            (scenarioScoreExtremes metaData) :: Maybe [Score]          
+          mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax])
+            (scenarioScoreExtremes metaData) :: Maybe [Score]
           parameters = scenarioParameters metaData
 
 -- | Finds the scenario of the exercise in the given scenario list
