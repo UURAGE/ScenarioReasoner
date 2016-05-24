@@ -15,21 +15,17 @@ import Domain.Scenarios.ScoringFunction(SubScore)
 data ScenarioInfo = ScenarioInfo Name
                                  String           -- Description
                                  (Maybe Difficulty)
-                                 (Maybe ID)       -- Character
                                  [ParameterInfo]
-                                 [Toggle]
 
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
     Iso ((<-!) pairify) (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
                         (Pair                       (tMaybe tDifficulty)
-                        (Pair (Tag "character"      (tMaybe tString))
-                        (Pair (Tag "parameters"     (tList tParameterInfo))
-                              (Tag "toggles"        (tList tToggle)))))))
+                              (Tag "parameters"     (tList tParameterInfo)))))
       where
-        pairify (ScenarioInfo name descr diff char ps ts) =
-            (name, (descr, (diff, (char, (ps, ts)))))
+        pairify (ScenarioInfo name descr diff ps) =
+            (name, (descr, (diff, ps)))
 
 data ParameterInfo = ParameterInfo ID
                                    Name
@@ -40,11 +36,6 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
                                            (Tag "description"   tString)))
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
-
-tToggle :: Type a Toggle
-tToggle = Iso ((<-!) pairify) (Pair (Tag "name" tString)
-                                    (Tag "bool" tBool))
-  where pairify (Toggle name boolean) = (name, boolean)
 
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 

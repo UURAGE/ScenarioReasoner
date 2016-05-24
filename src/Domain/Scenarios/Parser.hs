@@ -5,7 +5,6 @@ module Domain.Scenarios.Parser where
 import Control.Monad
 
 import Data.Char
-import Data.List
 import Data.Maybe
 import Text.Read(readMaybe)
 
@@ -35,7 +34,6 @@ parseScript filepath = withBinaryFile filepath ReadMode
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario
         { scenarioMetaData     = parseMetaData     script
-        , scenarioFeedbackForm = parseFeedbackForm script
         , scenarioDialogue     = parseDialogue     script
         }
 
@@ -51,9 +49,7 @@ parseMetaData script = MetaData
         { scenarioName            = parseScenarioName            script
         , scenarioDescription     = parseScenarioDescription     script
         , scenarioDifficulty      = parseScenarioDifficulty      script
-        , scenarioCharacter       = parseScenarioCharacter       script
         , scenarioParameters      = parseScenarioParameters      script
-        , scenarioToggles         = parseScenarioToggles         script
         , scenarioScoringFunction = parseScenarioScoringFunction script
         }
 
@@ -70,13 +66,6 @@ parseScenarioDifficulty :: Script -> Maybe Difficulty
 parseScenarioDifficulty script = readDifficulty difficultyString
  where
     difficultyString = getMetaDataString "difficulty" script
-
--- | Queries the given script for its character
-parseScenarioCharacter :: Script -> Maybe ID
-parseScenarioCharacter script =
-    findChild "metadata" script >>=
-    findChild "character"       >>=
-    findAttribute "id"
 
 -- | Queries the given script for its parameters
 parseScenarioParameters :: Script -> [Parameter]
@@ -97,11 +86,6 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
         }
-
--- | Queries the given script for its defined toggles (unavailable)
-parseScenarioToggles :: Script -> [Toggle]
-parseScenarioToggles script = map parseToggle []
-    where parseToggle toggleName = Toggle toggleName (parseBool (getMetaDataString toggleName script))
 
 -- | Queries the given script for its scoring function
 parseScenarioScoringFunction :: Script -> ScoringFunction
@@ -126,74 +110,6 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
 -- MetaData Parser END -----------------------------------------------------------------------------
-
--- FeedbackForm Parser -----------------------------------------------------------------------------
-
-parseFeedbackForm :: Script -> FeedbackForm
-parseFeedbackForm script = map parseFeedbackFormEntry feedbackParamElems
-  where
-    feedbackFormElem = getChild "feedbackForm" script
-    feedbackParamElems = children feedbackFormElem
-
--- | Evaluates the feedbackform entry using the given parameter and the score on the parameter
--- | and then gives the appropriate feedback
-parseFeedbackFormEntry :: Element -> FeedbackFormEntry
-parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
-    { feedbackParamID    = paramID
-    , feedbackConditions = map parseConditionedFeedback conditionedFeedbackElems
-    , feedbackDefault    = maybeDefaultFeedback
-    }
-  where
-    paramID = getAttribute "idref" feedbackParamElem
-    conditionedFeedbackElems = filter ((/= "default") . name) (children feedbackParamElem)
-    maybeDefaultFeedback = getData <$> findChild "default" feedbackParamElem
-
-    parseConditionedFeedback :: Element -> (Condition, String)
-    parseConditionedFeedback condFeedbackElem =
-        (case maybeOtherOp of
-            Nothing        -> Condition
-                ComparisonCondition
-                { conditionIdref = paramID
-                , conditionTest  = parseCompareOperator condFeedbackElem
-                , conditionValue = getValue condFeedbackElem
-                }
-            Just "between" -> And
-                [ Condition
-                    ComparisonCondition
-                    { conditionIdref = paramID
-                    , conditionTest  = GreaterThanEqualTo
-                    , conditionValue = read (getAttribute "lowerBound" condFeedbackElem) :: ParameterValue
-                    }
-                , Condition
-                    ComparisonCondition
-                    { conditionIdref = paramID
-                    , conditionTest  = LessThanEqualTo
-                    , conditionValue = read (getAttribute "upperBound" condFeedbackElem) :: ParameterValue
-                    }
-                ]
-            Just "max"     -> Condition
-                ComparisonCondition
-                    { conditionIdref = paramID
-                    , conditionTest  = GreaterThanEqualTo
-                    , conditionValue = getValue condFeedbackElem
-                    }
-            Just "min"     -> Condition
-                ComparisonCondition
-                    { conditionIdref = paramID
-                    , conditionTest  = LessThanEqualTo
-                    , conditionValue = getValue condFeedbackElem
-                    }
-            Just _         -> error "no parse conditionedfeedback"
-
-        , getData condFeedbackElem)
-      where
-        maybeOtherOp = case getAttribute "test" condFeedbackElem of
-            "between" -> Just "between"
-            "max"     -> Just "max"
-            "min"     -> Just "min"
-            _         -> Nothing
-
--- FeedbackForm Parser END -------------------------------------------------------------------------
 
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
@@ -220,11 +136,10 @@ parseTree treeElem =
   where statements = parseStatements treeElem
 
 parseStatements :: Element -> [Statement]
-parseStatements treeElem = playerStats ++ computerStats ++ conversation
+parseStatements treeElem = playerStats ++ computerStats
   where
     playerStats   = map parseStatement (findChildren "playerStatement"   treeElem)
     computerStats = map parseStatement (findChildren "computerStatement" treeElem)
-    conversation  = map parseStatement (findChildren "conversation"      treeElem)
 
 parseStatement :: Element -> Statement
 parseStatement statElem =
@@ -244,9 +159,6 @@ parseStatementInfo statElem =
     StatementInfo
     {   statType        = parseType     statElem
     ,   statText        = parseText     statElem
-    ,   statIntents     = parseIntents  statElem
-    ,   statFeedback    = parseFeedback statElem
-    ,   statMedia       = parseMedia    statElem
     }
 
 -- | Takes a statement and returns its type
@@ -255,13 +167,7 @@ parseType statElem = takeWhile isLower (name statElem)
 
 -- | Takes a statement and returns its text
 parseText :: Element -> StatementText
-parseText statElem = case name statElem of
-        "conversation" -> Right (map toConversationText (filterText conversationElems))
-        _              -> Left (getData (getChild "text" statElem))
-  where
-    toConversationText textEl = (map toLower (name textEl), getData textEl)
-    conversationElems = children statElem
-    filterText = filter (isSuffixOf "Text" . name)
+parseText statElem = getData (getChild "text" statElem)
 
 -- | Takes a statement element and returns its precondition, if it has one
 parseMaybePrecondition :: Element -> Maybe Condition
@@ -303,38 +209,6 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
     nextIDs = getResponses >>= getIdrefs
       where getIdrefs = mapM (findAttribute "idref")
             getResponses = children <$> findChild "responses" element
-
--- | Parses media of the statement element
-parseMedia :: Element -> MediaInfo
-parseMedia statElem = MediaInfo parseMediaVisuals parseMediaAudios
-  where
-    -- | Takes a statement and returns its visual media
-    parseMediaVisuals :: [(VisualType, ID)]
-    parseMediaVisuals = map parseMediaVisual visualElems
-      where
-        visualElems =
-            findChild "media" statElem >>=
-            findChild "visuals"        >>=
-            children
-        -- | Parses video or image
-        parseMediaVisual :: Element -> (VisualType, ID)
-        parseMediaVisual e = (name e, getAttribute "extid" e)
-
-    -- | Takes a statement and returns its audio
-    parseMediaAudios :: [ID]
-    parseMediaAudios = map (getAttribute "extid") audioElems
-      where audioElems =
-                findChild "media" statElem >>=
-                findChild "audios"          >>=
-                children
-
--- | Takes a statement and returns its intents
-parseIntents :: Element -> [String]
-parseIntents statElem = map getData (findChild "intents" statElem >>= children)
-
--- | Parses the feedback of the given statement element
-parseFeedback :: Element -> Maybe String
-parseFeedback statElem = getData <$> findChild "feedback" statElem
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 

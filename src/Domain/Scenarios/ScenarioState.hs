@@ -78,22 +78,10 @@ instance InJSON a => InJSON (M.Map String a)  where
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON StatementInfo  where
-    toJSON statInfo = Object [typeToJSON, textToJSON, intentsToJSON, feedbackToJSON, mediaToJSON]
+    toJSON statInfo = Object [typeToJSON, textToJSON]
       where
         typeToJSON      = ("type",      toJSON (statType        statInfo))
         textToJSON      = ("text",      toJSON (statText        statInfo))
-        intentsToJSON   = ("intentions", toJSON (statIntents     statInfo))
-        feedbackToJSON  = ("feedback",  toJSON (statFeedback    statInfo))
-        mediaToJSON     = ("media",     toJSON (statMedia       statInfo))
-    fromJSON _ = fail "fromJSON: not supported"
-
-instance InJSON (Either String [(String, String)]) where
-    toJSON (Left text) = toJSON text
-    toJSON (Right conversation) = toJSON conversation
-    fromJSON _ = fail "fromJSON: not supported"
-
-instance InJSON MediaInfo where
-    toJSON (MediaInfo visuals audios) = Object [("visuals", toJSON visuals), ("audios", toJSON audios)]
     fromJSON _ = fail "fromJSON: not supported"
 
 instance InJSON a => InJSON (Maybe a) where

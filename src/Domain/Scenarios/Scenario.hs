@@ -3,8 +3,6 @@
 
 module Domain.Scenarios.Scenario where
 
-import Data.List(intercalate)
-
 import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
@@ -21,7 +19,6 @@ readBinaryScenario path = unsafePerformIO $ decodeFile path
 
 data Scenario = Scenario
         { scenarioMetaData     :: MetaData
-        , scenarioFeedbackForm :: FeedbackForm
         , scenarioDialogue     :: Dialogue
         }
     deriving (Show, Read, Generic)
@@ -32,9 +29,7 @@ data MetaData = MetaData
         { scenarioName            :: Name
         , scenarioDescription     :: String
         , scenarioDifficulty      :: Maybe Difficulty
-        , scenarioCharacter       :: Maybe ID
         , scenarioParameters      :: [Parameter]
-        , scenarioToggles         :: [Toggle]
         , scenarioScoringFunction :: ScoringFunction
         }
  deriving (Show, Read, Generic)
@@ -43,17 +38,6 @@ instance Binary MetaData
 
 deriving instance Generic Difficulty
 instance Binary Difficulty
-
-type FeedbackForm = [FeedbackFormEntry]
-
-data FeedbackFormEntry = FeedbackFormEntry
-    { feedbackParamID    :: ID
-    , feedbackConditions :: [(Condition, String)]
-    , feedbackDefault    :: Maybe String
-    }
- deriving (Show, Read, Generic)
-
-instance Binary FeedbackFormEntry
 
 type Dialogue = [InterleaveLevel]
 
@@ -88,6 +72,5 @@ instance HasId Statement where
     getId statement = describe descr statId
       where
         statId = newId [statType (statInfo statement), statID statement]
-        text   = statText (statInfo statement)
-        descr  = either id (intercalate " // " . map snd) text
+        descr  = statText (statInfo statement)
     changeId _ _ = error "The ID of a Statement is determined externally."

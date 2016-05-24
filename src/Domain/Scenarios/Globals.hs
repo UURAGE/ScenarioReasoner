@@ -16,34 +16,13 @@ type Score = Int
 data StatementInfo = StatementInfo
     { statType     :: StatementType
     , statText     :: StatementText
-    , statIntents  :: [String]
-    , statFeedback :: Maybe String
-    , statMedia    :: MediaInfo
     }
     deriving (Show, Eq, Read, Generic)
 
 instance Binary StatementInfo
 
-type StatementType = String                                         -- conversation / player / computer
--- The text of a statement is either simply a text or a conversation with a list of tuples of the types and texts
-type StatementText = Either String [(ConversationTextType, String)] -- Either Text [(Type, Text)]
-type ConversationTextType = String                                  -- player / computer / situation
-
-data MediaInfo = MediaInfo
-    { mediaVisuals :: [(VisualType, ID)]
-    , mediaAudios  :: [ID]
-    }
-    deriving (Show, Eq, Read, Generic)
-
-type VisualType = String -- image / video
-
-instance Binary MediaInfo
-
--- | Specifies if a certain feature should be on or off
-data Toggle = Toggle Name Bool
-    deriving (Show, Read, Generic)
-
-instance Binary Toggle
+type StatementType = String                                         -- player / computer
+type StatementText = String
 
 --------------------------------------------------------------------------------------------------------------------------
 

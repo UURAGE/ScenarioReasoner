@@ -10,13 +10,13 @@ import Ideas.Service.BasicServices (tStepInfo)
 
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.Services.AdaptedServices(allfirsts)
-import Domain.Scenarios.Services.ExtraServices(feedbackform, scenariolist, scenarioinfo, score)
+import Domain.Scenarios.Services.ExtraServices(scenariolist, scenarioinfo, score)
 import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
 customServiceList :: [(Id, Scenario)] -> [Service]
 customServiceList fs = [allfirstsS] ++ map ($ fs)
-    [feedbackformS, scenariolistS, scenarioinfoS, scoreS]
+    [scenariolistS, scenarioinfoS, scoreS]
 
 -- Meta-services for the given domain reasoner
 metaServiceList :: DomainReasoner -> [Service]
@@ -34,12 +34,6 @@ allfirstsS = makeService "scenarios.allfirsts"
    \state, the rule used, and the location where the rule was applied are \
    \returned." $
    allfirsts ::: tState .-> tError (tList (tPair tStepInfo tState))
-
--- Service that gives back the computed feedbackform defined in the xml
-feedbackformS :: [(Id, Scenario)] -> Service
-feedbackformS fs = makeService "scenarios.feedbackform"
-    "Gives detailed feedback for every parameter." $
-    feedbackform fs ::: tState .-> tList (tPair tString tString)
 
 -- Gives a list of scenario's together with all their info
 scenariolistS :: [(Id, Scenario)] -> Service
