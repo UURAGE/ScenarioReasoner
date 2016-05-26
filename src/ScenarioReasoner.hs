@@ -6,10 +6,12 @@
 
 module Main where
 
-import Ideas.Main.Documentation
-import Domain.Scenarios.Scenario
+import System.Environment
+import System.IO
 import System.FilePath (takeBaseName)
 import System.FilePath.Find as F
+import Ideas.Main.Documentation
+import Domain.Scenarios.Scenario
 import Domain.Scenarios.Services.ServiceList
 import qualified Domain.Scenarios.Exercises as E
 
@@ -29,7 +31,12 @@ import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Main.Logging as Log
 
 main :: IO ()
-main = scenarioReasoner >>= scenarioReasonerCGI
+main = do
+   srs <- scenarioReasoner
+   args <- getArgs
+   case args of
+      "-r" : restArgs -> scenarioReasonerCommandLine srs restArgs
+      _ -> scenarioReasonerCGI srs
 
 maindoc :: IO ()
 maindoc = do
@@ -79,6 +86,11 @@ scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
    -- process request
    (req, txt, ctp) <- liftIO $
       process dr logRef (Just cgiBin) input
+    `catch` \ioe -> do
+      let msg = "Error: " ++ ioeGetErrorString ioe
+      Log.changeLog logRef (\r -> r { Log.errormsg = msg })
+      return (emptyRequest, msg, "text/plain")
+
    -- log request to database
    when (useLogging req) $ liftIO $ do
       Log.changeLog logRef $ \r -> Log.addRequest req r
@@ -117,14 +129,23 @@ inputOrDefault = do
           xs = negotiate [htmlCT] maybeAcceptCT
       return (isJust maybeAcceptCT && not (null xs))
 
+-- Invoked from command-line using raw mode
+scenarioReasonerCommandLine :: (DomainReasoner, DomainReasoner) -> [String] -> IO ()
+scenarioReasonerCommandLine (sr, srt) restArgs = do
+   let testing = case restArgs of
+                   "--testing" : _ -> True
+                   _               -> False
+   let dr = if testing then srt else sr
+   mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
+   txtIn          <- getContents
+   logRef         <- liftIO Log.newLogRef
+   (_, txtOut, _) <- process dr logRef Nothing txtIn
+   putStrLn txtOut
+
 process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
 process dr logRef cgiBin input = do
    format <- discoverDataFormat input
    run format (Just 5) cgiBin dr logRef input
- `catch` \ioe -> do
-   let msg = "Error: " ++ ioeGetErrorString ioe
-   Log.changeLog logRef (\r -> r { Log.errormsg = msg })
-   return (emptyRequest, msg, "text/plain")
  where
    run XML  = processXML
    run JSON = processJSON
