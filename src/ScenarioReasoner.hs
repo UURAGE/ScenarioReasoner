@@ -71,9 +71,9 @@ scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
 
    -- create a domain reasoner based on testing or not
    testingInput <- getInput "testing"
-   testing <- case testingInput of
-                Just t  -> return (read t :: Bool)
-                Nothing -> return False
+   let testing = case testingInput of
+                   Just t  -> read t :: Bool
+                   Nothing -> False
    let dr = if testing then srt else sr
 
    -- process request
