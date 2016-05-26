@@ -10,7 +10,7 @@ import Ideas.Main.Documentation
 import Domain.Scenarios.Scenario
 import System.FilePath (takeBaseName)
 import System.FilePath.Find as F
-import qualified Domain.Scenarios.Services.ServiceList as S
+import Domain.Scenarios.Services.ServiceList
 import qualified Domain.Scenarios.Exercises as E
 
 import Control.Exception
@@ -23,7 +23,6 @@ import Ideas.Encoding.ModeXML (processXML)
 import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
-import Ideas.Service.ServiceList
 import Network.CGI
 import Prelude hiding (catch)
 import System.IO.Error (ioeGetErrorString)
@@ -40,19 +39,16 @@ maindoc = do
 
 scenarioReasoner :: IO (DomainReasoner, DomainReasoner)
 scenarioReasoner = do
-    -- Filter the serviceList of Ideas, because we have our own allfirsts in adapted services
-    let filteredServiceList = filter (\s -> getId s /= "basic" # "allfirsts") serviceList
-
     iss <- readBinaryScenarios "bins"
     let dr  = (newDomainReasoner "ideas.scenarios")
             { exercises = map Some (E.exercises iss)
-            , services  = S.customServices iss ++ metaServiceList dr ++ filteredServiceList
+            , services  = customServiceList iss ++ metaServiceList dr ++ serviceList
             }
 
     tiss <- readBinaryScenarios "test_bins"
     let tdr = (newDomainReasoner "ideas.scenarios.test")
             { exercises = map Some (E.exercises tiss)
-            , services  = S.customServices tiss ++ metaServiceList dr ++ filteredServiceList
+            , services  = customServiceList tiss ++ metaServiceList dr ++ serviceList
             }
 
     return (dr, tdr)

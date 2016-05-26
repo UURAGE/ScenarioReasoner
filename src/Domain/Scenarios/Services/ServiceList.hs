@@ -4,10 +4,12 @@
 -- ©Copyright Utrecht University (Department of Information and Computing Sciences)
 ------------------------------------------------------------------------------------
 
-module Domain.Scenarios.Services.ServiceList (customServices) where
+module Domain.Scenarios.Services.ServiceList (customServiceList, metaServiceList, serviceList) where
 
 import Ideas.Common.Id
+import Ideas.Service.DomainReasoner
 import Ideas.Service.Types
+import qualified Ideas.Service.ServiceList as S
 import Ideas.Service.BasicServices (tStepInfo)
 
 import Domain.Scenarios.Scenario
@@ -16,9 +18,17 @@ import Domain.Scenarios.Services.ExtraServices(feedbackform, scenariolist, scena
 import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
-customServices :: [(Id, Scenario)] -> [Service]
-customServices fs = [allfirstsS] ++ map ($ fs)
+customServiceList :: [(Id, Scenario)] -> [Service]
+customServiceList fs = [allfirstsS] ++ map ($ fs)
     [feedbackformS, scenariolistS, scenarioinfoS, scoreS]
+
+-- Meta-services for the given domain reasoner
+metaServiceList :: DomainReasoner -> [Service]
+metaServiceList = S.metaServiceList
+
+-- Filtered Ideas serviceList, because we have our own adapted allfirsts
+serviceList :: [Service]
+serviceList = filter (\s -> getId s /= "basic" # "allfirsts") S.serviceList
 
 -- Adapted allfirsts
 allfirstsS :: Service
