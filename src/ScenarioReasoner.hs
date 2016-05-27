@@ -2,11 +2,13 @@
 
 module Main where
 
-import Ideas.Main.Documentation
-import Domain.Scenarios.Scenario
+import System.Environment
+import System.IO
 import System.FilePath (takeBaseName)
 import System.FilePath.Find as F
-import qualified Domain.Scenarios.Services.ServiceList as S
+import Ideas.Main.Documentation
+import Domain.Scenarios.Scenario
+import Domain.Scenarios.Services.ServiceList
 import qualified Domain.Scenarios.Exercises as E
 
 import Control.Exception
@@ -19,14 +21,18 @@ import Ideas.Encoding.ModeXML (processXML)
 import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
-import Ideas.Service.ServiceList
 import Network.CGI
 import Prelude hiding (catch)
 import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Main.Logging as Log
 
 main :: IO ()
-main = scenarioReasoner >>= scenarioReasonerCGI
+main = do
+   srs <- scenarioReasoner
+   args <- getArgs
+   case args of
+      "-r" : restArgs -> scenarioReasonerCommandLine srs restArgs
+      _ -> scenarioReasonerCGI srs
 
 maindoc :: IO ()
 maindoc = do
@@ -36,19 +42,16 @@ maindoc = do
 
 scenarioReasoner :: IO (DomainReasoner, DomainReasoner)
 scenarioReasoner = do
-    -- Filter the serviceList of Ideas, because we have our own allfirsts in adapted services
-    let filteredServiceList = filter (\s -> getId s /= "basic" # "allfirsts") serviceList
-
     iss <- readBinaryScenarios "bins"
     let dr  = (newDomainReasoner "ideas.scenarios")
             { exercises = map Some (E.exercises iss)
-            , services  = S.customServices iss ++ metaServiceList dr ++ filteredServiceList
+            , services  = customServiceList iss ++ metaServiceList dr ++ serviceList
             }
 
     tiss <- readBinaryScenarios "test_bins"
     let tdr = (newDomainReasoner "ideas.scenarios.test")
             { exercises = map Some (E.exercises tiss)
-            , services  = S.customServices tiss ++ metaServiceList dr ++ filteredServiceList
+            , services  = customServiceList tiss ++ metaServiceList dr ++ serviceList
             }
 
     return (dr, tdr)
@@ -71,14 +74,19 @@ scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
 
    -- create a domain reasoner based on testing or not
    testingInput <- getInput "testing"
-   testing <- case testingInput of
-                Just t  -> return (read t :: Bool)
-                Nothing -> return False
+   let testing = case testingInput of
+                   Just t  -> read t :: Bool
+                   Nothing -> False
    let dr = if testing then srt else sr
 
    -- process request
    (req, txt, ctp) <- liftIO $
       process dr logRef (Just cgiBin) input
+    `catch` \ioe -> do
+      let msg = "Error: " ++ ioeGetErrorString ioe
+      Log.changeLog logRef (\r -> r { Log.errormsg = msg })
+      return (emptyRequest, msg, "text/plain")
+
    -- log request to database
    when (useLogging req) $ liftIO $ do
       Log.changeLog logRef $ \r -> Log.addRequest req r
@@ -117,14 +125,23 @@ inputOrDefault = do
           xs = negotiate [htmlCT] maybeAcceptCT
       return (isJust maybeAcceptCT && not (null xs))
 
+-- Invoked from command-line using raw mode
+scenarioReasonerCommandLine :: (DomainReasoner, DomainReasoner) -> [String] -> IO ()
+scenarioReasonerCommandLine (sr, srt) restArgs = do
+   let testing = case restArgs of
+                   "--testing" : _ -> True
+                   _               -> False
+   let dr = if testing then srt else sr
+   mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
+   txtIn          <- getContents
+   logRef         <- liftIO Log.newLogRef
+   (_, txtOut, _) <- process dr logRef Nothing txtIn
+   putStrLn txtOut
+
 process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
 process dr logRef cgiBin input = do
    format <- discoverDataFormat input
    run format (Just 5) cgiBin dr logRef input
- `catch` \ioe -> do
-   let msg = "Error: " ++ ioeGetErrorString ioe
-   Log.changeLog logRef (\r -> r { Log.errormsg = msg })
-   return (emptyRequest, msg, "text/plain")
  where
    run XML  = processXML
    run JSON = processJSON
