@@ -359,7 +359,7 @@ parseInits :: Element -> Bool
 parseInits statElem = tryParseBool (findAttribute "inits" statElem)
 
 parseEnd :: Element -> Bool
-parseEnd statElem = parseBool (getAttribute "possibleEnd" statElem)
+parseEnd statElem = tryParseBool (findAttribute "possibleEnd" statElem)
 
 -- | Takes a statement and returns the IDs of the statements following it
 parseNextStatIDs :: Element -> [ID]
