@@ -3,7 +3,9 @@
 module Domain.Scenarios.Services.Types where
 
 import Ideas.Common.Library
+import Ideas.Encoding.Encoder
 import Ideas.Service.Types
+import Ideas.Text.JSON
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.ScoringFunction(SubScore)
@@ -16,16 +18,18 @@ data ScenarioInfo = ScenarioInfo Name
                                  String           -- Description
                                  (Maybe Difficulty)
                                  [ParameterInfo]
+                                 PropertyValues
 
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
     Iso ((<-!) pairify) (Pair (Tag "name"            tString)
                         (Pair (Tag "description"     tString)
                         (Pair                       (tMaybe tDifficulty)
-                              (Tag "parameters"     (tList tParameterInfo)))))
+                        (Pair (Tag "parameters"     (tList tParameterInfo))
+                              (Tag "propertyValues"  tPropertyValues)))))
       where
-        pairify (ScenarioInfo name descr diff ps) =
-            (name, (descr, (diff, ps)))
+        pairify (ScenarioInfo name descr diff ps pvs) =
+            (name, (descr, (diff, (ps, pvs))))
 
 data ParameterInfo = ParameterInfo ID
                                    Name
@@ -36,6 +40,11 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
                                            (Tag "description"   tString)))
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
+
+tPropertyValues :: Type a PropertyValues
+tPropertyValues = Iso ((<-!) objectify) tTerm
+        where objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
+              toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]
 
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 

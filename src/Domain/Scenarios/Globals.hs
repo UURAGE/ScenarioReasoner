@@ -8,14 +8,17 @@ import GHC.Generics
 import Data.Binary
 import Data.Maybe
 
+import qualified Domain.Scenarios.DomainData as DD
+
 type ParameterValue = Int
 type ID = String
 type Name = String
 type Score = Int
 
 data StatementInfo = StatementInfo
-    { statType     :: StatementType
-    , statText     :: StatementText
+    { statType           :: StatementType
+    , statText           :: StatementText
+    , statPropertyValues :: PropertyValues
     }
     deriving (Show, Eq, Read, Generic)
 
@@ -23,6 +26,13 @@ instance Binary StatementInfo
 
 type StatementType = String                                         -- player / computer
 type StatementText = String
+
+type PropertyValues = Assocs DD.Value
+
+data Assocs a = Assocs [(String, a)]
+    deriving (Show, Read, Eq, Generic)
+
+instance Binary a => Binary (Assocs a)
 
 --------------------------------------------------------------------------------------------------------------------------
 

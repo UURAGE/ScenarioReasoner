@@ -78,11 +78,19 @@ instance InJSON a => InJSON (M.Map String a)  where
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON StatementInfo  where
-    toJSON statInfo = Object [typeToJSON, textToJSON]
+    toJSON statInfo = Object [typeToJSON, textToJSON, pvsToJSON]
       where
         typeToJSON      = ("type",      toJSON (statType        statInfo))
         textToJSON      = ("text",      toJSON (statText        statInfo))
+        pvsToJSON       = ("propertyValues", toJSON (statPropertyValues statInfo))
     fromJSON _ = fail "fromJSON: not supported"
+
+instance InJSON a => InJSON (Assocs a) where
+    toJSON (Assocs kvps) = Object (map kvpToJSON kvps)
+        where kvpToJSON (key, value) = (key, toJSON value)
+    fromJSON (Object kjvps) = Assocs <$> mapM kvpFromJSON kjvps
+        where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue)
+    fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON a => InJSON (Maybe a) where
     toJSON Nothing = Null

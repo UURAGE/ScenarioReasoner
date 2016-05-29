@@ -6,6 +6,7 @@ import Control.Monad
 
 import Data.Char
 import Data.Maybe
+import qualified Data.Map as M
 import Text.Read(readMaybe)
 
 import System.IO
@@ -18,6 +19,7 @@ import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
+import qualified Domain.Scenarios.DomainData as DD
 
 type Script = Element
 
@@ -33,9 +35,30 @@ parseScript filepath = withBinaryFile filepath ReadMode
 -- | Parses a scenario from a script element
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario
-        { scenarioMetaData     = parseMetaData     script
-        , scenarioDialogue     = parseDialogue     script
+        { scenarioMetaData     = parseMetaData defs script
+        , scenarioDialogue     = parseDialogue defs script
         }
+  where defs = parseDefinitions script
+
+type Definitions = M.Map String DD.Type
+
+parseDefinitions :: Script -> Definitions
+parseDefinitions script = fromMaybe (error "Definitions not found") $
+        M.fromList . map parseDefinition . children <$> propertiesElem
+  where propertiesElem =
+            findChild "metadata" script >>=
+            findChild "definitions" >>=
+            findChild "properties"
+
+parseDefinition :: Element -> (String, DD.Type)
+parseDefinition propEl = (getAttribute "id" propEl, parseDomainDataType (head (children propEl)))
+
+parseDomainDataType :: Element -> DD.Type
+parseDomainDataType typeEl = case name typeEl of
+    "typeBoolean" -> DD.TBoolean
+    "typeInteger" -> DD.TInteger
+    "typeString" -> DD.TString
+    n -> error ("Could not parse " ++ n)
 
 ----------------------------------------------------------------------------------------------------
 
@@ -44,13 +67,14 @@ parseScenario script = Scenario
 
 -- MetaData Parser ---------------------------------------------------------------------------------
 
-parseMetaData :: Script -> MetaData
-parseMetaData script = MetaData
-        { scenarioName            = parseScenarioName            script
-        , scenarioDescription     = parseScenarioDescription     script
-        , scenarioDifficulty      = parseScenarioDifficulty      script
-        , scenarioParameters      = parseScenarioParameters      script
-        , scenarioScoringFunction = parseScenarioScoringFunction script
+parseMetaData :: Definitions -> Script -> MetaData
+parseMetaData defs script = MetaData
+        { scenarioName            = parseScenarioName                 script
+        , scenarioDescription     = parseScenarioDescription          script
+        , scenarioDifficulty      = parseScenarioDifficulty           script
+        , scenarioParameters      = parseScenarioParameters           script
+        , scenarioPropertyValues  = parseScenarioPropertyValues  defs script
+        , scenarioScoringFunction = parseScenarioScoringFunction      script
         }
 
 -- | Queries the given script for its name
@@ -109,23 +133,27 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
+parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
+parseScenarioPropertyValues defs script = fromMaybe (Assocs []) $
+    parsePropertyValues defs <$> findChild "metadata" script
+
 -- MetaData Parser END -----------------------------------------------------------------------------
 
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
-parseDialogue :: Script -> Dialogue
-parseDialogue script = map parseInterleaveLevel interleaveElems
+parseDialogue :: Definitions -> Script -> Dialogue
+parseDialogue defs script = map (parseInterleaveLevel defs) interleaveElems
   where
     sequenceElem = getChild "sequence" script
     interleaveElems = findChildren "interleave" sequenceElem
 
-parseInterleaveLevel :: Element -> InterleaveLevel
-parseInterleaveLevel interleaveElem = map parseTree treeElems
+parseInterleaveLevel :: Definitions -> Element -> InterleaveLevel
+parseInterleaveLevel defs interleaveElem = map (parseTree defs) treeElems
   where
     treeElems = findChildren "tree" interleaveElem
 
-parseTree :: Element -> Tree
-parseTree treeElem =
+parseTree :: Definitions -> Element -> Tree
+parseTree defs treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
     , treeStartIDs   = map (getAttribute "idref") (children (getChild "starts" treeElem))
@@ -133,13 +161,13 @@ parseTree treeElem =
     , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
     , treeStatements = statements
     }
-  where statements = map parseStatement (children (getChild "statements" treeElem))
+  where statements = map (parseStatement defs) (children (getChild "statements" treeElem))
 
-parseStatement :: Element -> Statement
-parseStatement statElem =
+parseStatement :: Definitions -> Element -> Statement
+parseStatement defs statElem =
     Statement
     { statID             = getAttribute "id"         statElem
-    , statInfo           = parseStatementInfo        statElem
+    , statInfo           = parseStatementInfo defs   statElem
     , statPrecondition   = parseMaybePrecondition    statElem
     , statParamEffects   = parseParameterEffects     statElem
     , statJumpPoint      = parseJumpPoint            statElem
@@ -148,11 +176,12 @@ parseStatement statElem =
     , statNextStatIDs    = parseNextStatIDs          statElem
     }
 
-parseStatementInfo :: Element -> StatementInfo
-parseStatementInfo statElem =
+parseStatementInfo :: Definitions -> Element -> StatementInfo
+parseStatementInfo defs statElem =
     StatementInfo
-    {   statType        = parseType     statElem
-    ,   statText        = parseText     statElem
+    {   statType           = parseType                statElem
+    ,   statText           = parseText                statElem
+    ,   statPropertyValues = parsePropertyValues defs statElem
     }
 
 -- | Takes a statement and returns its type
@@ -233,6 +262,19 @@ parseCondition conditionElem = case name conditionElem of
 parseCompareOperator :: Element -> CompareOperator
 parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "test"  conditionElem))
 
+-- | Parses property values from an element that has them
+parsePropertyValues :: Definitions -> Element -> PropertyValues
+parsePropertyValues defs = Assocs . map (parsePropertyValue defs) . children . getChild "propertyValues"
+
+parsePropertyValue :: Definitions -> Element -> (String, DD.Value)
+parsePropertyValue defs propValEl = (idref, value)
+  where
+    idref = getAttribute "idref" propValEl
+    errorDefault = error ("Value for unknown property " ++ idref)
+    value = case M.findWithDefault errorDefault idref defs of
+        DD.TBoolean -> DD.VBoolean (read (getData propValEl))
+        DD.TInteger -> DD.VInteger (read (getData propValEl))
+        DD.TString  -> DD.VString  (getData propValEl)
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------

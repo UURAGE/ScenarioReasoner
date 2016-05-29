@@ -30,6 +30,7 @@ data MetaData = MetaData
         , scenarioDescription     :: String
         , scenarioDifficulty      :: Maybe Difficulty
         , scenarioParameters      :: [Parameter]
+        , scenarioPropertyValues  :: PropertyValues
         , scenarioScoringFunction :: ScoringFunction
         }
  deriving (Show, Read, Generic)

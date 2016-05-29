@@ -29,6 +29,7 @@ getScenarioInfo (Scenario metadata _) = ScenarioInfo
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
                 (map describeParameter (scenarioParameters metadata))
+                (scenarioPropertyValues metadata)
   where
     describeParameter param = ParameterInfo
         (parameterId          param)
