@@ -73,7 +73,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
   where
     metaDataElem  = getChild "metadata" script
     definitionsElem = getChild "definitions" metaDataElem
-    parameterElem = getChild "parameters" definitionsElem
+    parameterElem = getChild "userDefined" (getChild "parameters" definitionsElem)
 
     -- | Parses a parameter Element inside the parameters inside the metadata of the script
     parseParameter :: Element -> Parameter
@@ -128,18 +128,12 @@ parseTree :: Element -> Tree
 parseTree treeElem =
     Tree
     { treeID         = getAttribute "id" treeElem
-    , treeStartIDs   = map (getAttribute "idref") (findChildren "start" treeElem)
+    , treeStartIDs   = map (getAttribute "idref") (children (getChild "starts" treeElem))
     , treeAtomic     = not (any statJumpPoint statements)
     , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
     , treeStatements = statements
     }
-  where statements = parseStatements treeElem
-
-parseStatements :: Element -> [Statement]
-parseStatements treeElem = playerStats ++ computerStats
-  where
-    playerStats   = map parseStatement (findChildren "playerStatement"   treeElem)
-    computerStats = map parseStatement (findChildren "computerStatement" treeElem)
+  where statements = map parseStatement (children (getChild "statements" treeElem))
 
 parseStatement :: Element -> Statement
 parseStatement statElem =
@@ -178,7 +172,8 @@ parseMaybePrecondition statElem =
 -- | Takes a statement element and returns its effects
 parseParameterEffects :: Element -> [Effect]
 parseParameterEffects statElem = map parseParameterEffect paramElems
-  where paramElems = emptyOnFail (children <$> findChild "parameterEffects" statElem)
+  where parentElem = findChild "parameterEffects" statElem >>= findChild "userDefined"
+        paramElems = emptyOnFail (children <$> parentElem)
 
 parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
