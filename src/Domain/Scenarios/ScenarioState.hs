@@ -85,6 +85,13 @@ instance InJSON StatementInfo  where
         pvsToJSON       = ("propertyValues", toJSON (statPropertyValues statInfo))
     fromJSON _ = fail "fromJSON: not supported"
 
+instance InJSON PropertyValues where
+    toJSON propVals = Object
+        [ ("independent",  toJSON (propValsIndependent  propVals))
+        , ("perCharacter", toJSON (propValsPerCharacter propVals))
+        ]
+    fromJSON _ = fail "fromJSON: not supported"
+
 instance InJSON a => InJSON (Assocs a) where
     toJSON (Assocs kvps) = Object (map kvpToJSON kvps)
         where kvpToJSON (key, value) = (key, toJSON value)

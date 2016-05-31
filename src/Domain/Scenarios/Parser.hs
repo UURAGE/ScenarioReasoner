@@ -5,10 +5,11 @@ module Domain.Scenarios.Parser where
 import Control.Monad
 
 import Data.Char
-import Data.Maybe
+import Data.Either
 import qualified Data.Map as M
+import Data.Maybe
+import GHC.Exts(groupWith)
 import Text.Read(readMaybe)
-
 import System.IO
 
 import Ideas.Common.Library hiding (Sum)
@@ -134,7 +135,7 @@ parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
     paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
 parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
-parseScenarioPropertyValues defs script = fromMaybe (Assocs []) $
+parseScenarioPropertyValues defs script = fromMaybe (PropertyValues (Assocs []) (Assocs [])) $
     parsePropertyValues defs <$> findChild "metadata" script
 
 -- MetaData Parser END -----------------------------------------------------------------------------
@@ -264,11 +265,21 @@ parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "t
 
 -- | Parses property values from an element that has them
 parsePropertyValues :: Definitions -> Element -> PropertyValues
-parsePropertyValues defs = Assocs . map (parsePropertyValue defs) . children . getChild "propertyValues"
-
-parsePropertyValue :: Definitions -> Element -> (String, DD.Value)
-parsePropertyValue defs propValEl = (idref, value)
+parsePropertyValues defs propsElem = PropertyValues
+    { propValsIndependent = Assocs civs
+    , propValsPerCharacter = Assocs (map toPC (groupWith fst pcvs))
+    }
   where
+    propVals = map (parsePropertyValue defs) (children (getChild "propertyValues" propsElem))
+    (civs, pcvs) = partitionEithers propVals
+    toPC vs = (fst (head vs), Assocs (map snd vs))
+
+parsePropertyValue :: Definitions -> Element -> Either (String, DD.Value) (String, (String, DD.Value))
+parsePropertyValue defs propValEl = case mCharacteridref of
+    Just characteridref -> Right (characteridref, (idref, value))
+    Nothing             -> Left (idref, value)
+  where
+    mCharacteridref = findAttribute "characteridref" propValEl
     idref = getAttribute "idref" propValEl
     errorDefault = error ("Value for unknown property " ++ idref)
     value = case M.findWithDefault errorDefault idref defs of

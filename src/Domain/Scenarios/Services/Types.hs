@@ -42,9 +42,11 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
 
 tPropertyValues :: Type a PropertyValues
-tPropertyValues = Iso ((<-!) objectify) tTerm
-        where objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
-              toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]
+tPropertyValues = Iso ((<-!) pairify) (Pair (Tag "independent" tTerm) (Tag "perCharacter" tTerm))
+        where
+         pairify (PropertyValues ivs pcvs) = (objectify ivs, objectify pcvs)
+         objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
+         toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]
 
 -- ScoreResult type -------------------------------------------------------------------------------------------------------------
 
