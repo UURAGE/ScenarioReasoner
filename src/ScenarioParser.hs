@@ -46,7 +46,7 @@ process script_path bin_path = do
 
 debugMain :: String -> IO ()
 debugMain path = do
-    script <- parseScript (path)
+    script <- parseScript path
     let scenario = parseScenario script
     print scenario
     print path

@@ -26,7 +26,6 @@ import Ideas.Main.Options hiding (fullVersion)
 import Ideas.Service.DomainReasoner
 import Ideas.Service.Request
 import Network.CGI
-import Prelude hiding (catch)
 import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Main.Logging as Log
 

@@ -199,7 +199,7 @@ parseFeedbackFormEntry feedbackParamElem = FeedbackFormEntry
   where
     paramID = getAttribute "id" feedbackParamElem
     conditionedFeedbackElems = filter ((/= "default") . name) (children feedbackParamElem)
-    maybeDefaultFeedback = findChild "default" feedbackParamElem >>= return . getData
+    maybeDefaultFeedback = getData <$> findChild "default" feedbackParamElem
 
     parseConditionedFeedback :: Element -> (Condition, String)
     parseConditionedFeedback condFeedbackElem =
@@ -326,11 +326,11 @@ parseMaybePrecondition statElem =
 -- | Takes a statement element and returns its effects
 parseParameterEffects :: Element -> [Effect]
 parseParameterEffects statElem = map parseParameterEffect paramElems
-  where paramElems = emptyOnFail (liftM children (findChild "parameterEffects" statElem))
+  where paramElems = emptyOnFail (children <$> findChild "parameterEffects" statElem)
 
 parseEmotionEffects :: Element -> [Effect]
 parseEmotionEffects statElem = map parseEmotionEffect emotionElems
-  where emotionElems = emptyOnFail (liftM children (findChild "emotionEffects" statElem))
+  where emotionElems = emptyOnFail (children <$> findChild "emotionEffects" statElem)
 
 parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
@@ -374,11 +374,11 @@ parseNextStatIDs element = errorOnFail errorMsg nextIDs
             _                   -> fail $
                 "Cannot get nexts of statement represented by element named " ++ name element
       where getIdrefs = mapM (findAttribute "idref")
-            getResponses = liftM children $ findChild "responses" element
+            getResponses = children <$> findChild "responses" element
             getNextComputerStatements =
                 case findChild "nextComputerStatements" element of
                       Just nextElem -> return $ children nextElem
-                      Nothing       -> liftM singleton $ findChild "nextComputerStatement" element
+                      Nothing       -> singleton <$> findChild "nextComputerStatement" element
 
 -- | Parses media of the statement element
 parseMedia :: Element -> MediaInfo
@@ -410,7 +410,7 @@ parseIntents statElem = map getData (findChild "intents" statElem >>= children)
 
 -- | Parses the feedback of the given statement element
 parseFeedback :: Element -> Maybe String
-parseFeedback statElem = nothingOnFail (liftM getData (findChild "feedback" statElem))
+parseFeedback statElem = nothingOnFail (getData <$> findChild "feedback" statElem)
 
 -- Dialogue Parser END -----------------------------------------------------------------------------
 

@@ -6,8 +6,6 @@
 
 module Domain.Scenarios.Services.ExtraServices where
 
-import Control.Monad
-
 import Data.Maybe
 
 import Ideas.Common.Library
@@ -82,7 +80,7 @@ score fs fstate = ScoreResult mainScore subScores mainScoreExtremes
             castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
           mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
           subScores = calculateSubScores parameters state
-          mainScoreExtremes = liftM (\(scoreMin, scoreMax) -> [scoreMin, scoreMax])
+          mainScoreExtremes = fmap (\(scoreMin, scoreMax) -> [scoreMin, scoreMax])
             (scenarioScoreExtremes metaData) :: Maybe [Score]
           parameters = scenarioParameters metaData
 
