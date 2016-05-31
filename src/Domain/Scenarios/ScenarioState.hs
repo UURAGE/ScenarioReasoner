@@ -70,7 +70,7 @@ instance InJSON ScenarioState where
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs
         where kvpToJSON (key, value) = (key, toJSON value)
-    fromJSON (Object kjvps) = liftM M.fromList (mapM kvpFromJSON kjvps)
+    fromJSON (Object kjvps) = M.fromList <$> mapM kvpFromJSON kjvps
         where kvpFromJSON (key, jvalue) = liftM2 (,) (return key) (fromJSON jvalue)
     fromJSON _ = fail "fromJSON: expecting an object"
 

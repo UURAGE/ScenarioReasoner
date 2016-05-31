@@ -4,7 +4,6 @@ module Domain.Scenarios.Strategy where
 
 import Prelude hiding (sequence)
 
-import Control.Applicative
 import Control.Monad hiding (sequence)
 import Data.List hiding (inits)
 import qualified Data.Map as M
