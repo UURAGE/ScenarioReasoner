@@ -19,7 +19,6 @@ data StatementInfo = StatementInfo
     , statIntents  :: [String]
     , statFeedback :: Maybe String
     , statMedia    :: MediaInfo
-    , statEnd      :: Bool
     }
     deriving (Show, Eq, Read, Generic)
 

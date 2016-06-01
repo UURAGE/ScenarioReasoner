@@ -51,7 +51,7 @@ calculateScore subScores mainScoringFunction _ =
 
 -- | Calculates the values of the scored parameters given a state
 calculateSubScores :: [Parameter] -> ScenarioState -> [SubScore]
-calculateSubScores parameters (ScenarioState paramMap _) =
+calculateSubScores parameters (ScenarioState paramMap _ _) =
     map (\param -> ( parameterId     param
                    , parameterName   param
                    , clamp (getParamValue param) (parameterMax param) (parameterMin param))

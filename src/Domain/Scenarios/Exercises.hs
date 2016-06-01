@@ -24,7 +24,7 @@ readExercise (sId, ~(Scenario metadata _ dialogue)) = mkExercise sId strat diffi
     parameters = scenarioParameters metadata
     processParameter p = (parameterId p, fromMaybe 0 (parameterInitialValue p))
     initialParameters = fromList (map processParameter parameters)
-    initialState = ScenarioState initialParameters Nothing
+    initialState = ScenarioState initialParameters Nothing False
 
 mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState =

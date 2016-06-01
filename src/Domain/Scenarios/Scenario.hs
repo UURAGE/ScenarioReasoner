@@ -77,6 +77,7 @@ data Statement = Statement
         , statParamEffects  :: [Effect]
         , statJumpPoint     :: Bool
         , statInits         :: Bool
+        , statEnd           :: Bool
         , statNextStatIDs   :: [ID]
         }
  deriving (Show, Read, Generic)

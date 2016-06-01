@@ -76,15 +76,17 @@ makeAlternativesStrategy tree scenID statIDs =
 -- | Make a rule using all the specific properties for a scenario
 makeGuardedRule :: ID -> Statement -> Rule ScenarioState
 makeGuardedRule scenID statement = guardedRule
-    ("scenarios" # scenID # getId statement)                                   -- create an identifier for the rule
-    (evaluateMaybeCondition (statPrecondition statement))                      -- check if precondition is fulfilled
-    (\state -> applyEffects state paramEffects (statInfo statement))           -- apply the effects of a statement to the state
+    ("scenarios" # scenID # getId statement)              -- create an identifier for the rule
+    (evaluateMaybeCondition (statPrecondition statement)) -- check if precondition is fulfilled
+    (\state -> applyEffects state paramEffects info end)  -- apply the effects of a statement to the state
   where
     -- Make a rule with an identifier and a description,
     -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
     guardedRule :: IsId a => a -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
     guardedRule ident precond applyEffs = makeRule ident (\state -> do guard $ precond state; Just $ applyEffs state)
 
+    info           = statInfo statement
+    end            = statEnd statement
     paramEffects   = statParamEffects statement
 
 -- | Sequence a rule to the strategy representing the next statements.

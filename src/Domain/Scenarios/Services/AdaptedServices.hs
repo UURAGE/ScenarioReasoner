@@ -9,15 +9,23 @@ import Ideas.Common.Library
 import Ideas.Service.BasicServices (StepInfo)
 import Ideas.Service.State
 
+import Domain.Scenarios.ScenarioState
+
 -- This adaptation of allfirsts in Ideas.Service.BasicServices
 -- merges duplicate rules with different states together,
 -- when the strategy is not left factorised
+-- and it returns an empty result if the scenario dialogue is at an end.
 allfirsts :: State a -> Either String [(StepInfo a, State a)]
 allfirsts state
    | withoutPrefix state = Left "Prefix is required"
-   | otherwise = Right $
-        mergeDuplicates $ map make $ firsts state
+   | otherwise = if end then Right [] else Right result
   where
+    errorMessage = "Cannot get end of scenario from ScenarioState: casting failed."
+    (ScenarioState _ _ end) = fromMaybe (error errorMessage)
+        $ castFrom (exercise state) (stateTerm state) :: ScenarioState
+
+    result = mergeDuplicates $ map make $ firsts state
+
     make ((r, ctx, env), st) =
       let pfx      = statePrefix st
           newState = (makeState (exercise state) pfx ctx)

@@ -56,7 +56,7 @@ evaluateComparisonCondition comparison state = operator tested value
           tested = getParameterValue state
           value  = conditionValue comparison
 
-          getParameterValue (ScenarioState paramMap _) = M.findWithDefault 0 (conditionIdref comparison) paramMap
+          getParameterValue (ScenarioState paramMap _ _) = M.findWithDefault 0 (conditionIdref comparison) paramMap
 
 -- | Returns the binary predicate corresponding to the given operator type
 getCompareOperator :: CompareOperator -> Int -> Int -> Bool
