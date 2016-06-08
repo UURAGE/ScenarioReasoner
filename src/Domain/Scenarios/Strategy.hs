@@ -20,26 +20,26 @@ import Domain.Scenarios.Globals
 
 type StrategyMap = M.Map ID (Strategy ScenarioState)
 
--- | Make a strategy for each interleave level of a dialogue
-makeStrategy :: ID -> Dialogue -> Strategy ScenarioState
-makeStrategy scenID dialogue = sequence (map (makeInterleaveStrategy scenID) dialogue)
+-- | Make a strategy for each interleave level of a top-level dialogue
+makeStrategy :: ID -> TopDialogue -> Strategy ScenarioState
+makeStrategy scenID = sequence . map (makeInterleaveStrategy scenID)
 
--- | Make a strategy for each tree (subject) in an interleave level
+-- | Make a strategy for each dialogue in an interleave level
 makeInterleaveStrategy :: ID -> InterleaveLevel -> Strategy ScenarioState
-makeInterleaveStrategy scenID trees = interleave (map (makeTreeStrategy scenID) trees)
+makeInterleaveStrategy scenID = interleave . map (makeDialogueStrategy scenID)
 
--- | Make a strategy for a tree (subject)
-makeTreeStrategy :: ID -> Tree -> Strategy ScenarioState
-makeTreeStrategy scenID tree = optioned (atomiced treeStrategy)
+-- | Make a strategy for a dialogue
+makeDialogueStrategy :: ID -> Dialogue -> Strategy ScenarioState
+makeDialogueStrategy scenID dia = optioned (atomiced diaStrategy)
   where
-    optioned = if treeOptional tree then option else id
-    atomiced = if treeAtomic   tree then atomic else id
-    treeStrategy = evalState (makeAlternativesStrategy tree scenID (treeStartIDs tree)) M.empty
+    optioned = if diaOptional dia then option else id
+    atomiced = if diaAtomic   dia then atomic else id
+    diaStrategy = evalState (makeAlternativesStrategy dia scenID (diaStartIDs dia)) M.empty
 
--- | Recursively make a strategy for a tree of statements by making a strategy for the starting statement,
+-- | Recursively make a strategy for a dia of statements by making a strategy for the starting statement,
 -- and then sequencing it to the strategy for the next statements.
-makeStatementStrategy :: Tree -> ID -> ID -> State StrategyMap (Strategy ScenarioState)
-makeStatementStrategy tree scenID statementID = do
+makeStatementStrategy :: Dialogue -> ID -> ID -> State StrategyMap (Strategy ScenarioState)
+makeStatementStrategy dia scenID statementID = do
     strategyMap <- get
     -- If the strategy for the statement has already been computed, use that one otherwise compute it.
     case M.lookup statementID strategyMap of
@@ -49,17 +49,17 @@ makeStatementStrategy tree scenID statementID = do
                 []       -> modify (M.insert statementID (toStrategy rule)) >> return (toStrategy rule)
                 nextIDs  -> do
                     -- Make a strategy of alternative strategies for the strategies following from the rule
-                    nextStrategy <- makeAlternativesStrategy tree scenID nextIDs
+                    nextStrategy <- makeAlternativesStrategy dia scenID nextIDs
 
                     -- Sequence the rule to the strategy following from the rule
-                    let statementStrategy = sequenceRule statement tree rule nextStrategy
+                    let statementStrategy = sequenceRule statement dia rule nextStrategy
 
                     modify (M.insert statementID statementStrategy)
                     return statementStrategy
           where
-            -- Find the given statement in the tree with the statementID
-            statementErrorMsg = "Could not find statement: " ++ statementID ++ " in tree: " ++ treeID tree
-            maybeStatement = find (\stat -> statID stat == statementID) (treeStatements tree)
+            -- Find the given statement in the dia with the statementID
+            statementErrorMsg = "Could not find statement: " ++ statementID ++ " in dia: " ++ diaID dia
+            maybeStatement = find (\stat -> statID stat == statementID) (diaStatements dia)
             statement = errorOnFail statementErrorMsg maybeStatement
 
             -- Make the rule for the current statement
@@ -67,11 +67,11 @@ makeStatementStrategy tree scenID statementID = do
 
 -- | Make strategies for all the next statements
 -- and combine them with the choice operator
-makeAlternativesStrategy :: Tree -> ID -> [ID] -> State StrategyMap (Strategy ScenarioState)
-makeAlternativesStrategy tree scenID [singleStatID] =
-    makeStatementStrategy tree scenID singleStatID
-makeAlternativesStrategy tree scenID statIDs =
-    choice <$> mapM (makeStatementStrategy tree scenID) statIDs
+makeAlternativesStrategy :: Dialogue -> ID -> [ID] -> State StrategyMap (Strategy ScenarioState)
+makeAlternativesStrategy dia scenID [singleStatID] =
+    makeStatementStrategy dia scenID singleStatID
+makeAlternativesStrategy dia scenID statIDs =
+    choice <$> mapM (makeStatementStrategy dia scenID) statIDs
 
 -- | Make a rule using all the specific properties for a scenario
 makeGuardedRule :: ID -> Statement -> Rule ScenarioState
@@ -90,12 +90,12 @@ makeGuardedRule scenID statement = guardedRule
     paramEffects   = statParamEffects statement
 
 -- | Sequence a rule to the strategy representing the next statements.
--- Use the atomic prefix combinator '!~>' if the entire tree is not atomic,
+-- Use the atomic prefix combinator '!~>' if the entire dialogue is not atomic,
 -- but the statement itself is, so it can not be interleaved.
--- Apply the inits operator if the tree can succeed here, so the strategy does not have to be finished.
-sequenceRule :: Statement -> Tree -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
-sequenceRule statement tree rule nextStrategy =
-    if statJumpPoint statement || treeAtomic tree
+-- Apply the inits operator if the dialogue can succeed here, so the strategy does not have to be finished.
+sequenceRule :: Statement -> Dialogue -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
+sequenceRule statement dia rule nextStrategy =
+    if statJumpPoint statement || diaAtomic dia
         then rule .*. processedNextStrategy
         else rule !~> processedNextStrategy
     where processedNextStrategy =

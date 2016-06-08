@@ -19,7 +19,7 @@ readBinaryScenario path = unsafePerformIO $ decodeFile path
 
 data Scenario = Scenario
         { scenarioMetaData     :: MetaData
-        , scenarioDialogue     :: Dialogue
+        , scenarioTopDialogue  :: TopDialogue
         }
     deriving (Show, Read, Generic)
 
@@ -40,20 +40,20 @@ instance Binary MetaData
 deriving instance Generic Difficulty
 instance Binary Difficulty
 
-type Dialogue = [InterleaveLevel]
+type TopDialogue = [InterleaveLevel]
 
-type InterleaveLevel = [Tree]
+type InterleaveLevel = [Dialogue]
 
-data Tree = Tree
-        { treeID          :: ID
-        , treeStartIDs    :: [ID]
-        , treeAtomic      :: Bool
-        , treeOptional    :: Bool
-        , treeStatements  :: [Statement]
+data Dialogue = Dialogue
+        { diaID          :: ID
+        , diaStartIDs    :: [ID]
+        , diaAtomic      :: Bool
+        , diaOptional    :: Bool
+        , diaStatements  :: [Statement]
         }
  deriving (Show, Read, Generic)
 
-instance Binary Tree
+instance Binary Dialogue
 
 data Statement = Statement
         { statID            :: ID

@@ -37,7 +37,7 @@ parseScript filepath = withBinaryFile filepath ReadMode
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario
         { scenarioMetaData     = parseMetaData defs script
-        , scenarioDialogue     = parseDialogue defs script
+        , scenarioTopDialogue  = parseDialogue defs script
         }
   where defs = parseDefinitions script
 
@@ -142,27 +142,27 @@ parseScenarioPropertyValues defs script = fromMaybe (PropertyValues (Assocs []) 
 
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
-parseDialogue :: Definitions -> Script -> Dialogue
+parseDialogue :: Definitions -> Script -> TopDialogue
 parseDialogue defs script = map (parseInterleaveLevel defs) interleaveElems
   where
     sequenceElem = getChild "sequence" script
     interleaveElems = findChildren "interleave" sequenceElem
 
 parseInterleaveLevel :: Definitions -> Element -> InterleaveLevel
-parseInterleaveLevel defs interleaveElem = map (parseTree defs) treeElems
+parseInterleaveLevel defs interleaveElem = map (parseTree defs) diaElems
   where
-    treeElems = findChildren "tree" interleaveElem
+    diaElems = findChildren "dialogue" interleaveElem
 
-parseTree :: Definitions -> Element -> Tree
-parseTree defs treeElem =
-    Tree
-    { treeID         = getAttribute "id" treeElem
-    , treeStartIDs   = map (getAttribute "idref") (children (getChild "starts" treeElem))
-    , treeAtomic     = not (any statJumpPoint statements)
-    , treeOptional   = tryParseBool (findAttribute "optional" treeElem)
-    , treeStatements = statements
+parseTree :: Definitions -> Element -> Dialogue
+parseTree defs diaElem =
+    Dialogue
+    { diaID         = getAttribute "id" diaElem
+    , diaStartIDs   = map (getAttribute "idref") (children (getChild "starts" diaElem))
+    , diaAtomic     = not (any statJumpPoint statements)
+    , diaOptional   = tryParseBool (findAttribute "optional" diaElem)
+    , diaStatements = statements
     }
-  where statements = map (parseStatement defs) (children (getChild "statements" treeElem))
+  where statements = map (parseStatement defs) (children (getChild "statements" diaElem))
 
 parseStatement :: Definitions -> Element -> Statement
 parseStatement defs statElem =
