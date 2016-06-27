@@ -58,6 +58,7 @@ parseDomainDataType typeEl = case name typeEl of
     "typeBoolean" -> DD.TBoolean
     "typeInteger" -> DD.TInteger
     "typeString" -> DD.TString
+    "typeEnumeration" -> DD.TEnumeration
     n -> error ("Could not parse " ++ n)
 
 ----------------------------------------------------------------------------------------------------
@@ -258,9 +259,10 @@ parsePropertyValue defs propValEl = case mCharacteridref of
     idref = getAttribute "idref" propValEl
     errorDefault = error ("Value for unknown property " ++ idref)
     value = case M.findWithDefault errorDefault idref defs of
-        DD.TBoolean -> DD.VBoolean (read (getData propValEl))
-        DD.TInteger -> DD.VInteger (read (getData propValEl))
-        DD.TString  -> DD.VString  (getData propValEl)
+        DD.TBoolean     -> DD.VBoolean (read (getData propValEl))
+        DD.TInteger     -> DD.VInteger (read (getData propValEl))
+        DD.TString      -> DD.VString  (getData propValEl)
+        DD.TEnumeration -> DD.VEnumeration (DD.VString  (getData propValEl))
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------
