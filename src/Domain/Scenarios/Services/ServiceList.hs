@@ -15,7 +15,7 @@ import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
 customServiceList :: [(Id, Scenario)] -> [Service]
-customServiceList fs = [allfirstsS] ++ map ($ fs)
+customServiceList fs = allfirstsS : map ($ fs)
     [scenariolistS, scenarioinfoS]
 
 -- Meta-services for the given domain reasoner

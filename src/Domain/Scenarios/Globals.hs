@@ -23,7 +23,7 @@ data StatementInfo = StatementInfo
 
 instance Binary StatementInfo
 
-type StatementType = String                                         -- player / computer
+type StatementType = String
 type StatementText = String
 
 data PropertyValues = PropertyValues
