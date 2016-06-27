@@ -8,7 +8,7 @@ import Ideas.Service.Types
 import Ideas.Text.JSON
 
 import Domain.Scenarios.Globals
-import Domain.Scenarios.ScoringFunction(SubScore)
+import Domain.Scenarios.ScenarioState()
 
 -- | Ideas Framework type definitions for sending an object through a service
 
@@ -44,17 +44,6 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
 tPropertyValues :: Type a PropertyValues
 tPropertyValues = Iso ((<-!) pairify) (Pair (Tag "independent" tTerm) (Tag "perCharacter" tTerm))
         where
-         pairify (PropertyValues ivs pcvs) = (objectify ivs, objectify pcvs)
-         objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
-         toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]
-
--- ScoreResult type -------------------------------------------------------------------------------------------------------------
-
-data ScoreResult = ScoreResult Score           -- Total score as a percentage
-                               [SubScore]      -- All subscores for all scored parameters
-
-tScoreResult :: Type a ScoreResult
-tScoreResult =
-    Iso ((<-!) pairify) (Pair (Tag "mainscore"          tInt)
-                              (Tag "subscores"         (tList (tTuple3 tString tString tInt))))
-        where pairify (ScoreResult score subscores) = (score, subscores)
+          pairify (PropertyValues ivs pcvs) = (objectify ivs, objectify pcvs)
+          objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
+          toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]

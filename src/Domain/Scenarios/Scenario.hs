@@ -6,7 +6,6 @@ module Domain.Scenarios.Scenario where
 import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
-import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState(Effect)
 import GHC.Generics
@@ -31,7 +30,6 @@ data MetaData = MetaData
         , scenarioDifficulty      :: Maybe Difficulty
         , scenarioParameters      :: [Parameter]
         , scenarioPropertyValues  :: PropertyValues
-        , scenarioScoringFunction :: ScoringFunction
         }
  deriving (Show, Read, Generic)
 

@@ -13,7 +13,6 @@ import qualified Domain.Scenarios.DomainData as DD
 type ParameterValue = Int
 type ID = String
 type Name = String
-type Score = Int
 
 data StatementInfo = StatementInfo
     { statType           :: StatementType
@@ -47,7 +46,6 @@ data Parameter = Parameter
     , parameterName         :: Name
     , parameterInitialValue :: Maybe ParameterValue
     , parameterDescription  :: String
-    , parameterScored       :: Bool
     , parameterMax          :: Maybe ParameterValue
     , parameterMin          :: Maybe ParameterValue
     }

@@ -15,7 +15,6 @@ import System.IO
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Text.XML.Interface
 
-import Domain.Scenarios.ScoringFunction
 import Domain.Scenarios.Condition
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
@@ -75,7 +74,6 @@ parseMetaData defs script = MetaData
         , scenarioDifficulty      = parseScenarioDifficulty           script
         , scenarioParameters      = parseScenarioParameters           script
         , scenarioPropertyValues  = parseScenarioPropertyValues  defs script
-        , scenarioScoringFunction = parseScenarioScoringFunction      script
         }
 
 -- | Queries the given script for its name
@@ -107,32 +105,9 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         , parameterName         = getAttribute "name" paramElem
         , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
         , parameterDescription  = fromMaybe "" (findAttribute "description" paramElem)
-        , parameterScored       = tryParseBool (findAttribute "scored" paramElem)
-        , parameterMax          = findAttribute "maximumScore" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterMin          = findAttribute "minimumScore" paramElem >>= readMaybe :: Maybe ParameterValue
+        , parameterMax          = findAttribute "maximum" paramElem >>= readMaybe :: Maybe ParameterValue
+        , parameterMin          = findAttribute "minimum" paramElem >>= readMaybe :: Maybe ParameterValue
         }
-
--- | Queries the given script for its scoring function
-parseScenarioScoringFunction :: Script -> ScoringFunction
-parseScenarioScoringFunction script = parseScoringFunction (scoringFunctionChild (children scoringFunctionElem))
-  where
-    metaDataElem = getChild "metadata" script
-    scoringFunctionElem = getChild "scoringFunction" metaDataElem
-    scoringFunctionChild [sf] = sf
-    scoringFunctionChild _    = error "could not parse scoringFunction"
-
--- | Parses a scoring function element
-parseScoringFunction :: Element -> ScoringFunction
-parseScoringFunction scoringFunctionElem = case name scoringFunctionElem of
-    "constant"           -> Constant            parseConstant
-    "sum"                -> Sum                (map parseScoringFunction (children scoringFunctionElem))
-    "scale"              -> Scale parseScalar  (parseScoringFunction paramElem)
-    "paramRef"           -> ParamRef           (getAttribute "idref" scoringFunctionElem)
-    _                    -> error "no parse scoringfunction element"
-  where
-    parseConstant = read (getAttribute "value" scoringFunctionElem)  :: Score
-    parseScalar   = read (getAttribute "scalar" scoringFunctionElem) :: Int
-    paramElem     = getChild "paramRef"  scoringFunctionElem         :: Element
 
 parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
 parseScenarioPropertyValues defs script = fromMaybe (PropertyValues (Assocs []) (Assocs [])) $

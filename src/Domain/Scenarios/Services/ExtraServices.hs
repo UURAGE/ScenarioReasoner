@@ -5,12 +5,9 @@ module Domain.Scenarios.Services.ExtraServices where
 import Data.Maybe
 
 import Ideas.Common.Library
-import Ideas.Service.State
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
-import Domain.Scenarios.ScenarioState(ScenarioState)
-import Domain.Scenarios.ScoringFunction(calculateScore, calculateSubScores)
 import Domain.Scenarios.Services.Types
 
 -- ScenarioList and Info Service -------------------------------------------------------------------------------------
@@ -35,18 +32,6 @@ getScenarioInfo (Scenario metadata _) = ScenarioInfo
         (parameterId          param)
         (parameterName        param)
         (parameterDescription param)
-
-
--- Score Service --------------------------------------------------------------------------------------------
-
-score :: [(Id, Scenario)] -> State a -> ScoreResult
-score fs fstate = ScoreResult mainScore subScores
-    where metaData = scenarioMetaData (findScenario "score" fs (exercise fstate))
-          state = fromMaybe (error "Cannot score exercise: casting failed.") $
-            castFrom (exercise fstate) (stateTerm fstate) :: ScenarioState
-          mainScore = calculateScore subScores (scenarioScoringFunction metaData) state
-          subScores = calculateSubScores parameters state
-          parameters = scenarioParameters metaData
 
 -- | Finds the scenario of the exercise in the given scenario list
 findScenario :: String -> [(Id, Scenario)] -> Exercise a -> Scenario
