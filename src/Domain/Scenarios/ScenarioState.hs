@@ -88,12 +88,15 @@ instance InJSON StatementInfo  where
         pvsToJSON       = ("propertyValues", toJSON (statPropertyValues statInfo))
     fromJSON _ = fail "fromJSON: not supported"
 
-instance InJSON PropertyValues where
-    toJSON propVals = Object
-        [ ("independent",  toJSON (propValsIndependent  propVals))
-        , ("perCharacter", toJSON (propValsPerCharacter propVals))
+instance InJSON a => InJSON (Charactered a) where
+    toJSON charVal = Object
+        [ ("independent",  toJSON (characteredIndependent  charVal))
+        , ("perCharacter", toJSON (characteredPerCharacter charVal))
         ]
-    fromJSON _ = fail "fromJSON: not supported"
+    fromJSON val =
+        do independent <- lookupM "independent" val >>= fromJSON
+           perCharacter <- lookupM "perCharacter" val >>= fromJSON
+           return (Charactered independent perCharacter)
 
 instance InJSON a => InJSON (Assocs a) where
     toJSON (Assocs kvps) = Object (map kvpToJSON kvps)

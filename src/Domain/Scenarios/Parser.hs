@@ -109,7 +109,7 @@ parseScenarioParameters script = map parseParameter (children parameterElem)
         }
 
 parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
-parseScenarioPropertyValues defs script = fromMaybe (PropertyValues (Assocs []) (Assocs [])) $
+parseScenarioPropertyValues defs script = fromMaybe (Charactered (Assocs []) (Assocs [])) $
     parsePropertyValues defs <$> findChild "metadata" script
 
 -- MetaData Parser END -----------------------------------------------------------------------------
@@ -239,27 +239,38 @@ parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "t
 
 -- | Parses property values from an element that has them
 parsePropertyValues :: Definitions -> Element -> PropertyValues
-parsePropertyValues defs propsElem = PropertyValues
-    { propValsIndependent = Assocs civs
-    , propValsPerCharacter = Assocs (map toPC (groupWith fst pcvs))
-    }
-  where
-    propVals = map (parsePropertyValue defs) (children (getChild "propertyValues" propsElem))
-    (civs, pcvs) = partitionEithers propVals
-    toPC vs = (fst (head vs), Assocs (map snd vs))
+parsePropertyValues defs propsElem = parseCharactereds parsePropertyValue Assocs defs
+    (getChild "propertyValues" propsElem)
 
-parsePropertyValue :: Definitions -> Element -> Either (String, DD.Value) (String, (String, DD.Value))
-parsePropertyValue defs propValEl = case mCharacteridref of
-    Just characteridref -> Right (characteridref, (idref, value))
-    Nothing             -> Left (idref, value)
+parsePropertyValue :: Definitions -> Element -> (String, DD.Value)
+parsePropertyValue defs propValEl = (idref, value)
   where
-    mCharacteridref = findAttribute "characteridref" propValEl
     idref = getAttribute "idref" propValEl
     errorDefault = error ("Value for unknown property " ++ idref)
     value = case M.findWithDefault errorDefault idref defs of
         DD.TBoolean     -> DD.VBoolean (read (getData propValEl))
         DD.TInteger     -> DD.VInteger (read (getData propValEl))
         DD.TString      -> DD.VString  (getData propValEl)
+
+parseCharactereds :: (Definitions -> Element -> a) ->
+    ([a] -> b) -> Definitions -> Element -> Charactered b
+parseCharactereds parseSub mkCollection defs valsElem = Charactered
+    { characteredIndependent = mkCollection civs
+    , characteredPerCharacter = Assocs (map toPC (groupWith fst pcvs))
+    }
+  where
+    vals = map (parseCharactered parseSub defs) (children valsElem)
+    (civs, pcvs) = partitionEithers vals
+    toPC vs = (fst (head vs), mkCollection (map snd vs))
+
+parseCharactered :: (Definitions -> Element -> a) ->
+    Definitions -> Element -> Either a (String, a)
+parseCharactered parseSub defs valEl = case mCharacteridref of
+    Just characteridref -> Right (characteridref, val)
+    Nothing             -> Left val
+  where
+    mCharacteridref = findAttribute "characteridref" valEl
+    val = parseSub defs valEl
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------

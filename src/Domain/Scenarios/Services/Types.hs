@@ -44,8 +44,14 @@ tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
         where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
 
 tPropertyValues :: Type a PropertyValues
-tPropertyValues = Iso ((<-!) pairify) (Pair (Tag "independent" tTerm) (Tag "perCharacter" tTerm))
+tPropertyValues = tCharactered (assocsToTerm (jsonToTerm . toJSON))
+
+tCharactered :: (b -> Term) -> Type a (Charactered b)
+tCharactered subToTerm = Iso ((<-!) pairify) (Pair (Tag "independent" tTerm) (Tag "perCharacter" tTerm))
         where
-          pairify (PropertyValues ivs pcvs) = (objectify ivs, objectify pcvs)
-          objectify (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
-          toKVP (name, value) = [TVar name, jsonToTerm (toJSON value)]
+          pairify (Charactered ivs pcvs) = (subToTerm ivs, assocsToTerm subToTerm pcvs)
+
+assocsToTerm :: (a -> Term) -> Assocs a -> Term
+assocsToTerm subToTerm (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
+        where
+          toKVP (key, value) = [TVar key, subToTerm value]

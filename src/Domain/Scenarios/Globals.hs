@@ -27,13 +27,15 @@ instance Binary StatementInfo
 type StatementType = String
 type StatementText = String
 
-data PropertyValues = PropertyValues
-    { propValsIndependent  :: Assocs DD.Value
-    , propValsPerCharacter :: Assocs (Assocs DD.Value)
+type PropertyValues = Charactered (Assocs DD.Value)
+
+data Charactered a = Charactered
+    { characteredIndependent  :: a
+    , characteredPerCharacter :: Assocs a
     }
     deriving (Show, Eq, Read, Generic)
 
-instance Binary PropertyValues
+instance Binary a => Binary (Charactered a)
 
 data Assocs a = Assocs [(String, a)]
     deriving (Show, Read, Eq, Generic)
