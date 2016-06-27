@@ -12,6 +12,8 @@ data Type
     | TString
     deriving (Show, Read, Eq, Generic)
 
+instance Binary Type
+
 data Value
     = VBoolean Bool
     | VInteger Integer

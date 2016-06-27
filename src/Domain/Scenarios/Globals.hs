@@ -6,6 +6,7 @@ module Domain.Scenarios.Globals where
 import GHC.Generics
 
 import Data.Binary
+import qualified Data.Map as M
 import Data.Maybe
 
 import qualified Domain.Scenarios.DomainData as DD
@@ -40,6 +41,8 @@ data Assocs a = Assocs [(String, a)]
 instance Binary a => Binary (Assocs a)
 
 --------------------------------------------------------------------------------------------------------------------------
+
+type Definitions = M.Map String DD.Type
 
 data Parameter = Parameter
     { parameterId           :: ID

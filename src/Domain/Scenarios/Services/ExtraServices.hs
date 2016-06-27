@@ -21,7 +21,7 @@ scenarioinfo :: [(Id, Scenario)] -> Exercise a -> ScenarioInfo
 scenarioinfo fs ex = getScenarioInfo (findScenario "scenarioinfo" fs ex)
 
 getScenarioInfo :: Scenario -> ScenarioInfo
-getScenarioInfo (Scenario metadata _) = ScenarioInfo
+getScenarioInfo (Scenario _ metadata _) = ScenarioInfo
                 (scenarioName           metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)

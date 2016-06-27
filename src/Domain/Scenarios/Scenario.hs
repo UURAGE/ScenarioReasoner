@@ -17,7 +17,8 @@ readBinaryScenario :: FilePath -> Scenario
 readBinaryScenario path = unsafePerformIO $ decodeFile path
 
 data Scenario = Scenario
-        { scenarioMetaData     :: MetaData
+        { scenarioDefinitions  :: Definitions
+        , scenarioMetaData     :: MetaData
         , scenarioTopDialogue  :: TopDialogue
         }
     deriving (Show, Read, Generic)

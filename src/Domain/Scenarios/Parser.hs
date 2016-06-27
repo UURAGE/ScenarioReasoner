@@ -35,12 +35,11 @@ parseScript filepath = withBinaryFile filepath ReadMode
 -- | Parses a scenario from a script element
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario
-        { scenarioMetaData     = parseMetaData defs script
+        { scenarioDefinitions  = defs
+        , scenarioMetaData     = parseMetaData defs script
         , scenarioTopDialogue  = parseDialogue defs script
         }
   where defs = parseDefinitions script
-
-type Definitions = M.Map String DD.Type
 
 parseDefinitions :: Script -> Definitions
 parseDefinitions script = fromMaybe (error "Definitions not found") $
