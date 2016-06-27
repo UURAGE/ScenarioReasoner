@@ -207,15 +207,15 @@ parseParameterEffects statElem = map parseParameterEffect paramElems
 
 parseParameterEffect :: Element -> Effect
 parseParameterEffect effectElem = Effect
-            { effectIdref      = getAttribute "idref" effectElem
-            , effectChangeType = parseChangeType      effectElem
-            , effectValue      = getValue             effectElem
+            { effectIdref        = getAttribute "idref" effectElem
+            , effectAssignmentOp = parseAssignmentOperator      effectElem
+            , effectValue        = getValue             effectElem
             }
 
 -- | Parses an element to a Changetype
-parseChangeType :: Element -> ChangeType
-parseChangeType effectElem = read (applyToFirst toUpper changeTypeStr)
-  where changeTypeStr = getAttribute "changeType" effectElem
+parseAssignmentOperator :: Element -> AssignmentOperator
+parseAssignmentOperator effectElem = read (applyToFirst toUpper operatorStr)
+  where operatorStr = getAttribute "operator" effectElem
 
 parseJumpPoint :: Element -> Bool
 parseJumpPoint statElem = tryParseBool (findAttribute "jumpPoint" statElem)

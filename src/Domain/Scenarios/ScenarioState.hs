@@ -27,20 +27,21 @@ type ParameterMap = M.Map ID ParameterValue
 
 -- | The effect of a statement on the current state
 data Effect = Effect
-        { effectIdref      :: ID
-        , effectChangeType :: ChangeType
-        , effectValue      :: ParameterValue
+        { effectIdref        :: ID
+        , effectAssignmentOp :: AssignmentOperator
+        , effectValue        :: ParameterValue
         }
  deriving (Show, Read, Generic)
 
 instance Binary Effect
 
 -- | The type of change to be made to a parameter
-data ChangeType = Set   -- ^ Set the parameter to the given value
-                | Delta -- ^ Add a given value to the existing value
+data AssignmentOperator = Assign
+                        | AddAssign
+                        | SubtractAssign
     deriving (Show, Eq, Read, Generic)
 
-instance Binary ChangeType
+instance Binary AssignmentOperator
 
 applyEffects :: ScenarioState -> [Effect] -> StatementInfo -> Bool -> ScenarioState
 applyEffects (ScenarioState paramMap _ _) paramEffects statInfo end =
@@ -48,11 +49,13 @@ applyEffects (ScenarioState paramMap _ _) paramEffects statInfo end =
 
 -- | Applies the chosen effect to the state
 applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
-applyEffect effect stateMap = case effectChangeType effect of
-        Set   -> M.insert idref value stateMap
-        Delta -> M.insert idref (M.findWithDefault 0 idref stateMap + value) stateMap
+applyEffect effect stateMap = M.insert idref valueToInsert stateMap
     where idref = effectIdref effect
           value = effectValue effect
+          valueToInsert = case effectAssignmentOp effect of
+            Assign         -> value
+            AddAssign      -> M.findWithDefault 0 idref stateMap + value
+            SubtractAssign -> M.findWithDefault 0 idref stateMap - value
 
 
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
