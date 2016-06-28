@@ -58,7 +58,7 @@ parseDomainDataType typeEl = case name typeEl of
     "typeBoolean" -> DD.TBoolean
     "typeInteger" -> DD.TInteger
     "typeString" -> DD.TString
-    "typeEnumeration" -> DD.TEnumeration
+    "typeEnumeration" -> DD.TString
     n -> error ("Could not parse " ++ n)
 
 ----------------------------------------------------------------------------------------------------
@@ -262,7 +262,6 @@ parsePropertyValue defs propValEl = case mCharacteridref of
         DD.TBoolean     -> DD.VBoolean (read (getData propValEl))
         DD.TInteger     -> DD.VInteger (read (getData propValEl))
         DD.TString      -> DD.VString  (getData propValEl)
-        DD.TEnumeration -> DD.VEnumeration (DD.VString  (getData propValEl))
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------
