@@ -29,8 +29,6 @@ After these commands, the build environment is set up. You can build the applica
 It is recommended to set up the following directory structure (all of the items mentioned should become directories). Create this structure in a location outside the repository. If you want to use the Scenario Reasoner in a server-side setup, make sure this location is under your web root and your web server knows how to execute the CGI executables.
 
     <root of the deployment structure>
-        scenarios/
-            scripts/
         cgi/
             bins/
             test_bins/
