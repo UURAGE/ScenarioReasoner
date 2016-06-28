@@ -14,6 +14,15 @@ data Type
 
 instance Binary Type
 
+instance InJSON Type where
+    toJSON TBoolean = String "boolean"
+    toJSON TInteger = String "integer"
+    toJSON TString = String "string"
+    fromJSON (String "boolean") = return TBoolean
+    fromJSON (String "integer") = return TInteger
+    fromJSON (String "string") = return TString
+    fromJSON _ = error "fromJSON: not supported"
+
 data Value
     = VBoolean Bool
     | VInteger Integer

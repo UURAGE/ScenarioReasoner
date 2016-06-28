@@ -26,11 +26,11 @@ data Scenario = Scenario
 instance Binary Scenario
 
 data MetaData = MetaData
-        { scenarioName            :: Name
-        , scenarioDescription     :: String
-        , scenarioDifficulty      :: Maybe Difficulty
-        , scenarioParameters      :: [Parameter]
-        , scenarioPropertyValues  :: PropertyValues
+        { scenarioName                   :: Name
+        , scenarioDescription            :: String
+        , scenarioDifficulty             :: Maybe Difficulty
+        , scenarioInitialParameterValues :: ParameterState
+        , scenarioPropertyValues         :: PropertyValues
         }
  deriving (Show, Read, Generic)
 
@@ -58,7 +58,7 @@ data Statement = Statement
         { statID            :: ID
         , statInfo          :: StatementInfo
         , statPrecondition  :: Maybe Condition
-        , statParamEffects  :: [Effect]
+        , statParamEffects  :: Usered (Charactered [Effect])
         , statJumpPoint     :: Bool
         , statInits         :: Bool
         , statEnd           :: Bool

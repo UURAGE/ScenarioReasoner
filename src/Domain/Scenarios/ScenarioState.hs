@@ -14,22 +14,21 @@ import qualified Ideas.Text.UTF8 as UTF8
 
 import GHC.Generics
 
+import qualified Domain.Scenarios.DomainData as DD
 import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy
-data ScenarioState = ScenarioState ParameterMap (Maybe StatementInfo) Bool
-    deriving (Show, Eq, Typeable, Read, Generic)
+data ScenarioState = ScenarioState ParameterState (Maybe StatementInfo) Bool
+    deriving (Show, Typeable, Read, Generic)
 
 instance Binary ScenarioState
-
-type ParameterMap = M.Map ID ParameterValue
 
 -- | The effect of a statement on the current state
 data Effect = Effect
         { effectIdref        :: ID
         , effectAssignmentOp :: AssignmentOperator
-        , effectValue        :: ParameterValue
+        , effectValue        :: DD.Value
         }
  deriving (Show, Read, Generic)
 
@@ -43,20 +42,37 @@ data AssignmentOperator = Assign
 
 instance Binary AssignmentOperator
 
-applyEffects :: ScenarioState -> [Effect] -> StatementInfo -> Bool -> ScenarioState
-applyEffects (ScenarioState paramMap _ _) paramEffects statInfo end =
-    ScenarioState (foldr applyEffect paramMap paramEffects) (Just statInfo) end
+applyEffects :: ScenarioState -> Usered (Charactered [Effect]) -> StatementInfo -> Bool -> ScenarioState
+applyEffects (ScenarioState paramState _ _) paramEffects statInfo end =
+    ScenarioState (applyEffectsU paramState paramEffects) (Just statInfo) end
 
--- | Applies the chosen effect to the state
-applyEffect :: Effect -> M.Map String ParameterValue -> M.Map String ParameterValue
-applyEffect effect stateMap = M.insert idref valueToInsert stateMap
-    where idref = effectIdref effect
-          value = effectValue effect
-          valueToInsert = case effectAssignmentOp effect of
-            Assign         -> value
-            AddAssign      -> M.findWithDefault 0 idref stateMap + value
-            SubtractAssign -> M.findWithDefault 0 idref stateMap - value
+applyEffectsU :: Usered (Charactered ParameterMap) -> Usered (Charactered [Effect]) ->
+    Usered (Charactered ParameterMap)
+applyEffectsU (Usered udpm fpm) (Usered ude fe) = Usered
+    { useredUserDefined = applyEffectsC udpm ude
+    , useredFixed = applyEffectsC fpm fe
+    }
 
+applyEffectsC :: Charactered ParameterMap -> Charactered [Effect] -> Charactered ParameterMap
+applyEffectsC (Charactered ipm pcpm) (Charactered ie pce) = Charactered
+    { characteredIndependent = foldr applyEffect ipm ie
+    , characteredPerCharacter = M.foldrWithKey processCharEffects pcpm pce
+    }
+  where processCharEffects characteridref ce =
+            M.adjust (\cpm -> foldr applyEffect cpm ce) characteridref
+
+-- | Applies the given effect to the state
+applyEffect :: Effect -> M.Map String DD.Value -> M.Map String DD.Value
+applyEffect effect = M.adjust adjuster (effectIdref effect)
+    where adjuster = case effectAssignmentOp effect of
+            Assign         -> const (effectValue effect)
+            AddAssign      -> intAdjuster (+)
+            SubtractAssign -> intAdjuster (-)
+          intAdjuster op (DD.VInteger i) = DD.VInteger (i `op` intEffectValue)
+          intAdjuster _ v = error ("intAdjuster: Not integral: " ++ show v)
+          intEffectValue = case effectValue effect of
+            DD.VInteger i -> i
+            v             -> error ("intEffectValue: Not integral: " ++ show v)
 
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 
@@ -72,6 +88,16 @@ instance InJSON ScenarioState where
            end <- lookupM "internal" val >>= lookupM "end" >>= fromJSON
            return (ScenarioState params Nothing end)
     fromJSON _ = fail "fromJSON: expecting an object"
+
+instance InJSON a => InJSON (Usered a) where
+   toJSON (Usered udv fv) = Object
+        [ ("userDefined", toJSON udv)
+        , ("fixed", toJSON fv)
+        ]
+   fromJSON val =
+        do userDefined <- lookupM "userDefined" val >>= fromJSON
+           fixed <- lookupM "fixed" val >>= fromJSON
+           return (Usered userDefined fixed)
 
 instance InJSON a => InJSON (M.Map String a)  where
     toJSON = Object . map kvpToJSON . M.assocs

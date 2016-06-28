@@ -2,11 +2,14 @@
 
 module Domain.Scenarios.Services.Types where
 
+import qualified Data.Map as M
+
 import Ideas.Common.Library
 import Ideas.Encoding.Encoder
 import Ideas.Service.Types
 import Ideas.Text.JSON
 
+import qualified Domain.Scenarios.DomainData as DD
 import Domain.Scenarios.Globals
 import Domain.Scenarios.ScenarioState()
 
@@ -22,11 +25,11 @@ data ScenarioInfo = ScenarioInfo Name
 
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
-    Iso ((<-!) pairify) (Pair         (Tag "name"           tString)
-                        (Pair         (Tag "description"    tString)
-                        (Pair (tMaybe (tag "difficulty"     tDifficulty))
-                        (Pair         (Tag "parameters"     (tList tParameterInfo))
-                                      (Tag "propertyValues" tPropertyValues)))))
+    Iso ((<-!) pairify) (Pair         (Tag "name"                  tString)
+                        (Pair         (Tag "description"           tString)
+                        (Pair (tMaybe (tag "difficulty"            tDifficulty))
+                        (Pair         (Tag "userDefinedParameters" (tList tParameterInfo))
+                                      (Tag "propertyValues"        tPropertyValues)))))
       where
         pairify (ScenarioInfo name descr diff ps pvs) =
             (name, (descr, (diff, (ps, pvs))))
@@ -35,13 +38,18 @@ tScenarioInfo =
 
 data ParameterInfo = ParameterInfo ID
                                    Name
-                                   String -- Description
+                                   (Maybe String) -- Description
+                                   DD.Type
 
 tParameterInfo :: Type a ParameterInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
-                                           (Tag "description"   tString)))
-        where pairify (ParameterInfo pid name descr) = (pid, (name, descr))
+                                     (Pair (Tag "description"   (tMaybe tString))
+                                           (Tag "type"          tDomainDataType))))
+        where pairify (ParameterInfo pid name descr ty) = (pid, (name, (descr, ty)))
+
+tDomainDataType :: Type a DD.Type
+tDomainDataType = Iso ((<-!) (jsonToTerm . toJSON)) tTerm
 
 tPropertyValues :: Type a PropertyValues
 tPropertyValues = tCharactered (assocsToTerm (jsonToTerm . toJSON))
@@ -49,9 +57,14 @@ tPropertyValues = tCharactered (assocsToTerm (jsonToTerm . toJSON))
 tCharactered :: (b -> Term) -> Type a (Charactered b)
 tCharactered subToTerm = Iso ((<-!) pairify) (Pair (Tag "independent" tTerm) (Tag "perCharacter" tTerm))
         where
-          pairify (Charactered ivs pcvs) = (subToTerm ivs, assocsToTerm subToTerm pcvs)
+          pairify (Charactered ivs pcvs) = (subToTerm ivs, stringMapToTerm subToTerm pcvs)
 
 assocsToTerm :: (a -> Term) -> Assocs a -> Term
 assocsToTerm subToTerm (Assocs vs) = TCon (newSymbol "object") (concatMap toKVP vs)
+        where
+          toKVP (key, value) = [TVar key, subToTerm value]
+
+stringMapToTerm :: (a -> Term) -> M.Map String a -> Term
+stringMapToTerm subToTerm m = TCon (newSymbol "object") (concatMap toKVP (M.toList m))
         where
           toKVP (key, value) = [TVar key, subToTerm value]

@@ -21,17 +21,18 @@ scenarioinfo :: [(Id, Scenario)] -> Exercise a -> ScenarioInfo
 scenarioinfo fs ex = getScenarioInfo (findScenario "scenarioinfo" fs ex)
 
 getScenarioInfo :: Scenario -> ScenarioInfo
-getScenarioInfo (Scenario _ metadata _) = ScenarioInfo
+getScenarioInfo (Scenario definitions metadata _) = ScenarioInfo
                 (scenarioName           metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
-                (map describeParameter (scenarioParameters metadata))
+                (map describeParameter (useredUserDefined (fst (definitionsParameters definitions))))
                 (scenarioPropertyValues metadata)
   where
-    describeParameter param = ParameterInfo
-        (parameterId          param)
-        (parameterName        param)
-        (parameterDescription param)
+    describeParameter definition = ParameterInfo
+        (definitionId          definition)
+        (definitionName        definition)
+        (definitionDescription definition)
+        (definitionType        definition)
 
 -- | Finds the scenario of the exercise in the given scenario list
 findScenario :: String -> [(Id, Scenario)] -> Exercise a -> Scenario

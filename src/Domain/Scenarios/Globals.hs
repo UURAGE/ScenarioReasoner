@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable #-}
 {- ©Copyright Utrecht University (Department of Information and Computing Sciences) -}
 
 module Domain.Scenarios.Globals where
@@ -11,7 +11,6 @@ import Data.Maybe
 
 import qualified Domain.Scenarios.DomainData as DD
 
-type ParameterValue = Int
 type ID = String
 type Name = String
 
@@ -31,9 +30,9 @@ type PropertyValues = Charactered (Assocs DD.Value)
 
 data Charactered a = Charactered
     { characteredIndependent  :: a
-    , characteredPerCharacter :: Assocs a
+    , characteredPerCharacter :: M.Map String a
     }
-    deriving (Show, Eq, Read, Generic)
+    deriving (Show, Eq, Read, Functor, Foldable, Generic)
 
 instance Binary a => Binary (Charactered a)
 
@@ -44,19 +43,38 @@ instance Binary a => Binary (Assocs a)
 
 --------------------------------------------------------------------------------------------------------------------------
 
-type Definitions = M.Map String DD.Type
-
-data Parameter = Parameter
-    { parameterId           :: ID
-    , parameterName         :: Name
-    , parameterInitialValue :: Maybe ParameterValue
-    , parameterDescription  :: String
-    , parameterMax          :: Maybe ParameterValue
-    , parameterMin          :: Maybe ParameterValue
+data Definitions = Definitions
+    { definitionsProperties :: ([Definition], TypeMap)
+    , definitionsParameters :: (Usered [Definition], TypeMap)
     }
- deriving (Show, Read,Generic)
+ deriving (Show, Read, Generic)
 
-instance Binary Parameter
+instance Binary Definitions
+
+type TypeMap = M.Map ID DD.Type
+
+data Usered a = Usered
+    { useredUserDefined :: a
+    , useredFixed       :: a
+    }
+ deriving (Show, Read, Functor, Foldable, Generic)
+
+instance Binary a => Binary (Usered a)
+
+data Definition = Definition
+    { definitionId           :: ID
+    , definitionName         :: Name
+    , definitionDescription  :: Maybe String
+    , definitionType         :: DD.Type
+    , definitionDefault      :: Maybe DD.Value
+    }
+ deriving (Show, Read, Generic)
+
+instance Binary Definition
+
+type ParameterState = Usered (Charactered ParameterMap)
+
+type ParameterMap = M.Map ID DD.Value
 
 -- Functions for dealing with the Nothing case of a Maybe value produced by the
 -- implementation of fail in the Monad instance of Maybe.

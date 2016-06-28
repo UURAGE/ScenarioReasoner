@@ -6,10 +6,10 @@ import Control.Monad
 
 import Data.Char
 import Data.Either
+import qualified Data.Foldable as F
 import qualified Data.Map as M
 import Data.Maybe
 import GHC.Exts(groupWith)
-import Text.Read(readMaybe)
 import System.IO
 
 import Ideas.Common.Library hiding (Sum)
@@ -42,14 +42,34 @@ parseScenario script = Scenario
   where defs = parseDefinitions script
 
 parseDefinitions :: Script -> Definitions
-parseDefinitions script = fromMaybe (error "Definitions not found") $
-        M.fromList . map parseDefinition . children <$> propertiesElem
-  where propertiesElem =
-            findChild "definitions" script >>=
-            findChild "properties"
+parseDefinitions script = Definitions
+        { definitionsProperties = parseDefinitionList (getChild "properties" defsEl)
+        , definitionsParameters = (fmap fst paramDefs, F.fold (fmap snd paramDefs))
+        }
+  where paramDefs = Usered
+            { useredUserDefined = parseDefinitionList (getChild "userDefined" paramDefsEl)
+            , useredFixed = parseDefinitionList (getChild "fixed" paramDefsEl)
+            }
+        paramDefsEl = getChild "parameters" defsEl
+        defsEl = fromMaybe (error "Definitions not found") $
+            findChild "definitions" script
 
-parseDefinition :: Element -> (String, DD.Type)
-parseDefinition propEl = (getAttribute "id" propEl, parseDomainDataType (head (children propEl)))
+parseDefinitionList :: Element -> ([Definition], TypeMap)
+parseDefinitionList el = (defs, M.fromList (map toTypePair defs))
+  where toTypePair def = (definitionId def, definitionType def)
+        defs = map parseDefinition (children el)
+
+parseDefinition :: Element -> Definition
+parseDefinition defEl = Definition
+        { definitionId           = getAttribute "id" defEl
+        , definitionName         = getAttribute "name" defEl
+        , definitionDescription  = getData <$> findChild "description" defEl
+        , definitionType         = ty
+        , definitionDefault      = parseDomainDataValue ty <$> maybeDefaultEl
+        }
+  where ty = parseDomainDataType typeEl
+        typeEl = last (children defEl)
+        maybeDefaultEl = findChild "default" typeEl
 
 parseDomainDataType :: Element -> DD.Type
 parseDomainDataType typeEl = case name typeEl of
@@ -68,11 +88,11 @@ parseDomainDataType typeEl = case name typeEl of
 
 parseMetaData :: Definitions -> Script -> MetaData
 parseMetaData defs script = MetaData
-        { scenarioName            = parseScenarioName                 script
-        , scenarioDescription     = parseScenarioDescription          script
-        , scenarioDifficulty      = parseScenarioDifficulty           script
-        , scenarioParameters      = parseScenarioParameters           script
-        , scenarioPropertyValues  = parseScenarioPropertyValues  defs script
+        { scenarioName                   = parseScenarioName                        script
+        , scenarioDescription            = parseScenarioDescription                 script
+        , scenarioDifficulty             = parseScenarioDifficulty                  script
+        , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs script
+        , scenarioPropertyValues         = parseScenarioPropertyValues         defs script
         }
 
 -- | Queries the given script for its name
@@ -89,27 +109,18 @@ parseScenarioDifficulty script = readDifficulty difficultyString
  where
     difficultyString = getMetaDataString "difficulty" script
 
--- | Queries the given script for its parameters
-parseScenarioParameters :: Script -> [Parameter]
-parseScenarioParameters script = map parseParameter (children parameterElem)
-  where
-    metaDataElem  = getChild "metadata" script
-    definitionsElem = getChild "definitions" metaDataElem
-    parameterElem = getChild "userDefined" (getChild "parameters" definitionsElem)
-
-    -- | Parses a parameter Element inside the parameters inside the metadata of the script
-    parseParameter :: Element -> Parameter
-    parseParameter paramElem = Parameter
-        { parameterId           = getAttribute "id" paramElem
-        , parameterName         = getAttribute "name" paramElem
-        , parameterInitialValue = findAttribute "initialValue" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterDescription  = fromMaybe "" (findAttribute "description" paramElem)
-        , parameterMax          = findAttribute "maximum" paramElem >>= readMaybe :: Maybe ParameterValue
-        , parameterMin          = findAttribute "minimum" paramElem >>= readMaybe :: Maybe ParameterValue
-        }
+parseScenarioInitialParameterValues :: Definitions -> Script -> ParameterState
+parseScenarioInitialParameterValues defs script = Usered
+    { useredUserDefined = parseCharactereds valueParser M.fromList (getChild "userDefined" valsElem)
+    , useredFixed = parseCharactereds valueParser M.fromList (getChild "fixed" valsElem)
+    }
+  where valsElem = fromMaybe (error "Initial parameter values not found") $
+            findChild "metadata" script >>=
+            findChild "initialParameterValues"
+        valueParser = parseNamedDomainDataValue "parameter" (snd (definitionsParameters defs))
 
 parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
-parseScenarioPropertyValues defs script = fromMaybe (Charactered (Assocs []) (Assocs [])) $
+parseScenarioPropertyValues defs script = fromMaybe (Charactered (Assocs []) M.empty) $
     parsePropertyValues defs <$> findChild "metadata" script
 
 -- MetaData Parser END -----------------------------------------------------------------------------
@@ -141,14 +152,14 @@ parseTree defs diaElem =
 parseStatement :: Definitions -> Element -> Statement
 parseStatement defs statElem =
     Statement
-    { statID             = getAttribute "id"         statElem
-    , statInfo           = parseStatementInfo defs   statElem
-    , statPrecondition   = parseMaybePrecondition    statElem
-    , statParamEffects   = parseParameterEffects     statElem
-    , statJumpPoint      = parseJumpPoint            statElem
-    , statInits          = parseInits                statElem
-    , statEnd            = parseEnd                  statElem
-    , statNextStatIDs    = parseNextStatIDs          statElem
+    { statID             = getAttribute "id"           statElem
+    , statInfo           = parseStatementInfo defs     statElem
+    , statPrecondition   = parseMaybePrecondition defs statElem
+    , statParamEffects   = parseParameterEffects defs  statElem
+    , statJumpPoint      = parseJumpPoint              statElem
+    , statInits          = parseInits                  statElem
+    , statEnd            = parseEnd                    statElem
+    , statNextStatIDs    = parseNextStatIDs            statElem
     }
 
 parseStatementInfo :: Definitions -> Element -> StatementInfo
@@ -168,23 +179,32 @@ parseText :: Element -> StatementText
 parseText statElem = getData (getChild "text" statElem)
 
 -- | Takes a statement element and returns its precondition, if it has one
-parseMaybePrecondition :: Element -> Maybe Condition
-parseMaybePrecondition statElem =
-    fmap (parseCondition . getExactlyOneChild) conditionElem
+parseMaybePrecondition :: Definitions -> Element -> Maybe Condition
+parseMaybePrecondition defs statElem =
+    fmap (parseCondition defs . getExactlyOneChild) conditionElem
       where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects
-parseParameterEffects :: Element -> [Effect]
-parseParameterEffects statElem = map parseParameterEffect paramElems
-  where parentElem = findChild "parameterEffects" statElem >>= findChild "userDefined"
-        paramElems = emptyOnFail (children <$> parentElem)
+parseParameterEffects :: Definitions -> Element -> Usered (Charactered [Effect])
+parseParameterEffects defs statElem = Usered
+    { useredUserDefined = Charactered
+        (map (parseParameterEffect defs) (children (getChild "userDefined" effectsElem)))
+        M.empty
+    , useredFixed = parseCharactereds (parseParameterEffect defs) id (getChild "fixed" effectsElem)
+    }
+  where effectsElem = getChild "parameterEffects" statElem
 
-parseParameterEffect :: Element -> Effect
-parseParameterEffect effectElem = Effect
-            { effectIdref        = getAttribute "idref" effectElem
-            , effectAssignmentOp = parseAssignmentOperator      effectElem
-            , effectValue        = getValue             effectElem
-            }
+parseParameterEffect :: Definitions -> Element -> Effect
+parseParameterEffect defs effectElem = Effect
+    { effectIdref        = idref
+    , effectAssignmentOp = parseAssignmentOperator effectElem
+    , effectValue        = value
+    }
+  where idref = getAttribute "idref" effectElem
+        errorDefault = error ("Value for unknown parameter " ++ idref)
+        value = parseDomainDataValue
+            (M.findWithDefault errorDefault idref (snd (definitionsParameters defs)))
+            effectElem
 
 -- | Parses an element to a Changetype
 parseAssignmentOperator :: Element -> AssignmentOperator
@@ -221,56 +241,64 @@ tryParseBool (Just boolStr) = parseBool boolStr
 tryParseBool _              = False
 
 -- | Parses a condition and recursively parses ands and ors. Used in both parsers (metadata and dialogue)
-parseCondition :: Element -> Condition
-parseCondition conditionElem = case name conditionElem of
-    "and"       -> And (map parseCondition (children conditionElem))
-    "or"        -> Or  (map parseCondition (children conditionElem))
+parseCondition :: Definitions -> Element -> Condition
+parseCondition defs conditionElem = case name conditionElem of
+    "and"       -> And (map (parseCondition defs) (children conditionElem))
+    "or"        -> Or  (map (parseCondition defs) (children conditionElem))
     "condition" -> Condition
         ComparisonCondition
-        { conditionIdref = getAttribute "idref" conditionElem
-        , conditionTest  = parseCompareOperator conditionElem
-        , conditionValue = getValue             conditionElem
+        { conditionIdref          = idref
+        , conditionCharacterIdref = findAttribute "characteridref" conditionElem
+        , conditionTest           = parseCompareOperator conditionElem
+        , conditionValue          = value
         }
+      where idref = getAttribute "idref" conditionElem
+            errorDefault = error ("Condition for unknown parameter " ++ idref)
+            ty = M.findWithDefault errorDefault idref (snd (definitionsParameters defs))
+            value = parseDomainDataValue ty conditionElem
     _           -> error "no parse condition"
 
 -- | Parses a compare operator. Gives an exception on invalid input.
 parseCompareOperator :: Element -> CompareOperator
-parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "test"  conditionElem))
+parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator" conditionElem))
 
 -- | Parses property values from an element that has them
 parsePropertyValues :: Definitions -> Element -> PropertyValues
-parsePropertyValues defs propsElem = parseCharactereds parsePropertyValue Assocs defs
-    (getChild "propertyValues" propsElem)
+parsePropertyValues defs propsElem = parseCharactereds
+    (parseNamedDomainDataValue "property" (snd (definitionsProperties defs)))
+    Assocs (getChild "propertyValues" propsElem)
 
-parsePropertyValue :: Definitions -> Element -> (String, DD.Value)
-parsePropertyValue defs propValEl = (idref, value)
+parseNamedDomainDataValue :: String -> TypeMap -> Element -> (String, DD.Value)
+parseNamedDomainDataValue valueKind typeMap propValEl = (idref, value)
   where
     idref = getAttribute "idref" propValEl
-    errorDefault = error ("Value for unknown property " ++ idref)
-    value = case M.findWithDefault errorDefault idref defs of
-        DD.TBoolean     -> DD.VBoolean (read (getData propValEl))
-        DD.TInteger     -> DD.VInteger (read (getData propValEl))
-        DD.TString      -> DD.VString  (getData propValEl)
+    errorDefault = error ("Value for unknown " ++ valueKind ++ " " ++ idref)
+    value = parseDomainDataValue
+      (M.findWithDefault errorDefault idref typeMap)
+      propValEl
 
-parseCharactereds :: (Definitions -> Element -> a) ->
-    ([a] -> b) -> Definitions -> Element -> Charactered b
-parseCharactereds parseSub mkCollection defs valsElem = Charactered
+parseDomainDataValue :: DD.Type -> Element -> DD.Value
+parseDomainDataValue ty el = case ty of
+    DD.TBoolean     -> DD.VBoolean (read (applyToFirst toUpper (getData el)))
+    DD.TInteger     -> DD.VInteger (read (getData el))
+    DD.TString      -> DD.VString  (getData el)
+
+parseCharactereds :: (Element -> a) -> ([a] -> b) -> Element -> Charactered b
+parseCharactereds parseSub mkCollection valsElem = Charactered
     { characteredIndependent = mkCollection civs
-    , characteredPerCharacter = Assocs (map toPC (groupWith fst pcvs))
+    , characteredPerCharacter = M.fromList (map toPC (groupWith fst pcvs))
     }
   where
-    vals = map (parseCharactered parseSub defs) (children valsElem)
+    vals = map (parseCharactered parseSub) (children valsElem)
     (civs, pcvs) = partitionEithers vals
     toPC vs = (fst (head vs), mkCollection (map snd vs))
 
-parseCharactered :: (Definitions -> Element -> a) ->
-    Definitions -> Element -> Either a (String, a)
-parseCharactered parseSub defs valEl = case mCharacteridref of
+parseCharactered :: (Element -> a) -> Element -> Either a (String, a)
+parseCharactered parseSub valEl = case findAttribute "characteridref" valEl of
     Just characteridref -> Right (characteridref, val)
     Nothing             -> Left val
   where
-    mCharacteridref = findAttribute "characteridref" valEl
-    val = parseSub defs valEl
+    val = parseSub valEl
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------
@@ -302,7 +330,3 @@ getMetaDataString metaDataName script = getData dataElem
   where
     metadata = getChild "metadata" script
     dataElem = getChild metaDataName metadata
-
--- | Parses a value attribute from an element
-getValue :: Element -> ParameterValue
-getValue el = read (getAttribute "value" el) :: ParameterValue
