@@ -88,40 +88,32 @@ parseDomainDataType typeEl = case name typeEl of
 
 parseMetaData :: Definitions -> Script -> MetaData
 parseMetaData defs script = MetaData
-        { scenarioName                   = parseScenarioName                        script
-        , scenarioDescription            = parseScenarioDescription                 script
-        , scenarioDifficulty             = parseScenarioDifficulty                  script
-        , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs script
-        , scenarioPropertyValues         = parseScenarioPropertyValues         defs script
+        { scenarioName                   = parseScenarioName                        metadataEl
+        , scenarioDescription            = parseScenarioDescription                 metadataEl
+        , scenarioDifficulty             = parseScenarioDifficulty                  metadataEl
+        , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs metadataEl
+        , scenarioPropertyValues         = parsePropertyValues                 defs metadataEl
         }
+    where metadataEl = getChild "metadata" script
 
--- | Queries the given script for its name
-parseScenarioName :: Script -> Name
-parseScenarioName = getMetaDataString "name"
+parseScenarioName :: Element -> Name
+parseScenarioName = getData . getChild "name"
 
--- | Queries the given script for its description
-parseScenarioDescription :: Script -> String
-parseScenarioDescription = getMetaDataString "description"
+parseScenarioDescription :: Element -> String
+parseScenarioDescription = getData . getChild "description"
 
--- | Queries the given script for its difficulty
-parseScenarioDifficulty :: Script -> Maybe Difficulty
-parseScenarioDifficulty script = readDifficulty difficultyString
- where
-    difficultyString = getMetaDataString "difficulty" script
+parseScenarioDifficulty :: Element -> Maybe Difficulty
+parseScenarioDifficulty metadataEl = fromMaybe (error "parseScenarioDifficulty: no parse") . readDifficulty .
+    getData <$> findChild "difficulty" metadataEl
 
-parseScenarioInitialParameterValues :: Definitions -> Script -> ParameterState
-parseScenarioInitialParameterValues defs script = Usered
+parseScenarioInitialParameterValues :: Definitions -> Element -> ParameterState
+parseScenarioInitialParameterValues defs metadataEl = Usered
     { useredUserDefined = parseCharactereds valueParser M.fromList (getChild "userDefined" valsElem)
     , useredFixed = parseCharactereds valueParser M.fromList (getChild "fixed" valsElem)
     }
   where valsElem = fromMaybe (error "Initial parameter values not found") $
-            findChild "metadata" script >>=
-            findChild "initialParameterValues"
+            findChild "initialParameterValues" metadataEl
         valueParser = parseNamedDomainDataValue "parameter" (snd (definitionsParameters defs))
-
-parseScenarioPropertyValues :: Definitions -> Script -> PropertyValues
-parseScenarioPropertyValues defs script = fromMaybe (Charactered (Assocs []) M.empty) $
-    parsePropertyValues defs <$> findChild "metadata" script
 
 -- MetaData Parser END -----------------------------------------------------------------------------
 
@@ -322,11 +314,3 @@ getExactlyOneChild element = case children element of
     []      -> error "no children found"
     [child] -> child
     _       -> error "multiple children found"
-
--- | Queries the given script for basic information. Which information being queried is specified
--- in the "metaDataName". This could be the name of the script, the difficulty etc.
-getMetaDataString :: Name -> Script -> String
-getMetaDataString metaDataName script = getData dataElem
-  where
-    metadata = getChild "metadata" script
-    dataElem = getChild metaDataName metadata
