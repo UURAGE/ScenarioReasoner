@@ -22,14 +22,16 @@ data ScenarioInfo = ScenarioInfo Name
 
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
-    Iso ((<-!) pairify) (Pair (Tag "name"            tString)
-                        (Pair (Tag "description"     tString)
-                        (Pair                       (tMaybe tDifficulty)
-                        (Pair (Tag "parameters"     (tList tParameterInfo))
-                              (Tag "propertyValues"  tPropertyValues)))))
+    Iso ((<-!) pairify) (Pair         (Tag "name"           tString)
+                        (Pair         (Tag "description"    tString)
+                        (Pair (tMaybe (tag "difficulty"     tDifficulty))
+                        (Pair         (Tag "parameters"     (tList tParameterInfo))
+                                      (Tag "propertyValues" tPropertyValues)))))
       where
         pairify (ScenarioInfo name descr diff ps pvs) =
             (name, (descr, (diff, (ps, pvs))))
+        tag s (Tag _ t) = Tag s t
+        tag s t         = Tag s t
 
 data ParameterInfo = ParameterInfo ID
                                    Name
