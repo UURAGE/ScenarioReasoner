@@ -46,8 +46,7 @@ parseDefinitions :: Script -> Definitions
 parseDefinitions script = fromMaybe (error "Definitions not found") $
         M.fromList . map parseDefinition . children <$> propertiesElem
   where propertiesElem =
-            findChild "metadata" script >>=
-            findChild "definitions" >>=
+            findChild "definitions" script >>=
             findChild "properties"
 
 parseDefinition :: Element -> (String, DD.Type)
