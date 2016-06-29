@@ -20,7 +20,7 @@ import Domain.Scenarios.ScenarioState()
 data ScenarioInfo = ScenarioInfo Name
                                  String           -- Description
                                  (Maybe Difficulty)
-                                 [ParameterInfo]
+                                 [DefinitionInfo]
                                  PropertyValues
 
 tScenarioInfo :: Type a ScenarioInfo
@@ -36,17 +36,17 @@ tScenarioInfo =
         tag s (Tag _ t) = Tag s t
         tag s t         = Tag s t
 
-data ParameterInfo = ParameterInfo ID
-                                   Name
-                                   (Maybe String) -- Description
-                                   DD.Type
+data DefinitionInfo = DefinitionInfo ID
+                                     Name
+                                     (Maybe String) -- Description
+                                     DD.Type
 
-tParameterInfo :: Type a ParameterInfo
+tParameterInfo :: Type a DefinitionInfo
 tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
                                      (Pair (Tag "name"          tString)
                                      (Pair (Tag "description"   (tMaybe tString))
                                            (Tag "type"          tDomainDataType))))
-        where pairify (ParameterInfo pid name descr ty) = (pid, (name, (descr, ty)))
+        where pairify (DefinitionInfo pid name descr ty) = (pid, (name, (descr, ty)))
 
 tDomainDataType :: Type a DD.Type
 tDomainDataType = Iso ((<-!) (jsonToTerm . toJSON)) tTerm
