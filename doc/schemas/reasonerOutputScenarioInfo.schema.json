@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "Scenario Reasoner output for scenarios.scenarioinfo method",
+  "title": "Scenario Reasoner output for scenarioinfo method",
   "type": "object",
   "properties": {
     "result": {
@@ -14,7 +14,7 @@
           "type": "string",
           "minLength": 1,
           "description": "The ID of the scenario",
-          "example": "scenarios.295"
+          "example": "gmd4"
         },
         "name": {
           "type": "string",
@@ -25,73 +25,57 @@
           "type": "string",
           "description": "The description of the scenario"
         },
-        "Difficulty": {
+        "difficulty": {
           "type": "string",
           "minLength": 1,
           "title": "Difficulty of scenario",
           "description": "Indicates the scenario difficulty",
           "default": "medium"
         },
-        "bannerImage": {
-          "type": [ "string", "null" ],
-          "minLength": 1,
-          "title": "BannerImage",
-          "description": "Describes the banner image"
-        },
-        "characterImage": {
-          "type": [ "string", "null" ],
-          "minLength": 1,
-          "title": "CharacterImage",
-          "description": "Describes the character image"
-        },
-        "model": {
-          "type": "string",
-          "minLength": 1,
-          "title": "Model",
-          "description": "Specifies the model of the virtual character",
-          "example": "Jan"
-        },
-        "parameters": {
+        "userDefinedParameters": {
           "type": "array",
-          "minItems": 1,
-          "uniqueItems": false,
-          "additionalItems": true,
-          "title": "Parameters",
-          "description": "The parameters (representing learning goals) for this scenario",
+          "description": "The user-defined parameters for this scenario",
           "items": {
-            "id": "string",
-            "name": {
-              "type": "string",
-              "description": "The name of the parameter",
-              "example": "Interacting"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The id of the parameter",
+                "pattern": "^p([0-9]+)|t$"
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the parameter",
+                "example": "Interacting"
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the parameter",
+                "example": "If the player is interacting with the merchant."
+              }
             },
-            "description": "string"
+            "required": [ "id", "name" ]
           }
         },
-        "location": {
-          "type": "string",
-          "minLength": 1,
-          "title": "Scenario location",
-          "description": "The location associated with the Scenario",
-          "name": "location"
-        },
-        "pet": {
-          "type": "string",
-          "minLength": 1,
-          "title": "Pet",
-          "description": "This represents the pet in this Scenario (only applicable for veterinary science)",
-          "default": "none"
-        },
-        "toggles": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": false,
-          "additionalItems": true,
-          "title": "Toggles",
-          "description": "Toggles are mainly used for display parameters",
-          "items": {
-            "name": "The name of the toggle",
-            "bool": "bool"
+        "propertyValues": {
+          "type": "object",
+          "description": "The statement-independent property values for this scenario",
+          "properties": {
+            "independent": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [ "boolean", "integer", "string" ]
+              }
+            },
+            "perCharacter": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": [ "boolean", "integer", "string" ]
+                }
+              }
+            }
           }
         }
       }

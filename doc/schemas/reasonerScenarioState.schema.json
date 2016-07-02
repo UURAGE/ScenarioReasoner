@@ -4,121 +4,95 @@
   "type": "object",
   "properties": {
     "parameters": {
-      "id": "parameters",
-      "description": "The incremental scores per parameter for the choice",
+      "description": "The values for the parameters",
       "type": "object",
-      "patternProperties": {
-        "^p[0-9]+$": { "type": "integer" }
-      },
-      "additionalProperties": false,
-      "example": {
-        "p1": 0,
-        "p2": 0,
-        "p3": 0,
-        "p4": 0
-      }
-    },
-    "emotions": {
-      "id": "emotions",
-      "description": "The emotion values for the virtual character for the choice",
-      "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z]+$": { "type": "integer" }
-      },
-      "additionalProperties": false,
-      "example": {
-        "fear": 0,
-        "happiness": 5
+      "properties": {
+        "userDefined": {
+          "type": "object",
+          "properties": {
+            "independent": {
+              "type": "object",
+              "patternProperties": {
+                "^p([0-9]+)|t$": { "type": [ "integer", "boolean", "string" ] }
+              },
+              "additionalProperties": false,
+              "example": {
+                "p1": false,
+                "p2": 0,
+                "p3": "A string"
+              }
+            },
+            "perCharacter": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            }
+          },
+          "required": [ "independent", "perCharacter" ]
+        },
+        "fixed": {
+          "type": "object",
+          "properties": {
+            "independent": {
+              "type": "object"
+            },
+            "perCharacter": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            }
+          },
+          "required": [ "independent", "perCharacter" ]
+        }
       }
     },
     "statement": {
       "type": [ "object", "null" ],
       "properties": {
         "type": {
-          "id": "type",
           "description": "The statement type: whether it is for a computer or a player",
           "type": "string",
-          "enum": [ "player", "computer" ]
+          "enum": [ "player", "computer", "situation" ]
         },
         "text": {
-          "id": "text",
           "description": "The actual text for the statement",
           "type": "string"
         },
-        "intentions": {
-          "id": "intentions",
-          "description": "The intentions associated with the statement",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "additionalItems": false
-        },
-        "feedback": {
-          "id": "feedback",
-          "description": "The feedback statement provided to the player",
-          "type": [ "string", "null" ]
-        },
-        "media": {
-          "id": "media",
-          "description": "The media to be rendered with the statement",
+        "propertyValues": {
+          "description": "The property values belonging to this statement",
           "type": "object",
           "properties": {
-            "visuals": {
-              "id": "visuals",
-              "description": "An array of visual IDs with their extensions combined with their types",
-              "type": "array",
-              "items": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "items": [
-                  {
-                    "id": "0",
-                    "description": "The type of the visual",
-                    "type": "string",
-                    "enum": [ "image", "video" ]
-                  },
-                  {
-                    "id": "1",
-                    "description": "The visual ID",
-                    "type": "string"
-                  }
-                ]
-              },
-
-              "additionalItems": false
+            "independent": {
+              "type": "object"
             },
-            "audios": {
-              "id": "audios",
-              "description": "An array of audio IDs with their extensions",
-              "type": "array",
-              "items": {
-                "description": "The audio ID",
-                "type": "string"
-              },
-              "additionalItems": false
+            "perCharacter": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
             }
-          }
+          },
+          "required": [ "independent", "perCharacter" ]
         }
       },
       "additionalProperties": false,
-      "required": [ "feedback", "intentions", "media", "text", "type" ]
+      "required": [ "type", "text", "propertyValues" ]
     },
     "internal": {
       "type": "object",
       "description": "This object contains internal data for the ScenarioReasoner and must not be removed from the state",
       "properties": {
         "end": {
-          "id": "end",
           "description": "Indicates whether this statement ends the scenario or not",
           "type": "boolean"
         }
       },
       "additionalProperties": false,
-      "required": ["end"]
+      "required": [ "end" ]
     }
   },
-  "required": [ "parameters", "emotions", "internal" ]
+  "required": [ "parameters", "internal" ]
   // statement will be present in output, but is not required in input
 }

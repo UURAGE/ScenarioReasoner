@@ -13,7 +13,7 @@
         {
           "description": "The unique identifier for the scenario",
           "type": "string",
-          "example": "scenarios.238"
+          "example": "gmd4"
         }
       ],
       "additionalItems": false

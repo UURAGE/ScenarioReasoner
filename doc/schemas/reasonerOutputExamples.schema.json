@@ -13,7 +13,7 @@
         "maxItems": 2,
         "items": [
           {
-            "Difficulty": {
+            "difficulty": {
               "type": "string",
               "minLength": 1,
               "title": "Difficulty of scenario",

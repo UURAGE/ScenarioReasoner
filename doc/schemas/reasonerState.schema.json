@@ -8,14 +8,14 @@
     {
       "description": "The unique identifier for the scenario",
       "type": "string",
-      "example": "scenarios.238"
+      "example": "gmd4"
     },
     {
       "description": "The location in the internal strategy. Implementation-specific, do not parse this value.",
       "type": "string"
     },
     {
-      "$ref": "D:/Communicate/Schema/reasonerScenarioState.schema.json"
+      "$ref": "D:/Communicate/Schema/reasonerScenarioState.schema.json" // URI to the referred JSON schema, for now a local path
     },
     {
       "type": "object",

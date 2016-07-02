@@ -13,7 +13,7 @@
           {
             "description": "The unique identifier for the statement",
             "type": "string",
-            "example": "scenarios.238.computer.edit.29"
+            "example": "gmd4.computer.edit.29"
           },
           {
             "type": "string",
@@ -29,7 +29,8 @@
           }
         ],
         "additionalItems": false
-      }
+      }, 
+      "additionalItems": false
     },
     "id": { "description": "A value identifying this response, equal to the id of the request or null" },
     "error": { "type": "null" },
