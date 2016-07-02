@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Scenario Reasoner output for scenarios.scenarioinfo method",
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "object",
+      "additionalProperties": true,
+      "title": "Result of the method scenarioInfo",
+      "description": "This sub-schema describes the result of the method scenarioInfo",
+      "name": "result",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The ID of the scenario",
+          "example": "scenarios.295"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the scenario",
+          "example": "Game Merchant Dialogue"
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the scenario"
+        },
+        "Difficulty": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Difficulty of scenario",
+          "description": "Indicates the scenario difficulty",
+          "default": "medium"
+        },
+        "bannerImage": {
+          "type": [ "string", "null" ],
+          "minLength": 1,
+          "title": "BannerImage",
+          "description": "Describes the banner image"
+        },
+        "characterImage": {
+          "type": [ "string", "null" ],
+          "minLength": 1,
+          "title": "CharacterImage",
+          "description": "Describes the character image"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Model",
+          "description": "Specifies the model of the virtual character",
+          "example": "Jan"
+        },
+        "parameters": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": false,
+          "additionalItems": true,
+          "title": "Parameters",
+          "description": "The parameters (representing learning goals) for this scenario",
+          "items": {
+            "id": "string",
+            "name": {
+              "type": "string",
+              "description": "The name of the parameter",
+              "example": "Interacting"
+            },
+            "description": "string"
+          }
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Scenario location",
+          "description": "The location associated with the Scenario",
+          "name": "location"
+        },
+        "pet": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Pet",
+          "description": "This represents the pet in this Scenario (only applicable for veterinary science)",
+          "default": "none"
+        },
+        "toggles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": false,
+          "additionalItems": true,
+          "title": "Toggles",
+          "description": "Toggles are mainly used for display parameters",
+          "items": {
+            "name": "The name of the toggle",
+            "bool": "bool"
+          }
+        }
+      }
+    },
+    "id": { "description": "A value identifying this response, equal to the id of the request or null" },
+    "error": { "type": "null" },
+    "version": { "type": "string" }
+  },
+  "required": [ "result", "error", "id", "version" ],
+  "additionalProperties": false
+}

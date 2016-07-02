@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Scenario Reasoner input for scenarios.scenarioinfo method",
+  "type": "object",
+  "properties": {
+    "method": {
+      "description": "The method of the scenario reasoner being called",
+      "type": "string",
+      "enum": [ "scenarios.scenarioinfo" ]
+    },
+    "params": {
+      "$ref": "D:/Communicate/Schema/reasonerInputId.schema.json" // URI to the referred JSON schema, for now a local path
+    }
+  },
+  "additionalProperties": false,
+  "required": [ "method", "params" ]
+}
