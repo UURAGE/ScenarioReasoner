@@ -67,17 +67,18 @@ parseDefinition defEl = Definition
         , definitionType         = ty
         , definitionDefault      = parseDomainDataValue ty <$> maybeDefaultEl
         }
-  where ty = parseDomainDataType typeEl
-        typeEl = last (children defEl)
-        maybeDefaultEl = findChild "default" typeEl
+  where (ty, maybeDefaultEl) = parseDomainDataType (getChild "type" defEl)
 
-parseDomainDataType :: Element -> DD.Type
-parseDomainDataType typeEl = case name typeEl of
-    "typeBoolean" -> DD.TBoolean
-    "typeInteger" -> DD.TInteger
-    "typeString" -> DD.TString
-    "typeEnumeration" -> DD.TString
+parseDomainDataType :: Element -> (DD.Type, Maybe Element)
+parseDomainDataType typeContainerEl = case name typeEl of
+    "boolean" -> (DD.TBoolean, simpleDefault)
+    "integer" -> (DD.TInteger, simpleDefault)
+    "string" -> (DD.TString, simpleDefault)
+    "enumeration" -> (DD.TString, simpleDefault)
+    "extension" -> parseDomainDataType (getChild "equivalentType" typeEl)
     n -> error ("Could not parse " ++ n)
+  where typeEl = getExactlyOneChild typeContainerEl
+        simpleDefault = findChild "default" typeEl
 
 ----------------------------------------------------------------------------------------------------
 
