@@ -1,6 +1,6 @@
 # Scenario Reasoner
 
-The UURAGE Scenario Reasoner is a CGI application that can be used to navigate through and get information about scenarios created by the UURAGE Scenario Editor.
+The UURAGE Scenario Reasoner is a CGI application that can be used to navigate through and get information about scenarios created by the [UURAGE Scenario Editor](https://github.com/UURAGE/ScenarioEditor) or based on the [UUDSL](http://uudsl.github.io/scenario).
 
 ## Prerequisites
 
@@ -43,3 +43,11 @@ After creating this structure, symlink or copy the CGI executables to the `cgi` 
 Note that under Windows, the executables will be named `ScenarioParser.cgi.exe` and `ScenarioReasoner.cgi.exe`. This is by design; if you copy them, rename them to remove the trailing `.exe`. Although symlinking is possible using recent versions of Windows, we have noticed certain Apache binaries cannot execute the symlinked files as CGI applications.
 
 If you decide to copy the executables, make sure you don't forget to repeat that process after rebuilding.
+
+## Usage
+
+The reasoner accepts requests with a JSON encoded body based on one of the [input JSON schemas](doc/schemas) and sends responses based on the [output JSON schemas](doc/schemas).
+
+* For client-side use: please see the [Client-side Reasoner Demo](https://github.com/UURAGE/ClientSideReasonerDemo).
+* For server-side use: send HTTP Requests targeting the CGI executable on the server.
+* For development: we recommend the [Client-side Reasoner Demo](https://github.com/UURAGE/ClientSideReasonerDemo).

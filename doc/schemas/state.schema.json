@@ -15,7 +15,7 @@
       "type": "string"
     },
     {
-      "$ref": "D:/Communicate/Schema/reasonerScenarioState.schema.json" // URI to the referred JSON schema, for now a local path
+      "$ref": "D:/Communicate/ScenarioReasoner/doc/schemas/scenariostate.schema.json#" // URI to the referred JSON schema, for now a local path
     },
     {
       "type": "object",
