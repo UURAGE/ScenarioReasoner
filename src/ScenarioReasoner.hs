@@ -27,19 +27,18 @@ import qualified Ideas.Main.Logging as Log
 
 main :: IO ()
 main = do
-   srs <- scenarioReasoner
+   sr <- scenarioReasoner
    args <- getArgs
    case args of
-      "-r" : restArgs -> scenarioReasonerCommandLine srs restArgs
-      _ -> scenarioReasonerCGI srs
+      "-r" : _ -> scenarioReasonerCommandLine sr
+      _ -> scenarioReasonerCGI sr
 
 maindoc :: IO ()
 maindoc = do
-    drTuple <- scenarioReasoner
-    let dr = fst drTuple
+    dr <- scenarioReasoner
     makeDocumentation dr "doc"
 
-scenarioReasoner :: IO (DomainReasoner, DomainReasoner)
+scenarioReasoner :: IO DomainReasoner
 scenarioReasoner = do
     iss <- readBinaryScenarios "bins"
     let dr  = (newDomainReasoner "ideas.scenarios")
@@ -47,13 +46,7 @@ scenarioReasoner = do
             , services  = customServiceList iss ++ metaServiceList dr ++ serviceList
             }
 
-    tiss <- readBinaryScenarios "test_bins"
-    let tdr = (newDomainReasoner "ideas.scenarios.test")
-            { exercises = map Some (E.exercises tiss)
-            , services  = customServiceList tiss ++ metaServiceList dr ++ serviceList
-            }
-
-    return (dr, tdr)
+    return dr
 
 readBinaryScenarios :: FilePath -> IO [(Id, Scenario)]
 readBinaryScenarios root = do
@@ -62,21 +55,14 @@ readBinaryScenarios root = do
     return (map readOne paths)
 
 -- Invoked as a cgi binary
-scenarioReasonerCGI :: (DomainReasoner, DomainReasoner) -> IO ()
-scenarioReasonerCGI (sr, srt) = runCGI $ handleErrors $ do
+scenarioReasonerCGI :: DomainReasoner -> IO ()
+scenarioReasonerCGI dr = runCGI $ handleErrors $ do
    -- create a record for logging
    logRef  <- liftIO Log.newLogRef
    -- query environment
    addr    <- remoteAddr       -- the IP address of the remote host
    cgiBin  <- scriptName       -- get name of binary
    input   <- inputOrDefault
-
-   -- create a domain reasoner based on testing or not
-   testingInput <- getInput "testing"
-   let testing = case testingInput of
-                   Just t  -> read t :: Bool
-                   Nothing -> False
-   let dr = if testing then srt else sr
 
    -- process request
    (req, txt, ctp) <- liftIO $
@@ -125,12 +111,8 @@ inputOrDefault = do
       return (isJust maybeAcceptCT && not (null xs))
 
 -- Invoked from command-line using raw mode
-scenarioReasonerCommandLine :: (DomainReasoner, DomainReasoner) -> [String] -> IO ()
-scenarioReasonerCommandLine (sr, srt) restArgs = do
-   let testing = case restArgs of
-                   "--testing" : _ -> True
-                   _               -> False
-   let dr = if testing then srt else sr
+scenarioReasonerCommandLine :: DomainReasoner -> IO ()
+scenarioReasonerCommandLine dr = do
    mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
    txtIn          <- getContents
    logRef         <- liftIO Log.newLogRef

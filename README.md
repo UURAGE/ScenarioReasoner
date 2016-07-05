@@ -31,7 +31,6 @@ It is recommended to set up the following directory structure (all of the items 
     <root of the deployment structure>
         cgi/
             bins/
-            test_bins/
 
 After creating this structure, symlink or copy the CGI executables to the `cgi` directory:
 
