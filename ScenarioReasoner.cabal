@@ -29,7 +29,7 @@ executable ScenarioReasoner.cgi
   default-language:    Haskell2010
 
   build-depends:       base >= 4.8 && < 5,
-                       ideas >= 1.5,
+                       ideas == 1.5,
                        cgi >= 3001.3.0.0,
                        transformers,
                        containers,
