@@ -1,6 +1,12 @@
 # Scenario Reasoner
 
-The UURAGE Scenario Reasoner is a CGI application that can be used to navigate through and get information about scenarios created by the [UURAGE Scenario Editor](https://github.com/UURAGE/ScenarioEditor) or based on the [UUDSL](http://uudsl.github.io/scenario).
+The UURAGE Scenario Reasoner is a CGI application that can be used to navigate through and get information about scenarios based on the [UUDSL](http://uudsl.github.io/scenario), such as those created by the [UURAGE Scenario Editor](https://github.com/UURAGE/ScenarioEditor).
+
+## Overview
+
+This software consists of two executables: the Scenario Parser and the Scenario Reasoner.
+
+The Reasoner is a fully stateless application: it does not save any state between requests. To avoid the (significant) overhead of parsing a UUDSL scenario upon each incoming request, the Reasoner operates on a binary representation of a scenario instead of its XML representation. This binary representation is application-specific and may change between releases. The Parser can be used to generate a binary representation of a scenario, after which the Reasoner can be used to navigate it.
 
 ## Prerequisites
 
@@ -49,8 +55,10 @@ If you decide to copy the executables, make sure you don't forget to repeat that
 
 ## Usage
 
-The reasoner accepts requests with a JSON encoded body based on one of the [input JSON schemas](doc/schemas) and sends responses based on the [output JSON schemas](doc/schemas).
-
 * For client-side use: please see the [Client-side Reasoner Demo](https://github.com/UURAGE/ClientSideReasonerDemo).
-* For server-side use: send HTTP Requests targeting the CGI executable on the server.
+* For server-side use: send HTTP requests targeting the CGI executable on the server.
 * For development: we recommend the [Client-side Reasoner Demo](https://github.com/UURAGE/ClientSideReasonerDemo).
+
+### Reasoner
+
+The Reasoner accepts HTTP requests (both POST and GET) with a JSON-encoded parameter `input` based on one of the [input JSON schemas](doc/schemas) and sends responses based on the [output JSON schemas](doc/schemas).
