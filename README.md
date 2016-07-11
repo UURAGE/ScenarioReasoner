@@ -12,9 +12,7 @@ The UURAGE Scenario Reasoner is a CGI application that can be used to navigate t
 
 	* Ubuntu 16.04 has a `haskell-platform` package. Although its version is 2014.2.0.0.debian2 (or similar), installing this package does install the right version of GHC and the related libraries.
 
-## Installation
-
-### Setting up the build environment
+## Building
 
 After installing the prerequisites and cloning this repository, execute the following commands:
 
@@ -24,15 +22,21 @@ After installing the prerequisites and cloning this repository, execute the foll
 
 After these commands, the build environment is set up. You can build the application using `cabal build`. The build products will be placed in `dist/build`.
 
+## Installation
+
 ### Setting up the directory structure
 
-It is recommended to set up the following directory structure (all of the items mentioned should become directories). Create this structure in a location outside the repository. If you want to use the Scenario Reasoner in a server-side setup, make sure this location is under your web root and your web server knows how to execute the CGI executables.
+It is recommended to set up the following directory structure (all of the items mentioned should become directories). If you have cloned this repository, create the structure in a location outside the repository. If you want to use the Scenario Reasoner in a server-side setup, make sure this location is under your web root and your web server knows how to execute CGI executables.
 
     <root of the deployment structure>
         cgi/
             bins/
 
-After creating this structure, symlink or copy the CGI executables to the `cgi` directory:
+### Installing the executables
+
+If you are using prebuilt executables, place them in the `cgi` directory.
+
+If you are building the executables yourself, symlink or copy them to the `cgi` directory:
 
     <deployment root>/cgi/ScenarioParser.cgi ->
         <repository working directory>/dist/build/ScenarioParser.cgi/ScenarioParser.cgi
