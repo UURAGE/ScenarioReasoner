@@ -160,6 +160,7 @@ parseStatementInfo defs statElem =
     StatementInfo
     {   statType           = parseType                statElem
     ,   statText           = parseText                statElem
+    ,   statCharacterIdref = parseCharacterIdref      statElem
     ,   statPropertyValues = parsePropertyValues defs statElem
     }
 
@@ -241,7 +242,7 @@ parseCondition defs conditionElem = case name conditionElem of
     "condition" -> Condition
         ComparisonCondition
         { conditionIdref          = idref
-        , conditionCharacterIdref = findAttribute "characteridref" conditionElem
+        , conditionCharacterIdref = parseCharacterIdref conditionElem
         , conditionTest           = parseCompareOperator conditionElem
         , conditionValue          = value
         }
@@ -287,11 +288,14 @@ parseCharactereds parseSub mkCollection valsElem = Charactered
     toPC vs = (fst (head vs), mkCollection (map snd vs))
 
 parseCharactered :: (Element -> a) -> Element -> Either a (String, a)
-parseCharactered parseSub valEl = case findAttribute "characteridref" valEl of
+parseCharactered parseSub valEl = case parseCharacterIdref valEl of
     Just characteridref -> Right (characteridref, val)
     Nothing             -> Left val
   where
     val = parseSub valEl
+
+parseCharacterIdref :: Element -> Maybe String
+parseCharacterIdref = findAttribute "characteridref"
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------

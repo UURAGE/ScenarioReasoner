@@ -60,6 +60,10 @@
           "description": "The actual text for the statement",
           "type": "string"
         },
+        "character": {
+          "description": "The character this statement belongs to, if any"
+          "type": "string"
+        },
         "propertyValues": {
           "description": "The property values belonging to this statement",
           "type": "object",

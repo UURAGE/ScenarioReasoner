@@ -6,6 +6,7 @@ module Domain.Scenarios.ScenarioState where
 import Control.Monad
 
 import qualified Data.Map as M
+import Data.Maybe
 import Data.Typeable
 import Data.Binary
 
@@ -107,11 +108,12 @@ instance InJSON a => InJSON (M.Map String a)  where
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON StatementInfo  where
-    toJSON statInfo = Object [typeToJSON, textToJSON, pvsToJSON]
+    toJSON statInfo = Object (catMaybes [typeToJSON, textToJSON, characterToJSON, pvsToJSON])
       where
-        typeToJSON      = ("type",      toJSON (statType        statInfo))
-        textToJSON      = ("text",      toJSON (statText        statInfo))
-        pvsToJSON       = ("propertyValues", toJSON (statPropertyValues statInfo))
+        typeToJSON      = Just   ("type",           toJSON        (statType           statInfo))
+        textToJSON      = Just   ("text",           toJSON        (statText           statInfo))
+        characterToJSON = (\x -> ("character",      toJSON x)) <$> statCharacterIdref statInfo
+        pvsToJSON       = Just   ("propertyValues", toJSON        (statPropertyValues statInfo))
     fromJSON _ = fail "fromJSON: not supported"
 
 instance InJSON a => InJSON (Charactered a) where

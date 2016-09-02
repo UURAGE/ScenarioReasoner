@@ -16,6 +16,7 @@ type Name = String
 
 data StatementInfo = StatementInfo
     { statType           :: StatementType
+    , statCharacterIdref :: Maybe ID
     , statText           :: StatementText
     , statPropertyValues :: PropertyValues
     }
