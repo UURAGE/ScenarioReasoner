@@ -45,12 +45,21 @@ instance Binary a => Binary (Assocs a)
 --------------------------------------------------------------------------------------------------------------------------
 
 data Definitions = Definitions
-    { definitionsProperties :: ([Definition], TypeMap)
+    { definitionsCharacters :: [CharacterDefinition]
+    , definitionsProperties :: ([Definition], TypeMap)
     , definitionsParameters :: (Usered [Definition], TypeMap)
     }
  deriving (Show, Read, Generic)
 
 instance Binary Definitions
+
+data CharacterDefinition = CharacterDefinition
+    { characterDefinitionId   :: ID
+    , characterDefinitionName :: Maybe Name
+    }
+ deriving (Show, Read, Generic)
+
+instance Binary CharacterDefinition
 
 type TypeMap = M.Map ID DD.Type
 

@@ -43,7 +43,8 @@ parseScenario script = Scenario
 
 parseDefinitions :: Script -> Definitions
 parseDefinitions script = Definitions
-        { definitionsProperties = parseDefinitionList (getChild "properties" defsEl)
+        { definitionsCharacters = map parseCharacterDefinition (children (getChild "characters" defsEl))
+        , definitionsProperties = parseDefinitionList (getChild "properties" defsEl)
         , definitionsParameters = (fmap fst paramDefs, F.fold (fmap snd paramDefs))
         }
   where paramDefs = Usered
@@ -68,6 +69,12 @@ parseDefinition defEl = Definition
         , definitionDefault      = parseDomainDataValue ty <$> maybeDefaultEl
         }
   where (ty, maybeDefaultEl) = parseDomainDataType (getChild "type" defEl)
+
+parseCharacterDefinition :: Element -> CharacterDefinition
+parseCharacterDefinition defEl = CharacterDefinition
+        { characterDefinitionId   = getAttribute "id" defEl
+        , characterDefinitionName = findAttribute "name" defEl
+        }
 
 parseDomainDataType :: Element -> (DD.Type, Maybe Element)
 parseDomainDataType typeContainerEl = case name typeEl of

@@ -25,9 +25,13 @@ getScenarioInfo (Scenario definitions metadata _) = ScenarioInfo
                 (scenarioName           metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
+                (map describeCharacterDefinition (definitionsCharacters definitions))
                 (map describeDefinition (useredUserDefined (fst (definitionsParameters definitions))))
                 (scenarioPropertyValues metadata)
   where
+    describeCharacterDefinition definition = CharacterDefinitionInfo
+        (characterDefinitionId   definition)
+        (characterDefinitionName definition)
     describeDefinition definition = DefinitionInfo
         (definitionId          definition)
         (definitionName        definition)

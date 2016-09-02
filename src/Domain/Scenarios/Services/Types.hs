@@ -20,6 +20,7 @@ import Domain.Scenarios.ScenarioState()
 data ScenarioInfo = ScenarioInfo Name
                                  String           -- Description
                                  (Maybe Difficulty)
+                                 [CharacterDefinitionInfo]
                                  [DefinitionInfo]
                                  PropertyValues
 
@@ -28,13 +29,22 @@ tScenarioInfo =
     Iso ((<-!) pairify) (Pair         (Tag "name"                  tString)
                         (Pair         (Tag "description"           tString)
                         (Pair (tMaybe (tag "difficulty"            tDifficulty))
+                        (Pair         (Tag "characters"            (tList tCharacterDefinitionInfo))
                         (Pair         (Tag "userDefinedParameters" (tList tParameterInfo))
-                                      (Tag "propertyValues"        tPropertyValues)))))
+                                      (Tag "propertyValues"        tPropertyValues))))))
       where
-        pairify (ScenarioInfo name descr diff ps pvs) =
-            (name, (descr, (diff, (ps, pvs))))
+        pairify (ScenarioInfo name descr diff cs ps pvs) =
+            (name, (descr, (diff, (cs, (ps, pvs)))))
         tag s (Tag _ t) = Tag s t
         tag s t         = Tag s t
+
+data CharacterDefinitionInfo = CharacterDefinitionInfo ID
+                                                       (Maybe Name)
+
+tCharacterDefinitionInfo :: Type a CharacterDefinitionInfo
+tCharacterDefinitionInfo = Iso ((<-!) pairify) (Pair (Tag "id"   tString)
+                                                     (Tag "name" (tMaybe tString)))
+        where pairify (CharacterDefinitionInfo pid name) = (pid, name)
 
 data DefinitionInfo = DefinitionInfo ID
                                      Name

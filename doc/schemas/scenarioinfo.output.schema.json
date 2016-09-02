@@ -32,6 +32,24 @@
           "description": "Indicates the scenario difficulty",
           "default": "medium"
         },
+        "characters": {
+          "type": "array",
+          "description": "The characters of the scenario",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The id of the character"
+              },
+              "name": {
+                "type": "string",
+                "decription": "The name of the character"
+              }
+            },
+            "required": [ "id" ]
+          }
+        },
         "userDefinedParameters": {
           "type": "array",
           "description": "The user-defined parameters for this scenario",
