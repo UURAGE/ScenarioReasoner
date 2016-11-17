@@ -43,19 +43,19 @@ makeStatementStrategy dia scenID statementID = do
     strategyMap <- get
     -- If the strategy for the statement has already been computed, use that one otherwise compute it.
     case M.lookup statementID strategyMap of
-        Just mStrategy -> return mStrategy
-        Nothing        ->
-            case statNextStatIDs statement of
-                []       -> modify (M.insert statementID (toStrategy rule)) >> return (toStrategy rule)
-                nextIDs  -> do
+        Just statementStrategy -> return statementStrategy
+        Nothing                -> do
+            statementStrategy <- case statNextStatIDs statement of
+                []      -> return (toStrategy rule)
+                nextIDs -> do
                     -- Make a strategy of alternative strategies for the strategies following from the rule
                     nextStrategy <- makeAlternativesStrategy dia scenID nextIDs
 
                     -- Sequence the rule to the strategy following from the rule
-                    let statementStrategy = sequenceRule statement dia rule nextStrategy
+                    return (sequenceRule statement dia rule nextStrategy)
 
-                    modify (M.insert statementID statementStrategy)
-                    return statementStrategy
+            modify (M.insert statementID statementStrategy)
+            return statementStrategy
           where
             -- Find the given statement in the dia with the statementID
             statementErrorMsg = "Could not find statement: " ++ statementID ++ " in dia: " ++ diaID dia
