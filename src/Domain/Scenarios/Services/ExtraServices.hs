@@ -23,6 +23,7 @@ scenarioinfo fs ex = getScenarioInfo (findScenario "scenarioinfo" fs ex)
 getScenarioInfo :: Scenario -> ScenarioInfo
 getScenarioInfo (Scenario definitions metadata _) = ScenarioInfo
                 (scenarioName           metadata)
+                (scenarioLanguage       metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
                 (map describeCharacterDefinition (definitionsCharacters definitions))

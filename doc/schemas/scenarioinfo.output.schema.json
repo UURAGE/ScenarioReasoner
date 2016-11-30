@@ -21,6 +21,11 @@
           "description": "The name of the scenario",
           "example": "Game Merchant Dialogue"
         },
+        "language": {
+          "type": "string",
+          "description": "The language of the scenario",
+          "example": "en"
+        },
         "description": {
           "type": "string",
           "description": "The description of the scenario"

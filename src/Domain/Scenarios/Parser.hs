@@ -97,6 +97,7 @@ parseDomainDataType typeContainerEl = case name typeEl of
 parseMetaData :: Definitions -> Script -> MetaData
 parseMetaData defs script = MetaData
         { scenarioName                   = parseScenarioName                        metadataEl
+        , scenarioLanguage               = parseScenarioLanguage                    metadataEl
         , scenarioDescription            = parseScenarioDescription                 metadataEl
         , scenarioDifficulty             = parseScenarioDifficulty                  metadataEl
         , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs metadataEl
@@ -106,6 +107,9 @@ parseMetaData defs script = MetaData
 
 parseScenarioName :: Element -> Name
 parseScenarioName = getData . getChild "name"
+
+parseScenarioLanguage :: Element -> Maybe String
+parseScenarioLanguage metadataEl = getAttribute "code" <$> findChild "language" metadataEl
 
 parseScenarioDescription :: Element -> String
 parseScenarioDescription = getData . getChild "description"

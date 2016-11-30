@@ -27,6 +27,7 @@ instance Binary Scenario
 
 data MetaData = MetaData
         { scenarioName                   :: Name
+        , scenarioLanguage               :: Maybe String
         , scenarioDescription            :: String
         , scenarioDifficulty             :: Maybe Difficulty
         , scenarioInitialParameterValues :: ParameterState

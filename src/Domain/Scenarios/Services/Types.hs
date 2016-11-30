@@ -18,6 +18,7 @@ import Domain.Scenarios.ScenarioState()
 -- ScenarioInfo types -----------------------------------------------------------------------------------------------------------
 
 data ScenarioInfo = ScenarioInfo Name
+                                 (Maybe String)   -- Language
                                  String           -- Description
                                  (Maybe Difficulty)
                                  [CharacterDefinitionInfo]
@@ -27,14 +28,15 @@ data ScenarioInfo = ScenarioInfo Name
 tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
     Iso ((<-!) pairify) (Pair         (Tag "name"                  tString)
+                        (Pair         (Tag "language"              (tMaybe tString))
                         (Pair         (Tag "description"           tString)
                         (Pair (tMaybe (tag "difficulty"            tDifficulty))
                         (Pair         (Tag "characters"            (tList tCharacterDefinitionInfo))
                         (Pair         (Tag "userDefinedParameters" (tList tParameterInfo))
-                                      (Tag "propertyValues"        tPropertyValues))))))
+                                      (Tag "propertyValues"        tPropertyValues)))))))
       where
-        pairify (ScenarioInfo name descr diff cs ps pvs) =
-            (name, (descr, (diff, (cs, (ps, pvs)))))
+        pairify (ScenarioInfo name lang descr diff cs ps pvs) =
+            (name, (lang, (descr, (diff, (cs, (ps, pvs))))))
         tag s (Tag _ t) = Tag s t
         tag s t         = Tag s t
 
