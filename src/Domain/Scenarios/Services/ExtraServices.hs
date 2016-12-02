@@ -14,14 +14,15 @@ import Domain.Scenarios.Services.Types
 
 -- Scenariolist service: lists all info for each scenario
 scenariolist :: [(Id, Scenario)] -> [ScenarioInfo]
-scenariolist = map (getScenarioInfo . snd)
+scenariolist = map getScenarioInfo
 
 -- Scenarioinfo service: shows the info for a specific scenario (exercise)
 scenarioinfo :: [(Id, Scenario)] -> Exercise a -> ScenarioInfo
 scenarioinfo fs ex = getScenarioInfo (findScenario "scenarioinfo" fs ex)
 
-getScenarioInfo :: Scenario -> ScenarioInfo
-getScenarioInfo (Scenario definitions metadata _) = ScenarioInfo
+getScenarioInfo :: (Id, Scenario) -> ScenarioInfo
+getScenarioInfo (sId, ~(Scenario definitions metadata _)) = ScenarioInfo
+                sId
                 (scenarioName           metadata)
                 (scenarioLanguage       metadata)
                 (scenarioDescription    metadata)
@@ -40,7 +41,10 @@ getScenarioInfo (Scenario definitions metadata _) = ScenarioInfo
         (definitionType        definition)
 
 -- | Finds the scenario of the exercise in the given scenario list
-findScenario :: String -> [(Id, Scenario)] -> Exercise a -> Scenario
+findScenario :: String -> [(Id, Scenario)] -> Exercise a -> (Id, Scenario)
 findScenario usage scenarios ex = fromMaybe
     (error $ "Cannot " ++ usage ++ " exercise: exercise is apparently not a scenario.")
-    (lookup (getId ex) scenarios)
+    (tupleWithId <$> lookup sId scenarios)
+  where
+    sId = getId ex
+    tupleWithId s = (sId, s)
