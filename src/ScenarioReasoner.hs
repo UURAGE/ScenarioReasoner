@@ -8,6 +8,7 @@ import System.FilePath (takeBaseName)
 import System.FilePath.Find as F
 import Ideas.Common.Id
 import Ideas.Common.Library (Some(..))
+import Ideas.Encoding.Options (baseUrl)
 import Ideas.Main.Default (defaultCGI)
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.Services.ServiceList
@@ -33,7 +34,7 @@ main = do
    args <- getArgs
    case args of
       "-r" : _ -> scenarioReasonerCommandLine sr
-      _ -> defaultCGI mempty sr
+      _ -> defaultCGI (mempty { baseUrl = Just "media/" }) sr
 
 scenarioReasoner :: IO DomainReasoner
 scenarioReasoner = do
