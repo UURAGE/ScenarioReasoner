@@ -2,28 +2,30 @@
 
 module Main where
 
+-- Own imports
 import System.Environment
-import System.IO
 import System.FilePath (takeBaseName)
 import System.FilePath.Find as F
-import Ideas.Main.Documentation
+import Ideas.Common.Id
+import Ideas.Common.Library (Some(..))
+import Ideas.Main.Default (defaultCGI)
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.Services.ServiceList
 import qualified Domain.Scenarios.Exercises as E
 
+-- Imports used by Ideas.Main.Default, minus the superfluous ones
 import Control.Exception
-import Control.Monad
 import Data.Maybe
-import Ideas.Common.Id
-import Ideas.Common.Utils (Some(..))
 import Ideas.Encoding.ModeJSON (processJSON)
 import Ideas.Encoding.ModeXML (processXML)
-import Ideas.Main.Options hiding (fullVersion)
+import Ideas.Encoding.Options (Options, maxTime)
+import Ideas.Encoding.Request
 import Ideas.Service.DomainReasoner
-import Ideas.Service.Request
 import Network.CGI
+import System.IO
 import System.IO.Error (ioeGetErrorString)
-import qualified Ideas.Main.Logging as Log
+import qualified Ideas.Encoding.Logging as Log
+import qualified Ideas.Main.CmdLineOptions as Options
 
 main :: IO ()
 main = do
@@ -31,12 +33,7 @@ main = do
    args <- getArgs
    case args of
       "-r" : _ -> scenarioReasonerCommandLine sr
-      _ -> scenarioReasonerCGI sr
-
-maindoc :: IO ()
-maindoc = do
-    dr <- scenarioReasoner
-    makeDocumentation dr "doc"
+      _ -> defaultCGI mempty sr
 
 scenarioReasoner :: IO DomainReasoner
 scenarioReasoner = do
@@ -53,41 +50,6 @@ readBinaryScenarios root = do
     paths <- F.find F.always (F.extension ==? ".bin") root
     let readOne path = (newId (takeBaseName path), readBinaryScenario path)
     return (map readOne paths)
-
--- Invoked as a cgi binary
-scenarioReasonerCGI :: DomainReasoner -> IO ()
-scenarioReasonerCGI dr = runCGI $ handleErrors $ do
-   -- create a record for logging
-   logRef  <- liftIO Log.newLogRef
-   -- query environment
-   addr    <- remoteAddr       -- the IP address of the remote host
-   cgiBin  <- scriptName       -- get name of binary
-   input   <- inputOrDefault
-
-   -- process request
-   (req, txt, ctp) <- liftIO $
-      process dr logRef (Just cgiBin) input
-    `catch` \ioe -> do
-      let msg = "Error: " ++ ioeGetErrorString ioe
-      Log.changeLog logRef (\r -> r { Log.errormsg = msg })
-      return (emptyRequest, msg, "text/plain")
-
-   -- log request to database
-   when (useLogging req) $ liftIO $ do
-      Log.changeLog logRef $ \r -> Log.addRequest req r
-         { Log.ipaddress = addr
-         , Log.version   = shortVersion
-         , Log.input     = input
-         , Log.output    = txt
-         }
-      Log.logRecord (getSchema req) logRef
-
-   -- write header and output
-   setHeader "Content-type" ctp
-   -- Cross-Origin Resource Sharing (CORS) prevents browser warnings
-   -- about cross-site scripting
-   setHeader "Access-Control-Allow-Origin" "*"
-   output txt
 
 inputOrDefault :: CGI String
 inputOrDefault = do
@@ -116,13 +78,30 @@ scenarioReasonerCommandLine dr = do
    mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
    txtIn          <- getContents
    logRef         <- liftIO Log.newLogRef
-   (_, txtOut, _) <- process dr logRef Nothing txtIn
+   (_, txtOut, _) <- process mempty dr logRef txtIn
    putStrLn txtOut
 
-process :: DomainReasoner -> Log.LogRef -> Maybe String -> String -> IO (Request, String, String)
-process dr logRef cgiBin input = do
+process :: Options -> DomainReasoner -> Log.LogRef -> String -> IO (Request, String, String)
+process options dr logRef input = do
    format <- discoverDataFormat input
-   run format (Just 5) cgiBin dr logRef input
+   run format options {maxTime = Just 5} (addVersion dr) logRef input
+ `catch` \ioe -> do
+   let msg = "Error: " ++ ioeGetErrorString ioe
+   Log.changeLog logRef (\r -> r { Log.errormsg = msg })
+   return (mempty, msg, "text/plain")
  where
    run XML  = processXML
    run JSON = processJSON
+
+makeTestRunner :: DomainReasoner -> String -> IO String
+makeTestRunner dr input = do
+   (_, out, _) <- process mempty dr Log.noLogRef input
+   return out
+
+addVersion :: DomainReasoner -> DomainReasoner
+addVersion dr = dr
+   { version     = update version Options.shortVersion
+   , fullVersion = update fullVersion Options.fullVersion
+   }
+ where
+   update f s = if null (f dr) then s else f dr

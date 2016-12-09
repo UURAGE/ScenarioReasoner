@@ -24,7 +24,7 @@ readExercise (sId, ~(Scenario _ metadata dialogue)) =
     initialState = ScenarioState (scenarioInitialParameterValues metadata) Nothing False
 
 mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
-mkExercise sId strat difficulty initState =
+mkExercise sId strat difficulty initState = jsonEncoding
     emptyExercise
        { exerciseId     = sId
        , status         = Alpha
@@ -34,7 +34,6 @@ mkExercise sId strat difficulty initState =
        , similarity     = \_ _-> True
        , ready          = true
        , suitable       = true
-       , hasTermView    = Just jsonTermView
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
        , examples       = [(fromMaybe Medium difficulty, initState)]
