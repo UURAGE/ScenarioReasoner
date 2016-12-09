@@ -30,7 +30,7 @@ tScenarioInfo :: Type a ScenarioInfo
 tScenarioInfo =
     Iso ((<-!) pairify) (Pair         (Tag "id"                    tReadShow)
                         (Pair         (Tag "name"                  tString)
-                        (Pair         (Tag "language"              (tMaybe tString))
+                        (Pair (tMaybe (Tag "language"              tString))
                         (Pair         (Tag "description"           tString)
                         (Pair (tMaybe (tag "difficulty"            tDifficulty))
                         (Pair         (Tag "characters"            (tList tCharacterDefinitionInfo))
