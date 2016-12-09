@@ -40,7 +40,7 @@ instance Binary CompareOperator
 
 -- | Evaluates the possible condition based on the given state
 evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
-evaluateMaybeCondition mCondition (ScenarioState parameterState _ _) =
+evaluateMaybeCondition mCondition (ScenarioState parameterState _) =
     maybe True (`evaluateCondition` parameterState) mCondition
 
 -- | Evaluates the condition based on the given state

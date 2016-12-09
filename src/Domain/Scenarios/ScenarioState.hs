@@ -20,7 +20,7 @@ import Domain.Scenarios.Globals
 
 -- | ScenarioState
 -- The state is affected by every step (rule / statement) that has an effect in a strategy
-data ScenarioState = ScenarioState ParameterState (Maybe StatementInfo) Bool
+data ScenarioState = ScenarioState ParameterState (Maybe StatementInfo)
     deriving (Show, Typeable, Read, Generic)
 
 instance Binary ScenarioState
@@ -43,9 +43,9 @@ data AssignmentOperator = Assign
 
 instance Binary AssignmentOperator
 
-applyEffects :: ScenarioState -> Usered (Charactered [Effect]) -> StatementInfo -> Bool -> ScenarioState
-applyEffects (ScenarioState paramState _ _) paramEffects statInfo end =
-    ScenarioState (applyEffectsU paramState paramEffects) (Just statInfo) end
+applyEffects :: ScenarioState -> Usered (Charactered [Effect]) -> StatementInfo -> ScenarioState
+applyEffects (ScenarioState paramState _ ) paramEffects statInfo =
+    ScenarioState (applyEffectsU paramState paramEffects) (Just statInfo)
 
 applyEffectsU :: Usered (Charactered ParameterMap) -> Usered (Charactered [Effect]) ->
     Usered (Charactered ParameterMap)
@@ -78,16 +78,13 @@ applyEffect effect = M.adjust adjuster (effectIdref effect)
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 
 instance InJSON ScenarioState where
-    toJSON (ScenarioState params stat end) = Object [parametersToJSON, statInfoToJSON, endToJSON]
+    toJSON (ScenarioState params stat) = Object [parametersToJSON, statInfoToJSON]
         where
             parametersToJSON  =  ("parameters", toJSON params)
             statInfoToJSON = ("statement", toJSON stat)
-            endToJSON = ("internal", Object[("end", toJSON end)])
     fromJSON val@(Object _) =
         do params <- lookupM "parameters" val >>= fromJSON
-           -- The internal object containing end MUST be sent back to the reasoner if it exists
-           end <- lookupM "internal" val >>= lookupM "end" >>= fromJSON
-           return (ScenarioState params Nothing end)
+           return (ScenarioState params Nothing)
     fromJSON _ = fail "fromJSON: expecting an object"
 
 instance InJSON a => InJSON (Usered a) where

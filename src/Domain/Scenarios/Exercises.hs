@@ -21,7 +21,7 @@ readExercise (sId, ~(Scenario _ metadata dialogue)) =
   where
     strat      = makeStrategy (showId sId) dialogue
     difficulty = scenarioDifficulty metadata
-    initialState = ScenarioState (scenarioInitialParameterValues metadata) Nothing False
+    initialState = ScenarioState (scenarioInitialParameterValues metadata) Nothing
 
 mkExercise :: Id -> Strategy ScenarioState -> Maybe Difficulty -> ScenarioState -> Exercise ScenarioState
 mkExercise sId strat difficulty initState = jsonEncoding
