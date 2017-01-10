@@ -4,9 +4,6 @@ module Main where
 
 import Data.Binary
 import Data.Functor
-import Data.Maybe
-
-import Network.CGI
 
 import Domain.Scenarios.Parser
 
@@ -15,7 +12,6 @@ import System.FilePath
 import System.IO
 
 import Ideas.Common.Id
-import Ideas.Text.UTF8 as UTF8
 
 main :: IO ()
 main = do
@@ -26,18 +22,13 @@ main = do
             hSetEncoding stdout utf8
             putStrLn scenarioID
         [script_path, bin_path] -> void (process script_path bin_path)
-        _ -> runCGI $ handleErrors $ do
-            script_path <- getInput "script_path"
-            bin_path <- getInput "bin_path"
-            scenarioID <- process (fromJust script_path) (fromJust bin_path)
-            setHeader "Content-Type" "text/plain; charset=utf-8"
-            output (UTF8.encode scenarioID)
+        _ -> error "Not enough arguments"
 
-process :: MonadIO m => FilePath -> FilePath -> m String
+process :: FilePath -> FilePath -> IO String
 process script_path bin_path = do
-    script <- liftIO $ parseScript script_path
+    script <- parseScript script_path
     let scenario = parseScenario script
-    liftIO $ encodeFile bin_path scenario
+    encodeFile bin_path scenario
     return (showId (newId (takeBaseName bin_path)))
 
 debugMain :: String -> IO ()

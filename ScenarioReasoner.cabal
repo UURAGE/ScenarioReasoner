@@ -37,7 +37,7 @@ executable ScenarioReasoner.cgi
                        binary,
                        filemanip
 
-executable ScenarioParser.cgi
+executable ScenarioParser
   Main-is:             ScenarioParser.hs
   ghc-options:        -Wall -O2 -fno-warn-orphans
   hs-source-dirs:      src
@@ -45,9 +45,7 @@ executable ScenarioParser.cgi
 
   build-depends:       base >= 4.8 && < 5,
                        ideas == 1.6,
-                       cgi >= 3001.3.0.0,
                        transformers,
                        containers,
                        filepath,
-                       binary,
-                       filemanip
+                       binary

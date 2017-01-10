@@ -42,16 +42,23 @@ It is recommended to set up the following directory structure (all of the items 
 
 If you are using prebuilt executables, place them in the `cgi` directory.
 
-If you are building the executables yourself, symlink or copy them to the `cgi` directory:
+If you are building the executables yourself, symlink or copy them to the `cgi` directory as shown in the following subsections. If you decide to copy the executables, make sure you don't forget to repeat that process after rebuilding.
 
-    <deployment root>/cgi/ScenarioParser.cgi ->
-        <repository working directory>/dist/build/ScenarioParser.cgi/ScenarioParser.cgi
+#### Windows
+
+    <deployment root>/cgi/ScenarioParser.exe ->
+        <repository working directory>/dist/build/ScenarioParser/ScenarioParser.exe
+    <deployment root>/cgi/ScenarioReasoner.cgi ->
+        <repository working directory>/dist/build/ScenarioReasoner.cgi/ScenarioReasoner.cgi.exe
+
+Note that under Windows, the executables will be named `ScenarioParser.exe` and `ScenarioReasoner.cgi.exe`. This is by design; if you copy them, rename *only `ScenarioReasoner.cgi.exe`* to remove the trailing `.exe`. Although symlinking is possible using recent versions of Windows, we have noticed certain Apache binaries cannot execute the symlinked files as CGI applications.
+
+#### Other operating systems
+
+    <deployment root>/cgi/ScenarioParser ->
+        <repository working directory>/dist/build/ScenarioParser/ScenarioParser
     <deployment root>/cgi/ScenarioReasoner.cgi ->
         <repository working directory>/dist/build/ScenarioReasoner.cgi/ScenarioReasoner.cgi
-
-Note that under Windows, the executables will be named `ScenarioParser.cgi.exe` and `ScenarioReasoner.cgi.exe`. This is by design; if you copy them, rename them to remove the trailing `.exe`. Although symlinking is possible using recent versions of Windows, we have noticed certain Apache binaries cannot execute the symlinked files as CGI applications.
-
-If you decide to copy the executables, make sure you don't forget to repeat that process after rebuilding.
 
 ## Usage
 
