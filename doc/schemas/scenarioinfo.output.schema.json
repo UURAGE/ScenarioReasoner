@@ -85,18 +85,12 @@
           "description": "The statement-independent property values for this scenario",
           "properties": {
             "independent": {
-              "type": "object",
-              "additionalProperties": {
-                "type": [ "boolean", "integer", "string" ]
-              }
+              "type": "object"
             },
             "perCharacter": {
               "type": "object",
               "additionalProperties": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": [ "boolean", "integer", "string" ]
-                }
+                "type": "object"
               }
             }
           }

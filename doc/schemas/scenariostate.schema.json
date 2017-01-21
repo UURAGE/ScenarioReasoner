@@ -13,7 +13,7 @@
             "independent": {
               "type": "object",
               "patternProperties": {
-                "^p([0-9]+)|t$": { "type": [ "integer", "boolean", "string" ] }
+                "^p([0-9]+)|t$": { }
               },
               "additionalProperties": false,
               "example": {
@@ -61,7 +61,7 @@
           "type": "string"
         },
         "character": {
-          "description": "The character this statement belongs to, if any"
+          "description": "The character this statement belongs to, if any",
           "type": "string"
         },
         "propertyValues": {
