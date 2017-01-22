@@ -49,8 +49,8 @@ data CharacterDefinitionInfo = CharacterDefinitionInfo ID
                                                        (Maybe Name)
 
 tCharacterDefinitionInfo :: Type a CharacterDefinitionInfo
-tCharacterDefinitionInfo = Iso ((<-!) pairify) (Pair (Tag "id"   tString)
-                                                     (Tag "name" (tMaybe tString)))
+tCharacterDefinitionInfo = Iso ((<-!) pairify) (Pair         (Tag "id"   tString)
+                                                     (tMaybe (Tag "name" tString)))
         where pairify (CharacterDefinitionInfo pid name) = (pid, name)
 
 data DefinitionInfo = DefinitionInfo ID
@@ -59,10 +59,10 @@ data DefinitionInfo = DefinitionInfo ID
                                      DD.Type
 
 tParameterInfo :: Type a DefinitionInfo
-tParameterInfo = Iso ((<-!) pairify) (Pair (Tag "id"            tString)
-                                     (Pair (Tag "name"          tString)
-                                     (Pair (Tag "description"   (tMaybe tString))
-                                           (Tag "type"          tDomainDataType))))
+tParameterInfo = Iso ((<-!) pairify) (Pair         (Tag "id"            tString)
+                                     (Pair         (Tag "name"          tString)
+                                     (Pair (tMaybe (Tag "description"   tString))
+                                                   (Tag "type"          tDomainDataType))))
         where pairify (DefinitionInfo pid name descr ty) = (pid, (name, (descr, ty)))
 
 tDomainDataType :: Type a DD.Type
