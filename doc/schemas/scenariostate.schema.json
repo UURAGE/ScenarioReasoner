@@ -86,17 +86,10 @@
     },
     "internal": {
       "type": "object",
-      "description": "This object contains internal data for the ScenarioReasoner and must not be removed from the state",
-      "properties": {
-        "end": {
-          "description": "Indicates whether this statement ends the scenario or not",
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false,
-      "required": [ "end" ]
+      "description": "This property contains internal data for the ScenarioReasoner and must not be removed from the state"
     }
   },
-  "required": [ "parameters", "internal" ]
+  "required": [ "parameters" ]
+  // internal is not always present in output; when it is, it must be sent back in input
   // statement will be present in output, but is not required in input
 }
