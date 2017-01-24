@@ -78,14 +78,19 @@ parseCharacterDefinition defEl = CharacterDefinition
 
 parseDomainDataType :: Element -> (DD.Type, Maybe Element)
 parseDomainDataType typeContainerEl = case name typeEl of
-    "boolean" -> (DD.TBoolean, simpleDefault)
-    "integer" -> (DD.TInteger, simpleDefault)
-    "string" -> (DD.TString, simpleDefault)
-    "enumeration" -> (DD.TString, simpleDefault)
+    "list" -> (DD.TList (fst (parseDomainDataType (getChild "itemType" typeEl))), simpleDefault)
     "extension" -> parseDomainDataType (getChild "equivalentType" typeEl)
-    n -> error ("Could not parse " ++ n)
+    _ -> (DD.TSimple (parseSimpleDomainDataType typeEl), simpleDefault)
   where typeEl = getExactlyOneChild typeContainerEl
         simpleDefault = findChild "default" typeEl
+
+parseSimpleDomainDataType :: Element -> DD.SimpleType
+parseSimpleDomainDataType typeEl = case name typeEl of
+    "boolean" -> DD.TBoolean
+    "integer" -> DD.TInteger
+    "string" -> DD.TString
+    "enumeration" -> DD.TString
+    n -> error ("Could not parse " ++ n)
 
 ----------------------------------------------------------------------------------------------------
 
@@ -284,9 +289,14 @@ parseNamedDomainDataValue valueKind typeMap propValEl = (idref, value)
 
 parseDomainDataValue :: DD.Type -> Element -> DD.Value
 parseDomainDataValue ty el = case ty of
-    DD.TBoolean     -> DD.VBoolean (read (applyToFirst toUpper (getData el)))
-    DD.TInteger     -> DD.VInteger (read (getData el))
-    DD.TString      -> DD.VString  (getData el)
+    DD.TSimple simpleType -> parseSimpleDomainDataValue simpleType (getData el)
+    DD.TList itemType -> DD.VList (map (parseDomainDataValue itemType) (children el))
+
+parseSimpleDomainDataValue :: DD.SimpleType -> String -> DD.Value
+parseSimpleDomainDataValue ty s = case ty of
+    DD.TBoolean -> DD.VBoolean (read (applyToFirst toUpper s))
+    DD.TInteger -> DD.VInteger (read s)
+    DD.TString  -> DD.VString  s
 
 parseCharactereds :: (Element -> a) -> ([a] -> b) -> Element -> Charactered b
 parseCharactereds parseSub mkCollection valsElem = Charactered
