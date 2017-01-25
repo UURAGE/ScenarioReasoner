@@ -49,7 +49,7 @@ instance InJSON Type where
     fromJSON val@(Object _) = do
         typeName <- lookupM "type" val
         case typeName of
-            String "list" -> lookupM "itemType" val >>= fromJSON
+            String "list" -> TList <$> (lookupM "itemType" val >>= fromJSON)
             String "attributeRecord" -> do
                 Object attributeVal <- lookupM "attributeTypes" val
                 let contentInfo = do
