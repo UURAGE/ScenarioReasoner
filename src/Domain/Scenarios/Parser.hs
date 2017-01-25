@@ -79,6 +79,15 @@ parseCharacterDefinition defEl = CharacterDefinition
 parseDomainDataType :: Element -> (DD.Type, Maybe Element)
 parseDomainDataType typeContainerEl = case name typeEl of
     "list" -> (DD.TList (fst (parseDomainDataType (getChild "itemType" typeEl))), simpleDefault)
+    "attributeRecord" ->
+        ( DD.TAttributeRecord
+            (processItem <$> findChild "content" typeEl)
+            (map processItem (findChildren "attribute" typeEl))
+        , simpleDefault)
+      where processItem itemEl =
+                ( getAttribute "name" itemEl
+                , fst (parseDomainDataType (getChild "type" itemEl))
+                )
     "extension" -> parseDomainDataType (getChild "equivalentType" typeEl)
     _ -> (DD.TSimple (parseSimpleDomainDataType typeEl), simpleDefault)
   where typeEl = getExactlyOneChild typeContainerEl
@@ -291,6 +300,14 @@ parseDomainDataValue :: DD.Type -> Element -> DD.Value
 parseDomainDataValue ty el = case ty of
     DD.TSimple simpleType -> parseSimpleDomainDataValue simpleType (getData el)
     DD.TList itemType -> DD.VList (map (parseDomainDataValue itemType) (children el))
+    DD.TAttributeRecord contentInfo attrs -> DD.VAttributeRecord
+        (maybeToList (getContentValue <$> contentInfo) ++ map parseAttribute attrs)
+      where getContentValue (contentName, contentType) =
+              (contentName, parseDomainDataValue contentType el)
+            parseAttribute (attrName, DD.TSimple attrType) =
+              (attrName, parseSimpleDomainDataValue attrType (getAttribute attrName el))
+            parseAttribute (attrName, attrType) =
+              error ("Attribute " ++ attrName ++ " has invalid non-simple type " ++ show attrType)
 
 parseSimpleDomainDataValue :: DD.SimpleType -> String -> DD.Value
 parseSimpleDomainDataValue ty s = case ty of
