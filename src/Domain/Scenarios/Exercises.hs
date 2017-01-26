@@ -16,7 +16,7 @@ exercises = map readExercise
 
 -- Pattern match on Scenario must be lazy to preserve laziness!
 readExercise :: (Id, Scenario) -> Exercise ScenarioState
-readExercise idscen@(sId, ~(Scenario _ metadata dialogue)) =
+readExercise idscen@(sId, ~Scenario { scenarioMetaData = metadata, scenarioTopDialogue = dialogue }) =
     mkExercise sId strat difficulty initialState
   where
     strat      = makeStrategy idscen dialogue

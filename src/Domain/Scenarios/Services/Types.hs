@@ -23,7 +23,8 @@ data ScenarioInfo = ScenarioInfo Id
                                  String           -- Description
                                  (Maybe Difficulty)
                                  [CharacterDefinitionInfo]
-                                 [DefinitionInfo]
+                                 [DefinitionInfo] -- Expressions
+                                 [DefinitionInfo] -- User-defined parameters
                                  PropertyValues
 
 tScenarioInfo :: Type a ScenarioInfo
@@ -34,11 +35,12 @@ tScenarioInfo =
                         (Pair         (Tag "description"           tString)
                         (Pair (tMaybe (tag "difficulty"            tDifficulty))
                         (Pair         (Tag "characters"            (tList tCharacterDefinitionInfo))
-                        (Pair         (Tag "userDefinedParameters" (tList tParameterInfo))
-                                      (Tag "propertyValues"        tPropertyValues))))))))
+                        (Pair         (Tag "expressions"           (tList tDefinitionInfo))
+                        (Pair         (Tag "userDefinedParameters" (tList tDefinitionInfo))
+                                      (Tag "propertyValues"        tPropertyValues)))))))))
       where
-        pairify (ScenarioInfo sid name lang descr diff cs ps pvs) =
-            (sid, (name, (lang, (descr, (diff, (cs, (ps, pvs)))))))
+        pairify (ScenarioInfo sid name lang descr diff cs es ps pvs) =
+            (sid, (name, (lang, (descr, (diff, (cs, (es, (ps, pvs))))))))
         tag s (Tag _ t) = Tag s t
         tag s t         = Tag s t
 
@@ -58,11 +60,11 @@ data DefinitionInfo = DefinitionInfo ID
                                      (Maybe String) -- Description
                                      DD.Type
 
-tParameterInfo :: Type a DefinitionInfo
-tParameterInfo = Iso ((<-!) pairify) (Pair         (Tag "id"            tString)
-                                     (Pair         (Tag "name"          tString)
-                                     (Pair (tMaybe (Tag "description"   tString))
-                                                   (Tag "type"          tDomainDataType))))
+tDefinitionInfo :: Type a DefinitionInfo
+tDefinitionInfo = Iso ((<-!) pairify) (Pair         (Tag "id"            tString)
+                                      (Pair         (Tag "name"          tString)
+                                      (Pair (tMaybe (Tag "description"   tString))
+                                                    (Tag "type"          tDomainDataType))))
         where pairify (DefinitionInfo pid name descr ty) = (pid, (name, (descr, ty)))
 
 tDomainDataType :: Type a DD.Type
@@ -85,3 +87,9 @@ stringMapToTerm :: (a -> Term) -> M.Map String a -> Term
 stringMapToTerm subToTerm m = TCon (newSymbol "object") (concatMap toKVP (M.toList m))
         where
           toKVP (key, value) = [TVar key, subToTerm value]
+
+tValueAssocs :: Type a (Assocs DD.Value)
+tValueAssocs = Iso ((<-!) (assocsToTerm (jsonToTerm . (\j -> Object [("value", j)]) . toJSON))) tTerm
+
+tDomainDataValue :: Type a DD.Value
+tDomainDataValue = Iso ((<-!) (jsonToTerm . toJSON)) tTerm

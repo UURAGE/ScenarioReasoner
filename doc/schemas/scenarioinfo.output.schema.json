@@ -55,6 +55,47 @@
             "required": [ "id" ]
           }
         },
+        "expressions": {
+          "type": "array",
+          "description": "The expressions for this scenario",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The id of the expression"
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the expression"
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the expression"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "example": "list"
+                      }
+                    },
+                    "required": [ "name" ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            },
+            "required": [ "id", "name" ]
+          }
+        },
         "userDefinedParameters": {
           "type": "array",
           "description": "The user-defined parameters for this scenario",

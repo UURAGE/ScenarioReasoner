@@ -2,13 +2,18 @@
 
 module Domain.Scenarios.Services.ExtraServices where
 
+import Control.Arrow
 import Data.Maybe
 
 import Ideas.Common.Library
+import Ideas.Service.State
 
+import Domain.Scenarios.Expression
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
+import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Services.Types
+import qualified Domain.Scenarios.DomainData as DD
 
 -- ScenarioList and Info Service -------------------------------------------------------------------------------------
 
@@ -21,13 +26,14 @@ scenarioinfo :: [(Id, Scenario)] -> Exercise a -> ScenarioInfo
 scenarioinfo fs ex = getScenarioInfo (findScenario "scenarioinfo" fs ex)
 
 getScenarioInfo :: (Id, Scenario) -> ScenarioInfo
-getScenarioInfo (sId, ~(Scenario definitions metadata _)) = ScenarioInfo
+getScenarioInfo (sId, ~(Scenario definitions expressions metadata _)) = ScenarioInfo
                 sId
                 (scenarioName           metadata)
                 (scenarioLanguage       metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
                 (map describeCharacterDefinition (definitionsCharacters definitions))
+                (map describeDefinition expressions)
                 (map describeDefinition (useredUserDefined (fst (definitionsParameters definitions))))
                 (scenarioPropertyValues metadata)
   where
@@ -39,6 +45,15 @@ getScenarioInfo (sId, ~(Scenario definitions metadata _)) = ScenarioInfo
         (definitionName        definition)
         (definitionDescription definition)
         (definitionType        definition)
+
+evaluate :: [(Id, Scenario)] -> State a -> Assocs DD.Value
+evaluate fs st = Assocs (map (definitionId &&& evaluateExpression state . definitionContent) exprs)
+  where
+    ex = exercise st
+    scen = snd (findScenario "evaluate" fs ex)
+    exprs = scenarioExpressions scen
+    ScenarioState state _ = fromMaybe (error "Cannot evaluate exercise: casting failed.") $
+        castFrom ex (stateTerm st) :: ScenarioState
 
 -- | Finds the scenario of the exercise in the given scenario list
 findScenario :: String -> [(Id, Scenario)] -> Exercise a -> (Id, Scenario)

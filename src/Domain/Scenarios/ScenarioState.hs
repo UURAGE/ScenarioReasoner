@@ -73,12 +73,14 @@ applyEffect tm effect = M.adjust adjuster (effectIdref effect)
           postProcessor = case M.lookup (effectIdref effect) tm of
             Just (DD.TSimple (DD.TInteger mmin mmax)) -> onDDInteger (DD.clamp mmin mmax)
             _ -> id
-          fromDDInteger v = case v of
-            DD.VInteger i -> i
-            _ -> error ("fromDDInteger: Not integral: " ++ show v)
-          onDDInteger f v = case v of
-            DD.VInteger i -> DD.VInteger (f i)
-            _ -> error ("onDDInteger: Not integral: " ++ show v)
+
+fromDDInteger :: DD.Value -> Integer
+fromDDInteger (DD.VInteger i) = i
+fromDDInteger v = error ("fromDDInteger: Not integral: " ++ show v)
+
+onDDInteger :: (Integer -> Integer) -> DD.Value -> DD.Value
+onDDInteger f (DD.VInteger i) = DD.VInteger (f i)
+onDDInteger _ v = error ("onDDInteger: Not integral: " ++ show v)
 
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 

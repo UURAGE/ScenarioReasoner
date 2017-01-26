@@ -46,8 +46,8 @@ instance Binary a => Binary (Assocs a)
 
 data Definitions = Definitions
     { definitionsCharacters :: [CharacterDefinition]
-    , definitionsProperties :: ([Definition], TypeMap)
-    , definitionsParameters :: (Usered [Definition], TypeMap)
+    , definitionsProperties :: ([Definition ()], TypeMap)
+    , definitionsParameters :: (Usered [Definition ()], TypeMap)
     }
  deriving (Show, Read, Generic)
 
@@ -71,20 +71,34 @@ data Usered a = Usered
 
 instance Binary a => Binary (Usered a)
 
-data Definition = Definition
+data Definition a = Definition
     { definitionId           :: ID
     , definitionName         :: Name
     , definitionDescription  :: Maybe String
     , definitionType         :: DD.Type
     , definitionDefault      :: Maybe DD.Value
+    , definitionContent      :: a
     }
  deriving (Show, Read, Generic)
 
-instance Binary Definition
+instance Binary a => Binary (Definition a)
 
 type ParameterState = Usered (Charactered ParameterMap)
 
 type ParameterMap = M.Map ID DD.Value
+
+-- | Retrieves the value of a parameter from the given state
+getParameterValue :: ParameterState -> ID -> Maybe ID -> DD.Value
+getParameterValue paramState idref mCharacterIdref = case mCharacterIdref of
+        Just characterIdref -> M.findWithDefault unknownParameter idref $
+                M.findWithDefault unknownCharacter characterIdref $ M.union
+                    (characteredPerCharacter (useredUserDefined paramState))
+                    (characteredPerCharacter (useredFixed paramState))
+            where unknownCharacter = error ("Reference to unknown character " ++ characterIdref)
+        Nothing -> M.findWithDefault unknownParameter idref $ M.union
+            (characteredIndependent (useredUserDefined paramState))
+            (characteredIndependent (useredFixed paramState))
+    where unknownParameter = error ("Reference to unknown parameter " ++ idref)
 
 -- Functions for dealing with the Nothing case of a Maybe value produced by the
 -- implementation of fail in the Monad instance of Maybe.

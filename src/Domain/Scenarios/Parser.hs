@@ -17,6 +17,7 @@ import Ideas.Common.Library hiding (Sum)
 import Ideas.Text.XML.Interface
 
 import Domain.Scenarios.Condition
+import Domain.Scenarios.Expression
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
@@ -37,6 +38,7 @@ parseScript filepath = withBinaryFile filepath ReadMode
 parseScenario :: Script -> Scenario
 parseScenario script = Scenario
         { scenarioDefinitions  = defs
+        , scenarioExpressions  = parseExpressions defs script
         , scenarioMetaData     = parseMetaData defs script
         , scenarioTopDialogue  = parseDialogue defs script
         }
@@ -56,18 +58,19 @@ parseDefinitions script = Definitions
         defsEl = fromMaybe (error "Definitions not found") $
             findChild "definitions" script
 
-parseDefinitionList :: Element -> ([Definition], TypeMap)
+parseDefinitionList :: Element -> ([Definition ()], TypeMap)
 parseDefinitionList el = (defs, M.fromList (map toTypePair defs))
   where toTypePair def = (definitionId def, definitionType def)
-        defs = map parseDefinition (children el)
+        defs = map (parseDefinition (const (const ()))) (children el)
 
-parseDefinition :: Element -> Definition
-parseDefinition defEl = Definition
+parseDefinition :: (DD.Type -> Element -> a) -> Element -> Definition a
+parseDefinition parseContent defEl = Definition
         { definitionId           = getAttribute "id" defEl
         , definitionName         = getAttribute "name" defEl
         , definitionDescription  = getData <$> findChild "description" defEl
         , definitionType         = ty
         , definitionDefault      = parseDomainDataValue ty <$> maybeDefaultEl
+        , definitionContent      = parseContent ty defEl
         }
   where (ty, maybeDefaultEl) = parseDomainDataType (getChild "type" defEl)
 
@@ -108,6 +111,12 @@ parseSimpleDomainDataType typeEl = case name typeEl of
 
 -- Functions to be used internally
 ----------------------------------------------------------------------------------------------------
+
+parseExpressions :: Definitions -> Element -> [Definition Expression]
+parseExpressions defs = maybe [] (map (parseDefinition parseExpression) . children) .
+    findChild "typedExpressions"
+  where parseExpression ty = parseExpressionTyped defs ty .
+            getExactlyOneChild .getChild "expression"
 
 -- MetaData Parser ---------------------------------------------------------------------------------
 
@@ -283,6 +292,25 @@ parseCondition defs conditionElem = case stripCharacterPrefix (name conditionEle
 -- | Parses a compare operator. Gives an exception on invalid input.
 parseCompareOperator :: Element -> CompareOperator
 parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator" conditionElem))
+
+parseExpressionTyped :: Definitions -> DD.Type -> Element -> Expression
+parseExpressionTyped defs ty el = case stripCharacterPrefix (name el) of
+    "literal" -> Literal (parseDomainDataValue ty el)
+    "parameterReference" -> ParameterReference (getAttribute "idref" el) (parseCharacterIdref el)
+    "sum" -> Sum (map (parseExpressionTyped defs ty) (children el))
+    "scale" -> Scale
+        (maybe 1 read (findAttribute "scalar" el))
+        (maybe 1 read (findAttribute "divisor" el))
+        (parseExpressionTyped defs ty (getExactlyOneChild el))
+    "choose" -> Choose
+        (map parseWhen (findChildren "when" el))
+        (parseExpressionTyped defs ty (getExactlyOneChild (getChild "otherwise" el)))
+      where
+        parseWhen whenEl =
+            ( parseCondition defs (getExactlyOneChild (getChild "condition" whenEl))
+            , parseExpressionTyped defs ty (getExactlyOneChild (getChild "expression" whenEl))
+            )
+    n -> error ("parseExpressionTyped: not supported: " ++ n)
 
 -- | Parses property values from an element that has them
 parsePropertyValues :: Definitions -> Element -> PropertyValues

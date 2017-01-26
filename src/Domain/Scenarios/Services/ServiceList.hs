@@ -10,13 +10,13 @@ import Ideas.Service.BasicServices (tStepInfo)
 
 import Domain.Scenarios.Scenario
 import Domain.Scenarios.Services.AdaptedServices(allfirsts)
-import Domain.Scenarios.Services.ExtraServices(scenariolist, scenarioinfo)
+import Domain.Scenarios.Services.ExtraServices(scenariolist, scenarioinfo, evaluate)
 import Domain.Scenarios.Services.Types
 
 -- A list of all custom services available
 customServiceList :: [(Id, Scenario)] -> [Service]
 customServiceList fs = allfirstsS : map ($ fs)
-    [scenariolistS, scenarioinfoS]
+    [scenariolistS, scenarioinfoS, evaluateS]
 
 -- Meta-services for the given domain reasoner
 metaServiceList :: DomainReasoner -> [Service]
@@ -46,3 +46,8 @@ scenarioinfoS :: [(Id, Scenario)] -> Service
 scenarioinfoS fs = makeService "scenarios.scenarioinfo"
     "Returns information about the scenario." $
     scenarioinfo fs ::: tExercise .-> tScenarioInfo
+
+evaluateS :: [(Id, Scenario)] -> Service
+evaluateS fs = makeService "scenarios.evaluate"
+    "Evaluates all expressions." $
+    evaluate fs ::: tState .-> tValueAssocs

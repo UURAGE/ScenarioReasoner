@@ -7,6 +7,7 @@ import Ideas.Common.Library
 
 import Domain.Scenarios.Globals
 import Domain.Scenarios.Condition
+import Domain.Scenarios.Expression
 import Domain.Scenarios.ScenarioState(Effect)
 import GHC.Generics
 import Data.Binary
@@ -18,6 +19,7 @@ readBinaryScenario path = unsafePerformIO $ decodeFile path
 
 data Scenario = Scenario
         { scenarioDefinitions  :: Definitions
+        , scenarioExpressions  :: [Definition Expression]
         , scenarioMetaData     :: MetaData
         , scenarioTopDialogue  :: TopDialogue
         }

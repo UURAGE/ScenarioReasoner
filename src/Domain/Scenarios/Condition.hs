@@ -3,12 +3,11 @@
 
 module Domain.Scenarios.Condition where
 
-import qualified Data.Map as M
 import Data.Binary
 import GHC.Generics
 
 import qualified Domain.Scenarios.DomainData as DD
-import Domain.Scenarios.Globals(ID, Usered(..), Charactered(..), ParameterState)
+import Domain.Scenarios.Globals(ID, ParameterState, getParameterValue)
 
 data Condition = And [Condition]               -- ^ A list of conditions, all of which need to be satisfied
                | Or [Condition]                -- ^ A list of conditions, one of which needs to be satisfied
@@ -54,19 +53,6 @@ evaluateComparisonCondition state comparison = operator tested value
           value = conditionValue comparison
           idref = conditionIdref comparison
           characterIdref = conditionCharacterIdref comparison
-
--- | Retrieves the value of a parameter from the given state
-getParameterValue :: ParameterState -> ID -> Maybe ID -> DD.Value
-getParameterValue paramState idref mCharacterIdref = case mCharacterIdref of
-        Just characterIdref -> M.findWithDefault unknownParameter idref $
-                M.findWithDefault unknownCharacter characterIdref $ M.union
-                    (characteredPerCharacter (useredUserDefined paramState))
-                    (characteredPerCharacter (useredFixed paramState))
-            where unknownCharacter = error ("Condition for unknown character " ++ characterIdref)
-        Nothing -> M.findWithDefault unknownParameter idref $ M.union
-            (characteredIndependent (useredUserDefined paramState))
-            (characteredIndependent (useredFixed paramState))
-    where unknownParameter = error ("Condition for unknown parameter " ++ idref)
 
 -- | Returns the binary predicate corresponding to the given operator type
 getCompareOperator :: CompareOperator -> DD.Value -> DD.Value -> Bool
