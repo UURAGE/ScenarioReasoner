@@ -21,25 +21,25 @@ import Domain.Scenarios.Globals
 type StrategyMap = M.Map ID (Strategy ScenarioState)
 
 -- | Make a strategy for each interleave level of a top-level dialogue
-makeStrategy :: ID -> TopDialogue -> Strategy ScenarioState
-makeStrategy scenID = sequence . map (makeInterleaveStrategy scenID)
+makeStrategy :: (Id, Scenario) -> TopDialogue -> Strategy ScenarioState
+makeStrategy idscen = sequence . map (makeInterleaveStrategy idscen)
 
 -- | Make a strategy for each dialogue in an interleave level
-makeInterleaveStrategy :: ID -> InterleaveLevel -> Strategy ScenarioState
-makeInterleaveStrategy scenID = interleave . map (makeDialogueStrategy scenID)
+makeInterleaveStrategy :: (Id, Scenario) -> InterleaveLevel -> Strategy ScenarioState
+makeInterleaveStrategy idscen = interleave . map (makeDialogueStrategy idscen)
 
 -- | Make a strategy for a dialogue
-makeDialogueStrategy :: ID -> Dialogue -> Strategy ScenarioState
-makeDialogueStrategy scenID dia = optioned (atomiced diaStrategy)
+makeDialogueStrategy :: (Id, Scenario) -> Dialogue -> Strategy ScenarioState
+makeDialogueStrategy idscen dia = optioned (atomiced diaStrategy)
   where
     optioned = if diaOptional dia then option else id
     atomiced = if diaAtomic   dia then atomic else id
-    diaStrategy = evalState (makeAlternativesStrategy dia scenID (diaStartIDs dia)) M.empty
+    diaStrategy = evalState (makeAlternativesStrategy dia idscen (diaStartIDs dia)) M.empty
 
 -- | Recursively make a strategy for a dia of statements by making a strategy for the starting statement,
 -- and then sequencing it to the strategy for the next statements.
-makeStatementStrategy :: Dialogue -> ID -> ID -> State StrategyMap (Strategy ScenarioState)
-makeStatementStrategy dia scenID statementID = do
+makeStatementStrategy :: Dialogue -> (Id, Scenario) -> ID -> State StrategyMap (Strategy ScenarioState)
+makeStatementStrategy dia idscen statementID = do
     strategyMap <- get
     -- If the strategy for the statement has already been computed, use that one otherwise compute it.
     case M.lookup statementID strategyMap of
@@ -51,7 +51,7 @@ makeStatementStrategy dia scenID statementID = do
                     []      -> return (toStrategy rule)
                     nextIDs -> do
                         -- Make a strategy of alternative strategies for the strategies following from the rule
-                        nextStrategy <- makeAlternativesStrategy dia scenID nextIDs
+                        nextStrategy <- makeAlternativesStrategy dia idscen nextIDs
 
                         -- Sequence the rule to the strategy following from the rule
                         return (sequenceRule statement dia rule nextStrategy)
@@ -65,22 +65,22 @@ makeStatementStrategy dia scenID statementID = do
             statement = errorOnFail statementErrorMsg maybeStatement
 
             -- Make the rule for the current statement
-            rule = makeGuardedRule scenID statement
+            rule = makeGuardedRule idscen statement
 
 -- | Make strategies for all the next statements
 -- and combine them with the choice operator
-makeAlternativesStrategy :: Dialogue -> ID -> [ID] -> State StrategyMap (Strategy ScenarioState)
-makeAlternativesStrategy dia scenID [singleStatID] =
-    makeStatementStrategy dia scenID singleStatID
-makeAlternativesStrategy dia scenID statIDs =
-    choice <$> mapM (makeStatementStrategy dia scenID) statIDs
+makeAlternativesStrategy :: Dialogue -> (Id, Scenario) -> [ID] -> State StrategyMap (Strategy ScenarioState)
+makeAlternativesStrategy dia idscen [singleStatID] =
+    makeStatementStrategy dia idscen singleStatID
+makeAlternativesStrategy dia idscen statIDs =
+    choice <$> mapM (makeStatementStrategy dia idscen) statIDs
 
 -- | Make a rule using all the specific properties for a scenario
-makeGuardedRule :: ID -> Statement -> Rule ScenarioState
-makeGuardedRule scenID statement = guardedRule
-    ("scenarios" # scenID # getId statement)              -- create an identifier for the rule
-    (evaluateMaybeCondition (statPrecondition statement)) -- check if precondition is fulfilled
-    (\state -> applyEffects state paramEffects info)  -- apply the effects of a statement to the state
+makeGuardedRule :: (Id, Scenario) -> Statement -> Rule ScenarioState
+makeGuardedRule (scenID, scen) statement = guardedRule
+    ("scenarios" # scenID # getId statement)                 -- create an identifier for the rule
+    (evaluateMaybeCondition (statPrecondition statement))    -- check if precondition is fulfilled
+    (\state -> applyEffects typeMap state paramEffects info) -- apply the effects of a statement to the state
   where
     -- Make a rule with an identifier and a description,
     -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
@@ -89,6 +89,7 @@ makeGuardedRule scenID statement = guardedRule
 
     info           = statInfo statement
     paramEffects   = statParamEffects statement
+    typeMap        = snd (definitionsParameters (scenarioDefinitions scen))
 
 -- | Sequence a rule to the strategy representing the next statements.
 -- Use the atomic prefix combinator '!~>' if the entire dialogue is not atomic,

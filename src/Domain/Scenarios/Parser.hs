@@ -96,7 +96,9 @@ parseDomainDataType typeContainerEl = case name typeEl of
 parseSimpleDomainDataType :: Element -> DD.SimpleType
 parseSimpleDomainDataType typeEl = case name typeEl of
     "boolean" -> DD.TBoolean
-    "integer" -> DD.TInteger
+    "integer" -> DD.TInteger mmin mmax
+      where mmin = read <$> findAttribute "minimum" typeEl
+            mmax = read <$> findAttribute "maximum" typeEl
     "string" -> DD.TString
     "enumeration" -> DD.TString
     n -> error ("Could not parse " ++ n)
@@ -222,7 +224,7 @@ parseParameterEffect defs effectElem = Effect
   where idref = getAttribute "idref" effectElem
         errorDefault = error ("Value for unknown parameter " ++ idref)
         value = parseDomainDataValue
-            (M.findWithDefault errorDefault idref (snd (definitionsParameters defs)))
+            (DD.unrestrictType (M.findWithDefault errorDefault idref (snd (definitionsParameters defs))))
             effectElem
 
 -- | Parses an element to a Changetype
@@ -274,7 +276,7 @@ parseCondition defs conditionElem = case name conditionElem of
       where idref = getAttribute "idref" conditionElem
             errorDefault = error ("Condition for unknown parameter " ++ idref)
             ty = M.findWithDefault errorDefault idref (snd (definitionsParameters defs))
-            value = parseDomainDataValue ty conditionElem
+            value = parseDomainDataValue (DD.unrestrictType ty) conditionElem
     _           -> error "no parse condition"
 
 -- | Parses a compare operator. Gives an exception on invalid input.
@@ -312,8 +314,8 @@ parseDomainDataValue ty el = case ty of
 parseSimpleDomainDataValue :: DD.SimpleType -> String -> DD.Value
 parseSimpleDomainDataValue ty s = case ty of
     DD.TBoolean -> DD.VBoolean (read (applyToFirst toUpper s))
-    DD.TInteger -> DD.VInteger (read s)
-    DD.TString  -> DD.VString  s
+    DD.TInteger mmin mmax -> DD.VInteger (DD.clamp mmin mmax (read s))
+    DD.TString -> DD.VString  s
 
 parseCharactereds :: (Element -> a) -> ([a] -> b) -> Element -> Charactered b
 parseCharactereds parseSub mkCollection valsElem = Charactered

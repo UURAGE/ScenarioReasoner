@@ -43,37 +43,42 @@ data AssignmentOperator = Assign
 
 instance Binary AssignmentOperator
 
-applyEffects :: ScenarioState -> Usered (Charactered [Effect]) -> StatementInfo -> ScenarioState
-applyEffects (ScenarioState paramState _ ) paramEffects statInfo =
-    ScenarioState (applyEffectsU paramState paramEffects) (Just statInfo)
+applyEffects :: TypeMap -> ScenarioState -> Usered (Charactered [Effect]) -> StatementInfo -> ScenarioState
+applyEffects tm (ScenarioState paramState _ ) paramEffects statInfo =
+    ScenarioState (applyEffectsU tm paramState paramEffects) (Just statInfo)
 
-applyEffectsU :: Usered (Charactered ParameterMap) -> Usered (Charactered [Effect]) ->
+applyEffectsU :: TypeMap -> Usered (Charactered ParameterMap) -> Usered (Charactered [Effect]) ->
     Usered (Charactered ParameterMap)
-applyEffectsU (Usered udpm fpm) (Usered ude fe) = Usered
-    { useredUserDefined = applyEffectsC udpm ude
-    , useredFixed = applyEffectsC fpm fe
+applyEffectsU tm (Usered udpm fpm) (Usered ude fe) = Usered
+    { useredUserDefined = applyEffectsC tm udpm ude
+    , useredFixed = applyEffectsC tm fpm fe
     }
 
-applyEffectsC :: Charactered ParameterMap -> Charactered [Effect] -> Charactered ParameterMap
-applyEffectsC (Charactered ipm pcpm) (Charactered ie pce) = Charactered
-    { characteredIndependent = foldr applyEffect ipm ie
+applyEffectsC :: TypeMap -> Charactered ParameterMap -> Charactered [Effect] -> Charactered ParameterMap
+applyEffectsC tm (Charactered ipm pcpm) (Charactered ie pce) = Charactered
+    { characteredIndependent = foldr (applyEffect tm) ipm ie
     , characteredPerCharacter = M.foldrWithKey processCharEffects pcpm pce
     }
   where processCharEffects characteridref ce =
-            M.adjust (\cpm -> foldr applyEffect cpm ce) characteridref
+            M.adjust (\cpm -> foldr (applyEffect tm) cpm ce) characteridref
 
 -- | Applies the given effect to the state
-applyEffect :: Effect -> M.Map String DD.Value -> M.Map String DD.Value
-applyEffect effect = M.adjust adjuster (effectIdref effect)
-    where adjuster = case effectAssignmentOp effect of
+applyEffect :: TypeMap -> Effect -> M.Map String DD.Value -> M.Map String DD.Value
+applyEffect tm effect = M.adjust adjuster (effectIdref effect)
+    where adjuster = postProcessor . case effectAssignmentOp effect of
             Assign         -> const (effectValue effect)
             AddAssign      -> intAdjuster (+)
             SubtractAssign -> intAdjuster (-)
-          intAdjuster op (DD.VInteger i) = DD.VInteger (i `op` intEffectValue)
-          intAdjuster _ v = error ("intAdjuster: Not integral: " ++ show v)
-          intEffectValue = case effectValue effect of
+          intAdjuster op = onDDInteger (`op` fromDDInteger (effectValue effect))
+          postProcessor = case M.lookup (effectIdref effect) tm of
+            Just (DD.TSimple (DD.TInteger mmin mmax)) -> onDDInteger (DD.clamp mmin mmax)
+            _ -> id
+          fromDDInteger v = case v of
             DD.VInteger i -> i
-            v             -> error ("intEffectValue: Not integral: " ++ show v)
+            _ -> error ("fromDDInteger: Not integral: " ++ show v)
+          onDDInteger f v = case v of
+            DD.VInteger i -> DD.VInteger (f i)
+            _ -> error ("onDDInteger: Not integral: " ++ show v)
 
 -- ScenarioState to JSON for sending and receiving datatypes in JSON ---------------------------
 
