@@ -75,6 +75,25 @@
                 "type": "string",
                 "description": "The description of the parameter",
                 "example": "If the player is interacting with the merchant."
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "example": "list"
+                      }
+                    },
+                    "required": ["name"],
+                    "additionalProperties": true
+                  }
+                ]
               }
             },
             "required": [ "id", "name" ]

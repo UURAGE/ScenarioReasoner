@@ -34,9 +34,9 @@ instance Binary Type
 
 instance InJSON Type where
     toJSON (TSimple simpleType) = toJSON simpleType
-    toJSON (TList itemType) = Object [("type", String "list"), ("itemType", toJSON itemType)]
+    toJSON (TList itemType) = Object [("name", String "list"), ("itemType", toJSON itemType)]
     toJSON (TAttributeRecord contentInfo attributeTypes) = Object $
-        [ ("type", String "attributeRecord")
+        [ ("name", String "attributeRecord")
         , ("attributeTypes", Object (map ktpToJSON attributeTypes))
         ] ++ ciToJSON contentInfo
       where ktpToJSON (subName, subType) = (subName, toJSON subType)
@@ -47,7 +47,7 @@ instance InJSON Type where
             ciToJSON Nothing = []
     fromJSON val@(String _) = TSimple <$> fromJSON val
     fromJSON val@(Object _) = do
-        typeName <- lookupM "type" val
+        typeName <- lookupM "name" val
         case typeName of
             String "list" -> TList <$> (lookupM "itemType" val >>= fromJSON)
             String "attributeRecord" -> do
