@@ -9,7 +9,6 @@ import GHC.Generics
 
 import qualified Domain.Scenarios.DomainData as DD
 import Domain.Scenarios.Globals(ID, Usered(..), Charactered(..), ParameterState)
-import Domain.Scenarios.ScenarioState
 
 data Condition = And [Condition]               -- ^ A list of conditions, all of which need to be satisfied
                | Or [Condition]                -- ^ A list of conditions, one of which needs to be satisfied
@@ -38,23 +37,18 @@ data CompareOperator = LessThan
 
 instance Binary CompareOperator
 
--- | Evaluates the possible condition based on the given state
-evaluateMaybeCondition :: Maybe Condition -> ScenarioState -> Bool
-evaluateMaybeCondition mCondition (ScenarioState parameterState _) =
-    maybe True (`evaluateCondition` parameterState) mCondition
-
 -- | Evaluates the condition based on the given state
-evaluateCondition :: Condition -> ParameterState -> Bool
-evaluateCondition mainCondition state = evaluate mainCondition
+evaluateCondition :: ParameterState -> Condition -> Bool
+evaluateCondition state = evaluate
     where evaluate :: Condition -> Bool
           evaluate condition = case condition of
             And    subConditions -> all evaluate subConditions
             Or     subConditions -> any evaluate subConditions
-            Condition comparison -> evaluateComparisonCondition comparison state
+            Condition comparison -> evaluateComparisonCondition state comparison
 
 -- | Evaluates the comparison based on the given state
-evaluateComparisonCondition :: ComparisonCondition -> ParameterState -> Bool
-evaluateComparisonCondition comparison state = operator tested value
+evaluateComparisonCondition :: ParameterState -> ComparisonCondition -> Bool
+evaluateComparisonCondition state comparison = operator tested value
     where operator = getCompareOperator (conditionTest comparison)
           tested = getParameterValue state idref characterIdref
           value = conditionValue comparison

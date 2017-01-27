@@ -15,7 +15,7 @@ import Ideas.Common.Strategy.Combinators hiding (not)
 
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Scenario
-import Domain.Scenarios.Condition(evaluateMaybeCondition)
+import Domain.Scenarios.Condition(evaluateCondition)
 import Domain.Scenarios.Globals
 
 type StrategyMap = M.Map ID (Strategy ScenarioState)
@@ -77,16 +77,19 @@ makeAlternativesStrategy dia idscen statIDs =
 
 -- | Make a rule using all the specific properties for a scenario
 makeGuardedRule :: (Id, Scenario) -> Statement -> Rule ScenarioState
-makeGuardedRule (scenID, scen) statement = guardedRule
-    ("scenarios" # scenID # getId statement)                 -- create an identifier for the rule
-    (evaluateMaybeCondition (statPrecondition statement))    -- check if precondition is fulfilled
-    (\state -> applyEffects typeMap state paramEffects info) -- apply the effects of a statement to the state
+makeGuardedRule (scenID, scen) statement = makeRule
+    -- the identifier for the rule
+    ("scenarios" # scenID # getId statement)
+    -- the conditional effect of this rule on the state
+    (\state -> do
+        -- get the the relevant part of the state
+        let (ScenarioState parameterState _) = state
+        -- check if precondition is fulfilled
+        guard (maybe True (evaluateCondition parameterState) (statPrecondition statement))
+        -- apply the effects of the statement to the state
+        Just (applyEffects typeMap state paramEffects info)
+    )
   where
-    -- Make a rule with an identifier and a description,
-    -- if the precondition is fulfilled given the state and apply the effects of the rule onto the state.
-    guardedRule :: IsId a => a -> (ScenarioState -> Bool) -> (ScenarioState -> ScenarioState) -> Rule ScenarioState
-    guardedRule ident precond applyEffs = makeRule ident (\state -> do guard $ precond state; Just $ applyEffs state)
-
     info           = statInfo statement
     paramEffects   = statParamEffects statement
     typeMap        = snd (definitionsParameters (scenarioDefinitions scen))
