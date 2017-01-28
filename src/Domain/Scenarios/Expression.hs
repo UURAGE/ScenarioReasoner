@@ -22,12 +22,12 @@ data Expression = Literal DD.Value
 
 instance Binary Expression
 
-evaluateExpression :: ParameterState -> Expression -> DD.Value
-evaluateExpression state expr = case expr of
+evaluateExpression :: TypeMap -> ParameterState -> Expression -> DD.Value
+evaluateExpression typeMap state expr = case expr of
     Literal val -> val
     ParameterReference idref characterIdref -> getParameterValue state idref characterIdref
-    Sum exprs -> DD.VInteger (sum (map (fromDDInteger . evaluateExpression state) exprs))
+    Sum exprs -> DD.VInteger (sum (map (fromDDInteger . evaluateExpression typeMap state) exprs))
     Scale scalar divisor subExpr -> DD.VInteger $ round
-        (fromInteger (fromDDInteger (evaluateExpression state subExpr) * scalar) / fromInteger divisor :: Double)
-    Choose cases defaultExpr -> evaluateExpression state $ fromMaybe defaultExpr
-        (lookup True (map (first (evaluateCondition state)) cases))
+        (fromInteger (fromDDInteger (evaluateExpression typeMap state subExpr) * scalar) / fromInteger divisor :: Double)
+    Choose cases defaultExpr -> evaluateExpression typeMap state $ fromMaybe defaultExpr
+        (lookup True (map (first (evaluateCondition typeMap state)) cases))

@@ -85,7 +85,7 @@ makeGuardedRule (scenID, scen) statement = makeRule
         -- get the the relevant part of the state
         let (ScenarioState parameterState _) = state
         -- check if precondition is fulfilled
-        guard (maybe True (evaluateCondition parameterState) (statPrecondition statement))
+        guard (maybe True (evaluateCondition typeMap parameterState) (statPrecondition statement))
         -- apply the effects of the statement to the state
         Just (applyEffects typeMap state paramEffects info)
     )

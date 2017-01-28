@@ -47,10 +47,11 @@ getScenarioInfo (sId, ~(Scenario definitions expressions metadata _)) = Scenario
         (definitionType        definition)
 
 evaluate :: [(Id, Scenario)] -> State a -> Assocs DD.Value
-evaluate fs st = Assocs (map (definitionId &&& evaluateExpression state . definitionContent) exprs)
+evaluate fs st = Assocs (map (definitionId &&& evaluateExpression tm state . definitionContent) exprs)
   where
     ex = exercise st
     scen = snd (findScenario "evaluate" fs ex)
+    tm = snd (definitionsParameters (scenarioDefinitions scen))
     exprs = scenarioExpressions scen
     ScenarioState state _ = fromMaybe (error "Cannot evaluate exercise: casting failed.") $
         castFrom ex (stateTerm st) :: ScenarioState

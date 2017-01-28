@@ -280,18 +280,25 @@ parseCondition defs conditionElem = case stripCharacterPrefix (name conditionEle
         ComparisonCondition
         { conditionIdref          = idref
         , conditionCharacterIdref = parseCharacterIdref conditionElem
-        , conditionTest           = parseCompareOperator conditionElem
+        , conditionTest           = parseOperator conditionElem
         , conditionValue          = value
         }
       where idref = getAttribute "idref" conditionElem
             errorDefault = error ("Condition for unknown parameter " ++ idref)
             ty = M.findWithDefault errorDefault idref (snd (definitionsParameters defs))
             value = parseDomainDataValue (DD.unrestrictType ty) conditionElem
+    "referenceCondition" -> ReferenceCondition
+        UnaryCondition
+        { unaryConditionIdref          = idref
+        , unaryConditionCharacterIdref = parseCharacterIdref conditionElem
+        , unaryConditionTest           = parseOperator conditionElem
+        }
+      where idref = getAttribute "idref" conditionElem
     _           -> error "no parse condition"
 
--- | Parses a compare operator. Gives an exception on invalid input.
-parseCompareOperator :: Element -> CompareOperator
-parseCompareOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator" conditionElem))
+-- | Parses an operator. Gives an exception on invalid input.
+parseOperator :: Read a => Element -> a
+parseOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator" conditionElem))
 
 parseExpressionTyped :: Definitions -> DD.Type -> Element -> Expression
 parseExpressionTyped defs ty el = case stripCharacterPrefix (name el) of
