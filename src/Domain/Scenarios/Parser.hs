@@ -303,7 +303,10 @@ parseOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator
 parseExpressionTyped :: Definitions -> DD.Type -> Element -> Expression
 parseExpressionTyped defs ty el = case stripCharacterPrefix (name el) of
     "literal" -> Literal (parseDomainDataValue ty el)
-    "parameterReference" -> ParameterReference (getAttribute "idref" el) (parseCharacterIdref el)
+    "parameterReference" -> ParameterReference
+        (getAttribute "idref" el)
+        (parseCharacterIdref el)
+        (maybe CalculateValue parseCalculation (findAttribute "calculate" el))
     "sum" -> Sum (map (parseExpressionTyped defs ty) (children el))
     "scale" -> Scale
         (maybe 1 read (findAttribute "scalar" el))
@@ -318,6 +321,11 @@ parseExpressionTyped defs ty el = case stripCharacterPrefix (name el) of
             , parseExpressionTyped defs ty (getExactlyOneChild (getChild "expression" whenEl))
             )
     n -> error ("parseExpressionTyped: not supported: " ++ n)
+
+parseCalculation :: String -> Calculation
+parseCalculation "value" = CalculateValue
+parseCalculation "percentage" = CalculatePercentage
+parseCalculation c = error ("parseCalculation: not supported: " ++ c)
 
 -- | Parses property values from an element that has them
 parsePropertyValues :: Definitions -> Element -> PropertyValues
