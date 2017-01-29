@@ -7,6 +7,7 @@ import Control.Monad
 import Data.Char
 import Data.Either
 import qualified Data.Foldable as F
+import Data.List
 import qualified Data.Map as M
 import Data.Maybe
 import GHC.Exts(groupWith)
@@ -263,7 +264,7 @@ tryParseBool _              = False
 
 -- | Parses a condition and recursively parses ands and ors. Used in both parsers (metadata and dialogue)
 parseCondition :: Definitions -> Element -> Condition
-parseCondition defs conditionElem = case name conditionElem of
+parseCondition defs conditionElem = case stripCharacterPrefix (name conditionElem) of
     "and"       -> And (map (parseCondition defs) (children conditionElem))
     "or"        -> Or  (map (parseCondition defs) (children conditionElem))
     "condition" -> Condition
@@ -359,3 +360,6 @@ getExactlyOneChild element = case children element of
     []      -> error "no children found"
     [child] -> child
     _       -> error "multiple children found"
+
+stripCharacterPrefix :: String -> String
+stripCharacterPrefix s = maybe s (applyToFirst toLower) (stripPrefix "character" s)
