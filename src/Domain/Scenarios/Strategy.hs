@@ -97,7 +97,7 @@ makeGuardedRule (scenID, scen) statement = makeRule
 -- | Sequence a rule to the strategy representing the next statements.
 -- Use the atomic prefix combinator '!~>' if the entire dialogue is not atomic,
 -- but the statement itself is, so it can not be interleaved.
--- Apply the inits operator if the dialogue can succeed here, so the strategy does not have to be finished.
+-- Allow the dialogue to succeed here if required, so the strategy does not have to be finished.
 sequenceRule :: Statement -> Dialogue -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement dia rule nextStrategy =
     if statJumpPoint statement || diaAtomic dia
@@ -105,5 +105,5 @@ sequenceRule statement dia rule nextStrategy =
         else rule !~> processedNextStrategy
     where processedNextStrategy =
             if statInits statement
-                then inits nextStrategy
+                then succeed .|. nextStrategy
                 else nextStrategy
