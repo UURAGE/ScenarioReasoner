@@ -1,5 +1,5 @@
 name:                ScenarioReasoner
-version:             5.2.0
+version:             5.3.0
 author:              Ideas Authors <authors@ideas.example>
                      jan709 <j.vandieren@students.uu.nl>
                      Johan Jeuring <J.T.Jeuring@uu.nl>
@@ -12,7 +12,7 @@ author:              Ideas Authors <authors@ideas.example>
                      Wouter Florijn <woutermflorijn@gmail.com>
 maintainer:          Jordy van Dortmont <ydroj@live.nl>
                      Marcell van Geest <marcell@marcell.nl>
-copyright:           (c) 2013-2016 Utrecht University
+copyright:           (c) 2013-2017 Utrecht University
 license:             Apache-2.0
 license-file:        LICENSE.txt
 category:            Education
