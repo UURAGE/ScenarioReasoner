@@ -173,7 +173,7 @@ parseTree defs diaElem =
     Dialogue
     { diaID         = getAttribute "id" diaElem
     , diaStartIDs   = map (getAttribute "idref") (children (getChild "starts" diaElem))
-    , diaAtomic     = not (any statJumpPoint statements)
+    , diaAtomic     = not (any statAllowInterleave statements)
     , diaOptional   = tryParseBool (findAttribute "optional" diaElem)
     , diaStatements = statements
     }
@@ -182,14 +182,14 @@ parseTree defs diaElem =
 parseStatement :: Definitions -> Element -> Statement
 parseStatement defs statElem =
     Statement
-    { statID             = getAttribute "id"           statElem
-    , statInfo           = parseStatementInfo defs     statElem
-    , statPrecondition   = parseMaybePrecondition defs statElem
-    , statParamEffects   = parseParameterEffects defs  statElem
-    , statJumpPoint      = parseJumpPoint              statElem
-    , statInits          = parseInits                  statElem
-    , statEnd            = parseEnd                    statElem
-    , statNextStatIDs    = parseNextStatIDs            statElem
+    { statID               = getAttribute "id"           statElem
+    , statInfo             = parseStatementInfo defs     statElem
+    , statPrecondition     = parseMaybePrecondition defs statElem
+    , statParamEffects     = parseParameterEffects defs  statElem
+    , statAllowInterleave  = parseAllowInterleave        statElem
+    , statAllowDialogueEnd = parseAllowDialogueEnd       statElem
+    , statEnd              = parseEnd                    statElem
+    , statNextStatIDs      = parseNextStatIDs            statElem
     }
 
 parseStatementInfo :: Definitions -> Element -> StatementInfo
@@ -242,11 +242,13 @@ parseAssignmentOperator :: Element -> AssignmentOperator
 parseAssignmentOperator effectElem = read (applyToFirst toUpper operatorStr)
   where operatorStr = getAttribute "operator" effectElem
 
-parseJumpPoint :: Element -> Bool
-parseJumpPoint statElem = tryParseBool (findAttribute "jumpPoint" statElem)
+parseAllowInterleave :: Element -> Bool
+parseAllowInterleave statElem = maybe False parseBool . getFirst $
+    First (findAttribute "allowInterleave" statElem) <> First (findAttribute "jumpPoint" statElem)
 
-parseInits :: Element -> Bool
-parseInits statElem = tryParseBool (findAttribute "inits" statElem)
+parseAllowDialogueEnd :: Element -> Bool
+parseAllowDialogueEnd statElem = maybe False parseBool . getFirst $
+    First (findAttribute "allowDialogueEnd" statElem) <> First (findAttribute "inits" statElem)
 
 parseEnd :: Element -> Bool
 parseEnd statElem = tryParseBool (findAttribute "end" statElem)

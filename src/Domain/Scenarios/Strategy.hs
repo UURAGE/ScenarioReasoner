@@ -100,10 +100,10 @@ makeGuardedRule (scenID, scen) statement = makeRule
 -- Allow the dialogue to succeed here if required, so the strategy does not have to be finished.
 sequenceRule :: Statement -> Dialogue -> Rule ScenarioState -> Strategy ScenarioState -> Strategy ScenarioState
 sequenceRule statement dia rule nextStrategy =
-    if statJumpPoint statement || diaAtomic dia
+    if statAllowInterleave statement || diaAtomic dia
         then rule .*. processedNextStrategy
         else rule !~> processedNextStrategy
     where processedNextStrategy =
-            if statInits statement
+            if statAllowDialogueEnd statement
                 then succeed .|. nextStrategy
                 else nextStrategy

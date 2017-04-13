@@ -58,14 +58,14 @@ data Dialogue = Dialogue
 instance Binary Dialogue
 
 data Statement = Statement
-        { statID            :: ID
-        , statInfo          :: StatementInfo
-        , statPrecondition  :: Maybe Condition
-        , statParamEffects  :: Usered (Charactered [Effect])
-        , statJumpPoint     :: Bool
-        , statInits         :: Bool
-        , statEnd           :: Bool
-        , statNextStatIDs   :: [ID]
+        { statID               :: ID
+        , statInfo             :: StatementInfo
+        , statPrecondition     :: Maybe Condition
+        , statParamEffects     :: Usered (Charactered [Effect])
+        , statAllowInterleave  :: Bool
+        , statAllowDialogueEnd :: Bool
+        , statEnd              :: Bool
+        , statNextStatIDs      :: [ID]
         }
  deriving (Show, Read, Generic)
 
