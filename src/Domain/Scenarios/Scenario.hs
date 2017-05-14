@@ -32,6 +32,7 @@ data MetaData = MetaData
         , scenarioLanguage               :: Maybe String
         , scenarioDescription            :: String
         , scenarioDifficulty             :: Maybe Difficulty
+        , scenarioVersion                :: Maybe Int
         , scenarioInitialParameterValues :: ParameterState
         , scenarioPropertyValues         :: PropertyValues
         }

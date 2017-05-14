@@ -37,6 +37,10 @@
           "description": "Indicates the scenario difficulty",
           "default": "medium"
         },
+        "version": {
+          "type": "integer",
+          "description": "The version of the scenario"
+        },
         "characters": {
           "type": "array",
           "description": "The characters of the scenario",

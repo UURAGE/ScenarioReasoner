@@ -22,6 +22,7 @@ data ScenarioInfo = ScenarioInfo Id
                                  (Maybe String)   -- Language
                                  String           -- Description
                                  (Maybe Difficulty)
+                                 (Maybe Int)      -- Version
                                  [CharacterDefinitionInfo]
                                  [DefinitionInfo] -- Expressions
                                  [DefinitionInfo] -- User-defined parameters
@@ -34,13 +35,14 @@ tScenarioInfo =
                         (Pair (tMaybe (Tag "language"              tString))
                         (Pair         (Tag "description"           tString)
                         (Pair (tMaybe (tag "difficulty"            tDifficulty))
+                        (Pair (tMaybe (Tag "version"               tInt))
                         (Pair         (Tag "characters"            (tList tCharacterDefinitionInfo))
                         (Pair         (Tag "expressions"           (tList tDefinitionInfo))
                         (Pair         (Tag "userDefinedParameters" (tList tDefinitionInfo))
-                                      (Tag "propertyValues"        tPropertyValues)))))))))
+                                      (Tag "propertyValues"        tPropertyValues))))))))))
       where
-        pairify (ScenarioInfo sid name lang descr diff cs es ps pvs) =
-            (sid, (name, (lang, (descr, (diff, (cs, (es, (ps, pvs))))))))
+        pairify (ScenarioInfo sid name lang descr diff ver cs es ps pvs) =
+            (sid, (name, (lang, (descr, (diff, (ver, (cs, (es, (ps, pvs)))))))))
         tag s (Tag _ t) = Tag s t
         tag s t         = Tag s t
 

@@ -32,6 +32,7 @@ getScenarioInfo (sId, ~(Scenario definitions expressions metadata _)) = Scenario
                 (scenarioLanguage       metadata)
                 (scenarioDescription    metadata)
                 (scenarioDifficulty     metadata)
+                (scenarioVersion        metadata)
                 (map describeCharacterDefinition (definitionsCharacters definitions))
                 (map describeDefinition expressions)
                 (map describeDefinition (useredUserDefined (fst (definitionsParameters definitions))))

@@ -126,6 +126,7 @@ parseMetaData defs script = MetaData
         , scenarioLanguage               = parseScenarioLanguage                    metadataEl
         , scenarioDescription            = parseScenarioDescription                 metadataEl
         , scenarioDifficulty             = parseScenarioDifficulty                  metadataEl
+        , scenarioVersion                = parseScenarioVersion                     script
         , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs metadataEl
         , scenarioPropertyValues         = parsePropertyValues                 defs metadataEl
         }
@@ -143,6 +144,9 @@ parseScenarioDescription = getData . getChild "description"
 parseScenarioDifficulty :: Element -> Maybe Difficulty
 parseScenarioDifficulty metadataEl = fromMaybe (error "parseScenarioDifficulty: no parse") . readDifficulty .
     getData <$> findChild "difficulty" metadataEl
+
+parseScenarioVersion :: Element -> Maybe Int
+parseScenarioVersion script = read <$> findAttribute "version" script
 
 parseScenarioInitialParameterValues :: Definitions -> Element -> ParameterState
 parseScenarioInitialParameterValues defs metadataEl = Usered
