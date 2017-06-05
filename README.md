@@ -1,3 +1,5 @@
+<img src="https://cdn.rawgit.com/UURAGE/ScenarioReasoner/master/logo.svg" width="50%"/>
+
 # Scenario Reasoner
 
 [![](https://travis-ci.org/UURAGE/ScenarioReasoner.svg?branch=master)](https://travis-ci.org/UURAGE/ScenarioReasoner)
@@ -20,7 +22,7 @@ The Reasoner is a fully stateless application: it does not save any state betwee
 
 * For development: the Glasgow Haskell Compiler, version 7.10. We recommend the use of the [Haskell Platform 7.10.3, available for Windows, Linux, and Mac OS X](https://www.haskell.org/platform/prior.html).
 
-	* Ubuntu 16.04 has a `haskell-platform` package. Although its version is 2014.2.0.0.debian2 (or similar), installing this package does install the right version of GHC and the related libraries.
+* Ubuntu 16.04 has a `haskell-platform` package. Although its version is 2014.2.0.0.debian2 (or similar), installing this package does install the right version of GHC and the related libraries.
 
 ## Building
 
