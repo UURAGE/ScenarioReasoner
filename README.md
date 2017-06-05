@@ -1,5 +1,9 @@
 # Scenario Reasoner
 
+[![](https://travis-ci.org/UURAGE/ScenarioReasoner.svg?branch=master)](https://travis-ci.org/UURAGE/ScenarioReasoner)
+[![](https://ci.appveyor.com/api/projects/status/github/UURAGE/ScenarioReasoner?branch=master&svg=true)](https://github.com/UURAGE/ScenarioReasoner/releases/latest)
+[![](https://badge.fury.io/gh/UURAGE%2FScenarioReasoner.svg)](https://github.com/UURAGE/ScenarioReasoner/releases/latest)
+
 The UURAGE Scenario Reasoner is a CGI application that can be used to navigate through and get information about scenarios based on the [UUDSL](http://uudsl.github.io/scenario), such as those created by the [UURAGE Scenario Editor](https://github.com/UURAGE/ScenarioEditor).
 
 ## Overview
