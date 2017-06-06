@@ -2,8 +2,6 @@
 
 module Domain.Scenarios.Parser where
 
-import Control.Monad
-
 import Data.Char
 import Data.Either
 import qualified Data.Foldable as F
@@ -11,7 +9,6 @@ import Data.List
 import qualified Data.Map as M
 import Data.Maybe
 import GHC.Exts(groupWith)
-import System.IO
 
 import Ideas.Common.Library hiding (Sum)
 import Ideas.Text.XML.Interface
@@ -23,29 +20,21 @@ import Domain.Scenarios.Globals
 import Domain.Scenarios.Scenario
 import qualified Domain.Scenarios.DomainData as DD
 
-type Script = Element
-
 -- Functions to be exposed as an interface
 ----------------------------------------------------------------------------------------------------
 
--- | Parses the XML at the path to a Script
-parseScript :: FilePath -> IO Script
-parseScript filepath = withBinaryFile filepath ReadMode
-        (hGetContents >=> (either fail return . parseXML))
-        -- if parameter is Left a, do fail a, if it is Right b do (return . Script) . parseXML b
-
--- | Parses a scenario from a script element
-parseScenario :: Script -> Scenario
-parseScenario script = Scenario
+-- | Parses a scenario from a scenario element
+parseScenario :: Element -> Scenario
+parseScenario scenarioEl = Scenario
         { scenarioDefinitions  = defs
-        , scenarioExpressions  = parseExpressions defs script
-        , scenarioMetaData     = parseMetaData defs script
-        , scenarioTopDialogue  = parseDialogue defs script
+        , scenarioExpressions  = parseExpressions defs scenarioEl
+        , scenarioMetaData     = parseMetaData defs scenarioEl
+        , scenarioTopDialogue  = parseDialogue defs scenarioEl
         }
-  where defs = parseDefinitions script
+  where defs = parseDefinitions scenarioEl
 
-parseDefinitions :: Script -> Definitions
-parseDefinitions script = Definitions
+parseDefinitions :: Element -> Definitions
+parseDefinitions scenarioEl = Definitions
         { definitionsCharacters = map parseCharacterDefinition (children (getChild "characters" defsEl))
         , definitionsProperties = parseDefinitionList (getChild "properties" defsEl)
         , definitionsParameters = (fmap fst paramDefs, F.fold (fmap snd paramDefs))
@@ -56,7 +45,7 @@ parseDefinitions script = Definitions
             }
         paramDefsEl = getChild "parameters" defsEl
         defsEl = fromMaybe (error "Definitions not found") $
-            findChild "definitions" script
+            findChild "definitions" scenarioEl
 
 parseDefinitionList :: Element -> ([Definition ()], TypeMap)
 parseDefinitionList el = (defs, M.fromList (map toTypePair defs))
@@ -120,17 +109,17 @@ parseExpressions defs = maybe [] (map (parseDefinition parseExpression) . childr
 
 -- MetaData Parser ---------------------------------------------------------------------------------
 
-parseMetaData :: Definitions -> Script -> MetaData
-parseMetaData defs script = MetaData
+parseMetaData :: Definitions -> Element -> MetaData
+parseMetaData defs scenarioEl = MetaData
         { scenarioName                   = parseScenarioName                        metadataEl
         , scenarioLanguage               = parseScenarioLanguage                    metadataEl
         , scenarioDescription            = parseScenarioDescription                 metadataEl
         , scenarioDifficulty             = parseScenarioDifficulty                  metadataEl
-        , scenarioVersion                = parseScenarioVersion                     script
+        , scenarioVersion                = parseScenarioVersion                     scenarioEl
         , scenarioInitialParameterValues = parseScenarioInitialParameterValues defs metadataEl
         , scenarioPropertyValues         = parsePropertyValues                 defs metadataEl
         }
-    where metadataEl = getChild "metadata" script
+    where metadataEl = getChild "metadata" scenarioEl
 
 parseScenarioName :: Element -> Name
 parseScenarioName = getData . getChild "name"
@@ -146,7 +135,7 @@ parseScenarioDifficulty metadataEl = fromMaybe (error "parseScenarioDifficulty: 
     getData <$> findChild "difficulty" metadataEl
 
 parseScenarioVersion :: Element -> Maybe Int
-parseScenarioVersion script = read <$> findAttribute "version" script
+parseScenarioVersion scenarioEl = read <$> findAttribute "version" scenarioEl
 
 parseScenarioInitialParameterValues :: Definitions -> Element -> ParameterState
 parseScenarioInitialParameterValues defs metadataEl = Usered
@@ -161,10 +150,10 @@ parseScenarioInitialParameterValues defs metadataEl = Usered
 
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
-parseDialogue :: Definitions -> Script -> TopDialogue
-parseDialogue defs script = map (parseInterleaveLevel defs) interleaveElems
+parseDialogue :: Definitions -> Element -> TopDialogue
+parseDialogue defs scenarioEl = map (parseInterleaveLevel defs) interleaveElems
   where
-    sequenceElem = getChild "sequence" script
+    sequenceElem = getChild "sequence" scenarioEl
     interleaveElems = findChildren "interleave" sequenceElem
 
 parseInterleaveLevel :: Definitions -> Element -> InterleaveLevel

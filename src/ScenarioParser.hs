@@ -12,6 +12,7 @@ import System.FilePath
 import System.IO
 
 import Ideas.Common.Id
+import Ideas.Text.XML
 
 main :: IO ()
 main = do
@@ -26,14 +27,14 @@ main = do
 
 process :: FilePath -> FilePath -> IO String
 process xml_path bin_path = do
-    scenarioXML <- parseScript xml_path
+    scenarioXML <- parseXMLFile xml_path
     let scenario = parseScenario scenarioXML
     encodeFile bin_path scenario
     return (showId (newId (takeBaseName bin_path)))
 
 debugMain :: String -> IO ()
 debugMain path = do
-    scenarioXML <- parseScript path
+    scenarioXML <- parseXMLFile path
     let scenario = parseScenario scenarioXML
     print scenario
     print path
