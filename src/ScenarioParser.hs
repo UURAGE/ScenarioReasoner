@@ -17,24 +17,24 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        ["-r", script_path, bin_path] -> do
-            scenarioID <- process script_path bin_path
+        ["-r", xml_path, bin_path] -> do
+            scenarioID <- process xml_path bin_path
             hSetEncoding stdout utf8
             putStrLn scenarioID
-        [script_path, bin_path] -> void (process script_path bin_path)
+        [xml_path, bin_path] -> void (process xml_path bin_path)
         _ -> error "Not enough arguments"
 
 process :: FilePath -> FilePath -> IO String
-process script_path bin_path = do
-    script <- parseScript script_path
-    let scenario = parseScenario script
+process xml_path bin_path = do
+    scenarioXML <- parseScript xml_path
+    let scenario = parseScenario scenarioXML
     encodeFile bin_path scenario
     return (showId (newId (takeBaseName bin_path)))
 
 debugMain :: String -> IO ()
 debugMain path = do
-    script <- parseScript path
-    let scenario = parseScenario script
+    scenarioXML <- parseScript path
+    let scenario = parseScenario scenarioXML
     print scenario
     print path
     encodeFile ("bins/" ++ takeBaseName path ++ ".bin") scenario
