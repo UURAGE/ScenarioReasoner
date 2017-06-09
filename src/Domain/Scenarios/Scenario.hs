@@ -15,7 +15,11 @@ import Data.Binary
 import System.IO.Unsafe
 
 readBinaryScenario :: FilePath -> Scenario
-readBinaryScenario path = unsafePerformIO $ decodeFile path
+readBinaryScenario path = unsafePerformIO $ do
+    result <- decodeFileOrFail path
+    case result of
+        Left (_, message) -> error (path ++ ": " ++ message)
+        Right scenario -> return scenario
 
 data Scenario = Scenario
         { scenarioDefinitions  :: Definitions
