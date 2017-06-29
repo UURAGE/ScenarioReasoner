@@ -25,7 +25,7 @@
             "additionalItems": false
           },
           {
-            "$ref": "D:/Communicate/ScenarioReasoner/doc/schemas/state.schema.json#" // URI to the referred JSON schema, for now a local path
+            "$ref": "state.schema.json#"
           }
         ],
         "additionalItems": false

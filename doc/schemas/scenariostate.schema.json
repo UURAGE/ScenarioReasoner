@@ -13,7 +13,7 @@
             "independent": {
               "type": "object",
               "patternProperties": {
-                "^p([0-9]+)|t$": { }
+                "^p([0-9]+)|t$": {}
               },
               "additionalProperties": false,
               "example": {
@@ -50,6 +50,7 @@
     },
     "statement": {
       "type": [ "object", "null" ],
+      "description": "Statement will be present in output, but is not required in input",
       "properties": {
         "type": {
           "description": "The statement type: whether it is for a computer or a player",
@@ -86,10 +87,8 @@
     },
     "internal": {
       "type": "object",
-      "description": "This property contains internal data for the ScenarioReasoner and must not be removed from the state"
+      "description": "This property contains internal data for the ScenarioReasoner and must not be removed from the state. Internal is not always present in output; when it is, it must be sent back in input"
     }
   },
   "required": [ "parameters" ]
-  // internal is not always present in output; when it is, it must be sent back in input
-  // statement will be present in output, but is not required in input
 }

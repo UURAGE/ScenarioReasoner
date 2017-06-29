@@ -13,7 +13,7 @@
       "minItems": 1,
       "maxItems": 1,
       "items": {
-        "$ref": "D:/Communicate/ScenarioReasoner/doc/schemas/state.schema.json#" // URI to the referred JSON schema, for now a local path
+        "$ref": "state.schema.json#"
       }
     },
     "id": { "description": "A value identifying this request" },

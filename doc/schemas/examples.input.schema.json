@@ -9,7 +9,7 @@
       "enum": [ "examples" ]
     },
     "params": {
-      "$ref": "D:/Communicate/ScenarioReasoner/doc/schemas/id.input.schema.json#" // URI to the referred JSON schema, for now a local path
+      "$ref": "id.input.schema.json#"
     },
     "encoding": {
       "description": "The encoding of the data",
