@@ -35,7 +35,8 @@ executable ScenarioReasoner.cgi
                        containers,
                        filepath,
                        binary,
-                       filemanip
+                       filemanip,
+                       QuickCheck < 2.10
 
 executable ScenarioParser
   Main-is:             ScenarioParser.hs
