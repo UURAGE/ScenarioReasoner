@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric, PatternGuards #-}
+{- © Utrecht University (Department of Information and Computing Sciences) -}
 module Domain.Scenarios.DomainData where
 
 import Control.Arrow

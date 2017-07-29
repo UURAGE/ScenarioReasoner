@@ -1,5 +1,5 @@
 {-# LANGUAGE StandaloneDeriving, DeriveGeneric #-}
-{- ©Copyright Utrecht University (Department of Information and Computing Sciences) -}
+{- © Utrecht University (Department of Information and Computing Sciences) -}
 
 module Domain.Scenarios.Scenario where
 

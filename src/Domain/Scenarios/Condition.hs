@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{- ©Copyright Utrecht University (Department of Information and Computing Sciences) -}
+{- © Utrecht University (Department of Information and Computing Sciences) -}
 
 module Domain.Scenarios.Condition where
 
