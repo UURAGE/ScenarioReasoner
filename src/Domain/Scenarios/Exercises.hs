@@ -36,5 +36,7 @@ mkExercise sId strat difficulty initState = jsonEncoding
        , suitable       = true
        , hasTypeable    = useTypeable
        , strategy       = liftToContext $ label "Scenario Strategy" strat
+       -- Preserve choice order
+       , ruleOrdering   = \_ _ -> EQ
        , examples       = [(fromMaybe Medium difficulty, initState)]
        }
