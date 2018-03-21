@@ -16,13 +16,11 @@ import qualified Domain.Scenarios.Exercises as E
 
 -- Imports used by Ideas.Main.Default, minus the superfluous ones
 import Control.Exception
-import Data.Maybe
 import Ideas.Encoding.ModeJSON (processJSON)
 import Ideas.Encoding.ModeXML (processXML)
 import Ideas.Encoding.Options (Options, maxTime)
 import Ideas.Encoding.Request
 import Ideas.Service.DomainReasoner
-import Network.CGI
 import System.IO
 import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Encoding.Logging as Log
@@ -52,33 +50,12 @@ readBinaryScenarios root = do
     let readOne path = (newId (takeBaseName path), readBinaryScenario path)
     return (map readOne paths)
 
-inputOrDefault :: CGI String
-inputOrDefault = do
-   inHtml <- acceptsHTML
-   ms     <- getInput "input" -- read variable 'input'
-   case ms of
-      Just s -> return s
-      Nothing
-         | inHtml    -> return defaultBrowser
-         | otherwise -> fail "environment variable 'input' is empty"
- where
-   -- Invoked from browser
-   defaultBrowser :: String
-   defaultBrowser = "<request service='index' encoding='html'/>"
-
-   acceptsHTML :: CGI Bool
-   acceptsHTML = do
-      maybeAcceptCT <- requestAccept
-      let htmlCT = ContentType "text" "html" []
-          xs = negotiate [htmlCT] maybeAcceptCT
-      return (isJust maybeAcceptCT && not (null xs))
-
 -- Invoked from command-line using raw mode
 scenarioReasonerCommandLine :: DomainReasoner -> IO ()
 scenarioReasonerCommandLine dr = do
    mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
    txtIn          <- getContents
-   logRef         <- liftIO Log.newLogRef
+   logRef         <- Log.newLogRef
    (_, txtOut, _) <- process mempty dr logRef txtIn
    putStrLn txtOut
 
