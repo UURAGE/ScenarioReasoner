@@ -5,13 +5,13 @@ module Domain.Scenarios.Strategy where
 import Prelude hiding (fail, sequence)
 
 import Control.Monad hiding (fail, sequence)
-import Data.List hiding (inits)
+import Data.List
 import qualified Data.Map as M
 
 import Control.Monad.Trans.State hiding (state)
 
 import Ideas.Common.Library
-import Ideas.Common.Strategy.Combinators hiding (not)
+import Ideas.Common.Strategy.Combinators
 
 import Domain.Scenarios.ScenarioState
 import Domain.Scenarios.Scenario
