@@ -8,10 +8,11 @@ import qualified Data.Foldable as F
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
+import Data.Monoid hiding (Sum)
 import GHC.Exts(groupWith)
 
-import Ideas.Common.Library hiding (Sum)
-import Ideas.Text.XML.Interface
+import Ideas.Common.Library
+import Ideas.Text.XML hiding (Name, BuildXML(..))
 
 import Domain.Scenarios.Condition
 import Domain.Scenarios.Expression
@@ -24,7 +25,7 @@ import qualified Domain.Scenarios.DomainData as DD
 ----------------------------------------------------------------------------------------------------
 
 -- | Parses a scenario from a scenario element
-parseScenario :: Element -> Scenario
+parseScenario :: XML -> Scenario
 parseScenario scenarioEl = Scenario
         { scenarioDefinitions  = defs
         , scenarioExpressions  = parseExpressions defs scenarioEl
@@ -33,7 +34,7 @@ parseScenario scenarioEl = Scenario
         }
   where defs = parseDefinitions scenarioEl
 
-parseDefinitions :: Element -> Definitions
+parseDefinitions :: XML -> Definitions
 parseDefinitions scenarioEl = Definitions
         { definitionsCharacters = map parseCharacterDefinition (children (getChild "characters" defsEl))
         , definitionsProperties = parseDefinitionList (getChild "properties" defsEl)
@@ -47,12 +48,12 @@ parseDefinitions scenarioEl = Definitions
         defsEl = fromMaybe (error "Definitions not found") $
             findChild "definitions" scenarioEl
 
-parseDefinitionList :: Element -> ([Definition ()], TypeMap)
+parseDefinitionList :: XML -> ([Definition ()], TypeMap)
 parseDefinitionList el = (defs, M.fromList (map toTypePair defs))
   where toTypePair def = (definitionId def, definitionType def)
         defs = map (parseDefinition (const (const ()))) (children el)
 
-parseDefinition :: (DD.Type -> Element -> a) -> Element -> Definition a
+parseDefinition :: (DD.Type -> XML -> a) -> XML -> Definition a
 parseDefinition parseContent defEl = Definition
         { definitionId           = getAttribute "id" defEl
         , definitionName         = getAttribute "name" defEl
@@ -63,13 +64,13 @@ parseDefinition parseContent defEl = Definition
         }
   where (ty, maybeDefaultEl) = parseDomainDataType (getChild "type" defEl)
 
-parseCharacterDefinition :: Element -> CharacterDefinition
+parseCharacterDefinition :: XML -> CharacterDefinition
 parseCharacterDefinition defEl = CharacterDefinition
         { characterDefinitionId   = getAttribute "id" defEl
         , characterDefinitionName = findAttribute "name" defEl
         }
 
-parseDomainDataType :: Element -> (DD.Type, Maybe Element)
+parseDomainDataType :: XML -> (DD.Type, Maybe XML)
 parseDomainDataType typeContainerEl = case name typeEl of
     "list" -> (DD.TList (fst (parseDomainDataType (getChild "itemType" typeEl))), simpleDefault)
     "attributeRecord" ->
@@ -86,7 +87,7 @@ parseDomainDataType typeContainerEl = case name typeEl of
   where typeEl = getExactlyOneChild typeContainerEl
         simpleDefault = findChild "default" typeEl
 
-parseSimpleDomainDataType :: Element -> DD.SimpleType
+parseSimpleDomainDataType :: XML -> DD.SimpleType
 parseSimpleDomainDataType typeEl = case name typeEl of
     "boolean" -> DD.TBoolean
     "integer" -> DD.TInteger mmin mmax
@@ -101,7 +102,7 @@ parseSimpleDomainDataType typeEl = case name typeEl of
 -- Functions to be used internally
 ----------------------------------------------------------------------------------------------------
 
-parseExpressions :: Definitions -> Element -> [Definition Expression]
+parseExpressions :: Definitions -> XML -> [Definition Expression]
 parseExpressions defs = maybe [] (map (parseDefinition parseExpression) . children) .
     findChild "typedExpressions"
   where parseExpression ty = parseExpressionTyped defs ty .
@@ -109,7 +110,7 @@ parseExpressions defs = maybe [] (map (parseDefinition parseExpression) . childr
 
 -- MetaData Parser ---------------------------------------------------------------------------------
 
-parseMetaData :: Definitions -> Element -> MetaData
+parseMetaData :: Definitions -> XML -> MetaData
 parseMetaData defs scenarioEl = MetaData
         { scenarioName                   = parseScenarioName                        metadataEl
         , scenarioLanguage               = parseScenarioLanguage                    metadataEl
@@ -121,23 +122,23 @@ parseMetaData defs scenarioEl = MetaData
         }
     where metadataEl = getChild "metadata" scenarioEl
 
-parseScenarioName :: Element -> Name
+parseScenarioName :: XML -> Name
 parseScenarioName = getData . getChild "name"
 
-parseScenarioLanguage :: Element -> Maybe String
+parseScenarioLanguage :: XML -> Maybe String
 parseScenarioLanguage metadataEl = getAttribute "code" <$> findChild "language" metadataEl
 
-parseScenarioDescription :: Element -> String
+parseScenarioDescription :: XML -> String
 parseScenarioDescription = getData . getChild "description"
 
-parseScenarioDifficulty :: Element -> Maybe Difficulty
+parseScenarioDifficulty :: XML -> Maybe Difficulty
 parseScenarioDifficulty metadataEl = fromMaybe (error "parseScenarioDifficulty: no parse") . readDifficulty .
     getData <$> findChild "difficulty" metadataEl
 
-parseScenarioVersion :: Element -> Maybe Int
+parseScenarioVersion :: XML -> Maybe Int
 parseScenarioVersion scenarioEl = read <$> findAttribute "version" scenarioEl
 
-parseScenarioInitialParameterValues :: Definitions -> Element -> ParameterState
+parseScenarioInitialParameterValues :: Definitions -> XML -> ParameterState
 parseScenarioInitialParameterValues defs metadataEl = Usered
     { useredUserDefined = parseCharactereds valueParser M.fromList (getChild "userDefined" valsElem)
     , useredFixed = parseCharactereds valueParser M.fromList (getChild "fixed" valsElem)
@@ -150,18 +151,18 @@ parseScenarioInitialParameterValues defs metadataEl = Usered
 
 -- Dialogue Parser ---------------------------------------------------------------------------------
 
-parseDialogue :: Definitions -> Element -> TopDialogue
+parseDialogue :: Definitions -> XML -> TopDialogue
 parseDialogue defs scenarioEl = map (parseInterleaveLevel defs) interleaveElems
   where
     sequenceElem = getChild "sequence" scenarioEl
     interleaveElems = findChildren "interleave" sequenceElem
 
-parseInterleaveLevel :: Definitions -> Element -> InterleaveLevel
+parseInterleaveLevel :: Definitions -> XML -> InterleaveLevel
 parseInterleaveLevel defs interleaveElem = map (parseTree defs) diaElems
   where
     diaElems = findChildren "dialogue" interleaveElem
 
-parseTree :: Definitions -> Element -> Dialogue
+parseTree :: Definitions -> XML -> Dialogue
 parseTree defs diaElem =
     Dialogue
     { diaID         = getAttribute "id" diaElem
@@ -172,7 +173,7 @@ parseTree defs diaElem =
     }
   where statements = map (parseStatement defs) (children (getChild "statements" diaElem))
 
-parseStatement :: Definitions -> Element -> Statement
+parseStatement :: Definitions -> XML -> Statement
 parseStatement defs statElem =
     Statement
     { statID               = getAttribute "id"           statElem
@@ -185,7 +186,7 @@ parseStatement defs statElem =
     , statNextStatIDs      = parseNextStatIDs            statElem
     }
 
-parseStatementInfo :: Definitions -> Element -> StatementInfo
+parseStatementInfo :: Definitions -> XML -> StatementInfo
 parseStatementInfo defs statElem =
     StatementInfo
     {   statType           = parseType                statElem
@@ -195,21 +196,21 @@ parseStatementInfo defs statElem =
     }
 
 -- | Takes a statement and returns its type
-parseType :: Element -> StatementType
+parseType :: XML -> StatementType
 parseType statElem = takeWhile isLower (name statElem)
 
 -- | Takes a statement and returns its text
-parseText :: Element -> StatementText
+parseText :: XML -> StatementText
 parseText statElem = getData (getChild "text" statElem)
 
 -- | Takes a statement element and returns its precondition, if it has one
-parseMaybePrecondition :: Definitions -> Element -> Maybe Condition
+parseMaybePrecondition :: Definitions -> XML -> Maybe Condition
 parseMaybePrecondition defs statElem =
     fmap (parseCondition defs . getExactlyOneChild) conditionElem
       where conditionElem = findChild "preconditions" statElem
 
 -- | Takes a statement element and returns its effects
-parseParameterEffects :: Definitions -> Element -> Usered (Charactered [Effect])
+parseParameterEffects :: Definitions -> XML -> Usered (Charactered [Effect])
 parseParameterEffects defs statElem = Usered
     { useredUserDefined = Charactered
         (map (parseParameterEffect defs) (children (getChild "userDefined" effectsElem)))
@@ -218,7 +219,7 @@ parseParameterEffects defs statElem = Usered
     }
   where effectsElem = getChild "parameterEffects" statElem
 
-parseParameterEffect :: Definitions -> Element -> Effect
+parseParameterEffect :: Definitions -> XML -> Effect
 parseParameterEffect defs effectElem = Effect
     { effectIdref        = idref
     , effectAssignmentOp = parseAssignmentOperator effectElem
@@ -231,23 +232,23 @@ parseParameterEffect defs effectElem = Effect
             effectElem
 
 -- | Parses an element to a Changetype
-parseAssignmentOperator :: Element -> AssignmentOperator
+parseAssignmentOperator :: XML -> AssignmentOperator
 parseAssignmentOperator effectElem = read (applyToFirst toUpper operatorStr)
   where operatorStr = getAttribute "operator" effectElem
 
-parseAllowInterleave :: Element -> Bool
+parseAllowInterleave :: XML -> Bool
 parseAllowInterleave statElem = maybe False parseBool . getFirst $
     First (findAttribute "allowInterleave" statElem) <> First (findAttribute "jumpPoint" statElem)
 
-parseAllowDialogueEnd :: Element -> Bool
+parseAllowDialogueEnd :: XML -> Bool
 parseAllowDialogueEnd statElem = maybe False parseBool . getFirst $
     First (findAttribute "allowDialogueEnd" statElem) <> First (findAttribute "inits" statElem)
 
-parseEnd :: Element -> Bool
+parseEnd :: XML -> Bool
 parseEnd statElem = tryParseBool (findAttribute "end" statElem)
 
 -- | Takes a statement and returns the IDs of the statements following it
-parseNextStatIDs :: Element -> [ID]
+parseNextStatIDs :: XML -> [ID]
 parseNextStatIDs element = errorOnFail errorMsg nextIDs
   where
     errorMsg = "Failed to get the nextIDs of: " ++ name element
@@ -267,7 +268,7 @@ tryParseBool (Just boolStr) = parseBool boolStr
 tryParseBool _              = False
 
 -- | Parses a condition and recursively parses ands and ors. Used in both parsers (metadata and dialogue)
-parseCondition :: Definitions -> Element -> Condition
+parseCondition :: Definitions -> XML -> Condition
 parseCondition defs conditionElem = case stripCharacterPrefix (name conditionElem) of
     "and"       -> And (map (parseCondition defs) (children conditionElem))
     "or"        -> Or  (map (parseCondition defs) (children conditionElem))
@@ -292,10 +293,10 @@ parseCondition defs conditionElem = case stripCharacterPrefix (name conditionEle
     _           -> error "no parse condition"
 
 -- | Parses an operator. Gives an exception on invalid input.
-parseOperator :: Read a => Element -> a
+parseOperator :: Read a => XML -> a
 parseOperator conditionElem = read (applyToFirst toUpper (getAttribute "operator" conditionElem))
 
-parseExpressionTyped :: Definitions -> DD.Type -> Element -> Expression
+parseExpressionTyped :: Definitions -> DD.Type -> XML -> Expression
 parseExpressionTyped defs ty el = case stripCharacterPrefix (name el) of
     "literal" -> Literal (parseDomainDataValue ty el)
     "parameterReference" -> ParameterReference
@@ -323,12 +324,12 @@ parseCalculation "percentage" = CalculatePercentage
 parseCalculation c = error ("parseCalculation: not supported: " ++ c)
 
 -- | Parses property values from an element that has them
-parsePropertyValues :: Definitions -> Element -> PropertyValues
+parsePropertyValues :: Definitions -> XML -> PropertyValues
 parsePropertyValues defs propsElem = parseCharactereds
     (parseNamedDomainDataValue "property" (snd (definitionsProperties defs)))
     Assocs (getChild "propertyValues" propsElem)
 
-parseNamedDomainDataValue :: String -> TypeMap -> Element -> (String, DD.Value)
+parseNamedDomainDataValue :: String -> TypeMap -> XML -> (String, DD.Value)
 parseNamedDomainDataValue valueKind typeMap propValEl = (idref, value)
   where
     idref = getAttribute "idref" propValEl
@@ -337,7 +338,7 @@ parseNamedDomainDataValue valueKind typeMap propValEl = (idref, value)
       (M.findWithDefault errorDefault idref typeMap)
       propValEl
 
-parseDomainDataValue :: DD.Type -> Element -> DD.Value
+parseDomainDataValue :: DD.Type -> XML -> DD.Value
 parseDomainDataValue ty el = case ty of
     DD.TSimple simpleType -> parseSimpleDomainDataValue simpleType (getData el)
     DD.TList itemType -> DD.VList (map (parseDomainDataValue itemType) (children el))
@@ -356,7 +357,7 @@ parseSimpleDomainDataValue ty s = case ty of
     DD.TInteger mmin mmax -> DD.VInteger (DD.clamp mmin mmax (read s))
     DD.TString -> DD.VString  s
 
-parseCharactereds :: (Element -> a) -> ([a] -> b) -> Element -> Charactered b
+parseCharactereds :: (XML -> a) -> ([a] -> b) -> XML -> Charactered b
 parseCharactereds parseSub mkCollection valsElem = Charactered
     { characteredIndependent = mkCollection civs
     , characteredPerCharacter = M.fromList (map toPC (groupWith fst pcvs))
@@ -366,34 +367,34 @@ parseCharactereds parseSub mkCollection valsElem = Charactered
     (civs, pcvs) = partitionEithers vals
     toPC vs = (fst (head vs), mkCollection (map snd vs))
 
-parseCharactered :: (Element -> a) -> Element -> Either a (String, a)
+parseCharactered :: (XML -> a) -> XML -> Either a (String, a)
 parseCharactered parseSub valEl = case parseCharacterIdref valEl of
     Just characteridref -> Right (characteridref, val)
     Nothing             -> Left val
   where
     val = parseSub valEl
 
-parseCharacterIdref :: Element -> Maybe String
+parseCharacterIdref :: XML -> Maybe String
 parseCharacterIdref = findAttribute "characteridref"
 
 -- Functions that extend the XML parser
 ----------------------------------------------------------------------------------------------------
 
 -- | Returns the child element with the given name out of the Monad defined in the framework
-getChild :: Name -> Element -> Element
+getChild :: Name -> XML -> XML
 getChild elemName element = errorOnFail errorMsg mChild
   where
     errorMsg = "Failed to find child: " ++ elemName
     mChild = findChild elemName element
 
 -- | Finds an attribute and gets it out of the Monad defined in the framework
-getAttribute :: String -> Element -> String
+getAttribute :: String -> XML -> String
 getAttribute attributeName element = errorOnFail errorMsg mAttribute
   where
     errorMsg = "Failed to find attribute: " ++ attributeName
     mAttribute = findAttribute attributeName element
 
-getExactlyOneChild :: Element -> Element
+getExactlyOneChild :: XML -> XML
 getExactlyOneChild element = case children element of
     []      -> error "no children found"
     [child] -> child

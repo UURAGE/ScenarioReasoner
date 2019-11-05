@@ -147,4 +147,4 @@ showJSON :: ScenarioState -> String
 showJSON = UTF8.decode . compactJSON . toJSON
 
 readJSON :: String -> Either String ScenarioState
-readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON . UTF8.encode
+readJSON = either Left (maybe (Left "failed to interpret JSON state") Right . fromJSON) . parseJSON

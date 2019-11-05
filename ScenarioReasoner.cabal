@@ -29,13 +29,12 @@ executable ScenarioReasoner.cgi
   default-language:    Haskell2010
 
   build-depends:       base >= 4.8 && < 5,
-                       ideas == 1.6,
+                       ideas == 1.8,
                        transformers,
                        containers,
                        filepath,
                        binary,
-                       filemanip,
-                       QuickCheck < 2.10
+                       filemanip
 
 executable ScenarioParser
   Main-is:             ScenarioParser.hs
@@ -44,7 +43,7 @@ executable ScenarioParser
   default-language:    Haskell2010
 
   build-depends:       base >= 4.8 && < 5,
-                       ideas == 1.6,
+                       ideas == 1.8,
                        transformers,
                        containers,
                        filepath,

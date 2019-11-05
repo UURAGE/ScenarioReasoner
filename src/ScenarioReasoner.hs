@@ -18,11 +18,11 @@ import qualified Domain.Scenarios.Exercises as E
 import Control.Exception
 import Ideas.Encoding.ModeJSON (processJSON)
 import Ideas.Encoding.ModeXML (processXML)
-import Ideas.Encoding.Options (Options, maxTime)
+import Ideas.Encoding.Options (Options, maxTime, logRef)
 import Ideas.Encoding.Request
 import Ideas.Service.DomainReasoner
+import Ideas.Text.XML.Unicode (decoding)
 import System.IO
-import System.IO.Error (ioeGetErrorString)
 import qualified Ideas.Encoding.Logging as Log
 import qualified Ideas.Main.CmdLineOptions as Options
 
@@ -54,27 +54,21 @@ readBinaryScenarios root = do
 scenarioReasonerCommandLine :: DomainReasoner -> IO ()
 scenarioReasonerCommandLine dr = do
    mapM_ (`hSetBinaryMode` True) [stdin, stdout, stderr]
-   txtIn          <- getContents
-   logRef         <- Log.newLogRef
-   (_, txtOut, _) <- process mempty dr logRef txtIn
+   txtIn          <- getContents >>= decoding
+   (_, txtOut, _) <- process mempty dr txtIn
    putStrLn txtOut
 
-process :: Options -> DomainReasoner -> Log.LogRef -> String -> IO (Request, String, String)
-process options dr logRef input = do
+process :: Options -> DomainReasoner -> String -> IO (Request, String, String)
+process options dr input = do
    format <- discoverDataFormat input
-   run format options {maxTime = Just 5} (addVersion dr) logRef input
- `catch` \ioe -> do
-   let msg = "Error: " ++ ioeGetErrorString ioe
-   Log.changeLog logRef (\r -> r { Log.errormsg = msg })
+   run format options {maxTime = Just 5} (addVersion dr) input
+ `catch` \e -> do
+   let msg = "Error: " ++ show (e :: SomeException)
+   Log.changeLog (logRef options) (\r -> r { Log.errormsg = msg })
    return (mempty, msg, "text/plain")
  where
    run XML  = processXML
    run JSON = processJSON
-
-makeTestRunner :: DomainReasoner -> String -> IO String
-makeTestRunner dr input = do
-   (_, out, _) <- process mempty dr Log.noLogRef input
-   return out
 
 addVersion :: DomainReasoner -> DomainReasoner
 addVersion dr = dr

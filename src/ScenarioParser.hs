@@ -2,8 +2,9 @@
 
 module Main where
 
+import Control.Monad
+
 import Data.Binary
-import Data.Functor
 
 import Domain.Scenarios.Parser
 
@@ -13,6 +14,7 @@ import System.IO
 
 import Ideas.Common.Id
 import Ideas.Text.XML
+import Ideas.Text.XML.Unicode
 
 main :: IO ()
 main = do
@@ -27,10 +29,15 @@ main = do
 
 process :: FilePath -> FilePath -> IO String
 process xml_path bin_path = do
-    scenarioXML <- parseXMLFile xml_path
+    scenarioXML <- parseXMLFileFixed xml_path
     let scenario = parseScenario scenarioXML
     encodeFile bin_path scenario
     return (showId (newId (takeBaseName bin_path)))
+
+parseXMLFileFixed :: FilePath -> IO XML
+parseXMLFileFixed file =
+    withBinaryFile file ReadMode $
+        hGetContents >=> decoding >=> either fail return . parseXML
 
 debugMain :: String -> IO ()
 debugMain path = do
