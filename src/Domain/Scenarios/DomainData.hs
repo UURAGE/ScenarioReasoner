@@ -4,11 +4,13 @@ module Domain.Scenarios.DomainData where
 
 import Control.Arrow
 import Control.Monad
+import qualified Control.Monad.Fail as Fail
 import Data.Binary
 import Data.Maybe
 import GHC.Generics
 
 import Ideas.Text.JSON
+import Ideas.Utils.Decoding
 
 data SimpleType
     = TBoolean
@@ -50,6 +52,9 @@ data Type
 
 instance Binary Type
 
+instance Fail.MonadFail Error where
+    fail = fail
+
 instance InJSON Type where
     toJSON (TSimple simpleType) = toJSON simpleType
     toJSON (TList itemType) = Object [("name", String "list"), ("itemType", toJSON itemType)]
@@ -66,7 +71,7 @@ instance InJSON Type where
     fromJSON val@(String _) = TSimple <$> fromJSON val
     fromJSON val@(Object _) | Just (String typeName) <- lookupM "name" val = case typeName of
         "list" -> TList <$> (lookupM "itemType" val >>= fromJSON)
-        "attributeRecord" -> do
+        "attributeRecord" -> runErrorM $ do
             Object attributeVal <- lookupM "attributeTypes" val
             let contentInfo = do
                     String contentName <- lookupM "contentName" val

@@ -4,14 +4,11 @@
 # '-y', 'refreshenv' and 'echo "" |' are workarounds
 
 install:
-  - choco install -y ghc --version 8.0.2.2
+  - choco install -y cabal --version 2.4.1.0
+  - choco install -y ghc --version 8.6.5
   - refreshenv
-  - curl -o cabal.zip --silent https://www.haskell.org/cabal/release/cabal-install-1.24.0.0/cabal-install-1.24.0.0-x86_64-unknown-mingw32.zip
-  - 7z x -bd cabal.zip
-  - cabal --version
-  - cabal update
+  - cabal v2-update
 
 build_script:
-  - echo "" | cabal install --only-dependencies --enable-tests --enable-benchmarks
-  - echo "" | cabal configure --enable-tests --enable-benchmarks -v2
-  - echo "" | cabal build
+  - echo "" | cabal v2-configure --enable-tests --enable-benchmarks -v2
+  - echo "" | cabal v2-build

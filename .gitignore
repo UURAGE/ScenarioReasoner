@@ -1,7 +1,8 @@
-dist/
+dist*/
 .cabal-sandbox/
 intermediate/
 out/
 Profiling/
-cabal.sandbox.config
-
+/cabal.sandbox.config
+/cabal.project.local
+/.ghc.environment.*

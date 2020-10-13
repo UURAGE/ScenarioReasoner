@@ -1,0 +1,5 @@
+packages: *.cabal
+constraints: ideas -logging
+
+package *
+  optimization: 2
