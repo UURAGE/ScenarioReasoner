@@ -1,4 +1,4 @@
-<img src="https://cdn.rawgit.com/UURAGE/ScenarioReasoner/master/logo.svg" width="50%"/>
+<img src="./logo.svg" width="50%"/>
 
 # Scenario Reasoner
 
