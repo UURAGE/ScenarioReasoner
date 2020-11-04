@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                ScenarioReasoner
-version:             5.5.2
+version:             6.0.0
 author:              Ideas Authors <authors@ideas.example>
                      jan709 <j.vandieren@students.uu.nl>
                      Johan Jeuring <J.T.Jeuring@uu.nl>
