@@ -6,10 +6,10 @@ import Data.Char
 import Data.Either
 import qualified Data.Foldable as F
 import Data.List
+import qualified Data.List.NonEmpty as N
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid hiding (Sum)
-import GHC.Exts(groupWith)
 
 import Ideas.Common.Library
 import Ideas.Text.XML hiding (Name, BuildXML(..))
@@ -360,12 +360,12 @@ parseSimpleDomainDataValue ty s = case ty of
 parseCharactereds :: (XML -> a) -> ([a] -> b) -> XML -> Charactered b
 parseCharactereds parseSub mkCollection valsElem = Charactered
     { characteredIndependent = mkCollection civs
-    , characteredPerCharacter = M.fromList (map toPC (groupWith fst pcvs))
+    , characteredPerCharacter = M.fromList (map toPC (N.groupAllWith fst pcvs))
     }
   where
     vals = map (parseCharactered parseSub) (children valsElem)
     (civs, pcvs) = partitionEithers vals
-    toPC vs = (fst (head vs), mkCollection (map snd vs))
+    toPC vs = (fst (N.head vs), mkCollection (map snd (N.toList vs)))
 
 parseCharactered :: (XML -> a) -> XML -> Either a (String, a)
 parseCharactered parseSub valEl = case parseCharacterIdref valEl of
