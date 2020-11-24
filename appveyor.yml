@@ -3,12 +3,34 @@
 
 # '-y', 'refreshenv' and 'echo "" |' are workarounds
 
-install:
-  - choco install -y cabal --version 2.4.1.0
-  - choco install -y ghc --version 8.6.5
-  - refreshenv
-  - cabal v2-update
+image:
+  - Ubuntu2004
+  - Visual Studio 2019
+
+for:
+  - matrix:
+      only:
+        - image: Ubuntu2004
+
+    install:
+      - sudo apt update
+      - sudo apt install ghc cabal-install zlib1g-dev
+
+  - matrix:
+      only:
+        - image: Visual Studio 2019
+
+    install:
+      - choco install -y cabal --version 2.4.1.0
+      - choco install -y ghc --version 8.6.5
+      - refreshenv
 
 build_script:
+  - cabal v2-update
   - echo "" | cabal v2-configure --enable-tests --enable-benchmarks -v2
   - echo "" | cabal v2-build
+
+notifications:
+  - provider: Slack
+    incoming_webhook:
+      secure: W11v1o7aVo7LCDfTuJfcepL5znKJmgnUgMqb41spty3/0rRksdds4HuaC4/qnoHsP5Y7gJOhlMJCM3BjnO3+66RTcO/ZVml9sOXS92zAhs4=

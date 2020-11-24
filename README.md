@@ -2,7 +2,6 @@
 
 # Scenario Reasoner
 
-[![](https://travis-ci.org/UURAGE/ScenarioReasoner.svg?branch=master)](https://travis-ci.org/UURAGE/ScenarioReasoner)
 [![](https://ci.appveyor.com/api/projects/status/github/UURAGE/ScenarioReasoner?branch=master&svg=true)](https://github.com/UURAGE/ScenarioReasoner/releases/latest)
 [![](https://badge.fury.io/gh/UURAGE%2FScenarioReasoner.svg)](https://github.com/UURAGE/ScenarioReasoner/releases/latest)
 
